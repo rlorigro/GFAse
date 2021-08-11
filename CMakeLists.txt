@@ -46,6 +46,7 @@ set(SOURCES
         src/BinaryIO.cpp
         src/GfaReader.cpp
         src/handle_to_gfa.cpp
+        src/gfa_to_handle.cpp
         src/IncrementalIdMap.cpp
         )
 
@@ -177,13 +178,19 @@ endif()
 # Need to explicitly enable ExternalProject functionality
 include(ExternalProject)
 
+message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+
+
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
         GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
 #        DOWNLOAD_COMMAND ""
 #        UPDATE_COMMAND ""
-        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF
+        PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
         BUILD_IN_SOURCE True
         INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
         INSTALL_COMMAND make install
