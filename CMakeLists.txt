@@ -180,8 +180,8 @@ include(ExternalProject)
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
         GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-        DOWNLOAD_COMMAND ""
-        UPDATE_COMMAND ""
+#        DOWNLOAD_COMMAND ""
+#        UPDATE_COMMAND ""
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF
         BUILD_IN_SOURCE True
