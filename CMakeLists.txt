@@ -17,18 +17,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ------- Memory debug ------- #
 
-#set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-#set(ASAN_OPTIONS=check_initialization_order=1)
-#set(ASAN_OPTIONS=detect_leaks=1)
+set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+set(ASAN_OPTIONS=check_initialization_order=1)
+set(ASAN_OPTIONS=detect_leaks=1)
 
 # --- Standard compilation --- #
 
-set(CMAKE_CXX_FLAGS "-fexceptions")
+#set(CMAKE_CXX_FLAGS "-fexceptions")
 
 # ---------------------------- #
 
-#add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
-add_definitions(-O3 -Wall)              # Much optimization
+add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
+#add_definitions(-O3 -Wall)              # Much optimization
 
 #########################################
 # ------------------------------------- #
@@ -43,7 +43,8 @@ include_directories(
 
 # Define our shared library sources. NOT test/executables.
 set(SOURCES
-        src/gfa_to_handle.cpp
+        src/BinaryIO.cpp
+        src/GfaReader.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         )
@@ -116,54 +117,54 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 
-##############################################
-# ------------------------------------------ #
-# -------- LINKING EXTERNAL LIBRARY -------- #
-# ---------------- gfakluge ---------------- #
-# ------------------------------------------ #
-##############################################
-
-# Need to explicitly enable ExternalProject functionality
-include(ExternalProject)
-
-# Download or update library as an external project
-ExternalProject_Add(project_gfak
-        GIT_REPOSITORY https://github.com/edawson/gfakluge.git
-        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
-        CONFIGURE_COMMAND ""
-#	    DOWNLOAD_COMMAND ""
-#        UPDATE_COMMAND ""
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/gfak/
-        INSTALL_COMMAND make PREFIX=${CMAKE_SOURCE_DIR}/external/gfak/ install
-        )
-
-# Define INSTALL_DIR as the install directory for external library
-ExternalProject_Get_Property(project_gfak INSTALL_DIR)
-
-
-# THIS SECTION QUARANTINED FOR MAC compatibility :'(
-# ---
-# Create new library for external project (so it can be linked with main library)
-#add_library(gfak STATIC IMPORTED)
-#set_property(TARGET gfak
-#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/bin/gfak)
+###############################################
+## ------------------------------------------ #
+## -------- LINKING EXTERNAL LIBRARY -------- #
+## ---------------- gfakluge ---------------- #
+## ------------------------------------------ #
+###############################################
 #
-## Define library as dependent on the downloaded project
-#add_dependencies(gfak project_gfak)
-# ---
-
-
-# Define main library as dependent on the downloaded project (transitively)
-add_dependencies(GFAse project_gfak)
-
-# Ensure that main library has access to primary dependencies' and secondary dependencies' headers
-include_directories(external/gfak/include/)
-
-# Add runtime path for main library so it can access external library
-#set_property(TARGET GFAse PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/gfak")
-
-message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+## Need to explicitly enable ExternalProject functionality
+#include(ExternalProject)
+#
+## Download or update library as an external project
+#ExternalProject_Add(project_gfak
+#        GIT_REPOSITORY https://github.com/edawson/gfakluge.git
+#        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
+#        CONFIGURE_COMMAND ""
+##	    DOWNLOAD_COMMAND ""
+##        UPDATE_COMMAND ""
+#        BUILD_IN_SOURCE True
+#        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/gfak/
+#        INSTALL_COMMAND make PREFIX=${CMAKE_SOURCE_DIR}/external/gfak/ install
+#        )
+#
+## Define INSTALL_DIR as the install directory for external library
+#ExternalProject_Get_Property(project_gfak INSTALL_DIR)
+#
+#
+## THIS SECTION QUARANTINED FOR MAC compatibility :'(
+## ---
+## Create new library for external project (so it can be linked with main library)
+##add_library(gfak STATIC IMPORTED)
+##set_property(TARGET gfak
+##        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/bin/gfak)
+##
+### Define library as dependent on the downloaded project
+##add_dependencies(gfak project_gfak)
+## ---
+#
+#
+## Define main library as dependent on the downloaded project (transitively)
+#add_dependencies(GFAse project_gfak)
+#
+## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+#include_directories(external/gfak/include/)
+#
+## Add runtime path for main library so it can access external library
+##set_property(TARGET GFAse PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/gfak")
+#
+#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 
 
 ##############################################
@@ -242,7 +243,7 @@ find_package(Threads REQUIRED)
 # -------- TESTS --------
 
 set(TESTS
-        test_gfak
+        test_gfareader
         )
 
 foreach(FILENAME_PREFIX ${TESTS})
@@ -253,8 +254,7 @@ foreach(FILENAME_PREFIX ${TESTS})
             bdsg
             divsufsort
             libhandlegraph
-            libsdsl
-            -static)
+            libsdsl)
 
 endforeach()
 
@@ -273,13 +273,12 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
             bdsg
             divsufsort
             libhandlegraph
-            libsdsl
-            -static)
+            libsdsl)
 
 endforeach()
 
-set_target_properties(gfase PROPERTIES LINK_FLAGS "-static" )
-SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+#set_target_properties(gfase PROPERTIES LINK_FLAGS "-static" )
+#SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
 
 
 # -------- final steps --------
