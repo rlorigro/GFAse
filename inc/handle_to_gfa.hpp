@@ -1,5 +1,5 @@
-#ifndef BLUNTIFIER_HANDLE_TO_GFA_HPP
-#define BLUNTIFIER_HANDLE_TO_GFA_HPP
+#ifndef GFASE_HANDLE_TO_GFA_HPP
+#define GFASE_HANDLE_TO_GFA_HPP
 
 #include "handlegraph/handle_graph.hpp"
 #include <fstream>
@@ -12,7 +12,7 @@ using std::ostream;
 using std::string;
 
 
-namespace bluntifier {
+namespace gfase {
 
 
 char get_reversal_character(const HandleGraph& graph, const handle_t& node);
@@ -34,4 +34,4 @@ void handle_graph_to_canonical_gfa(const HandleGraph& graph, const string& outpu
 
 }
 
-#endif //BLUNTIFIER_HANDLE_TO_GFA_HPP
+#endif //GFASE_HANDLE_TO_GFA_HPP

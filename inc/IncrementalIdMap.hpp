@@ -1,5 +1,5 @@
-#ifndef BLUNTIFIER_INCREMENTALIDMAP_HPP
-#define BLUNTIFIER_INCREMENTALIDMAP_HPP
+#ifndef GFASE_INCREMENTALIDMAP_HPP
+#define GFASE_INCREMENTALIDMAP_HPP
 
 #include "handlegraph/handle_graph.hpp"
 #include <string>
@@ -94,4 +94,4 @@ template<class T> T IncrementalIdMap<T>::get_name(int64_t id) const{
 
 
 }
-#endif //BLUNTIFIER_INCREMENTALID_HPP
+#endif //GFASE_INCREMENTALID_HPP

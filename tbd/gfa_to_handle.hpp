@@ -1,5 +1,5 @@
-#ifndef BLUNTIFIER_GFA_TO_HANDLE_HPP
-#define BLUNTIFIER_GFA_TO_HANDLE_HPP
+#ifndef GFASE_GFA_TO_HANDLE_HPP
+#define GFASE_GFA_TO_HANDLE_HPP
 
 /**
  * \file gfa_to_handle.hpp
@@ -64,4 +64,4 @@ void gfa_to_path_handle_graph_in_memory(istream& in,
 
 }
 
-#endif //BLUNTIFIER_GFA_TO_HANDLE_HPP
+#endif //GFASE_GFA_TO_HANDLE_HPP
