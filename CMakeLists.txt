@@ -179,36 +179,35 @@ include(ExternalProject)
 
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
-        GIT_REPOSITORY https://github.com/vgteam/libbdsg-easy.git
-        GIT_TAG b989949811918b18de48a5e57d7f45473d8901f1
+        GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
+        DOWNLOAD_COMMAND ""
+        UPDATE_COMMAND ""
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
-        CONFIGURE_COMMAND ""
-#        DOWNLOAD_COMMAND ""
-#        UPDATE_COMMAND ""
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF
         BUILD_IN_SOURCE True
         INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
-        INSTALL_COMMAND make INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ install
+        INSTALL_COMMAND make install
         )
 
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_bdsg INSTALL_DIR)
 
 # Create new library for external project (so it can be linked with main library)
-add_library(bdsg STATIC IMPORTED)
+add_library(bdsg SHARED IMPORTED)
 set_property(TARGET bdsg
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbdsg.a)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbdsg.so)
 
-add_library(divsufsort STATIC IMPORTED)
+add_library(divsufsort SHARED IMPORTED)
 set_property(TARGET divsufsort
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.a)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.so)
 
 add_library(libhandlegraph STATIC IMPORTED)
 set_property(TARGET libhandlegraph
         PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libhandlegraph.a)
 
-add_library(libsdsl STATIC IMPORTED)
+add_library(libsdsl SHARED IMPORTED)
 set_property(TARGET libsdsl
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.a)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.so)
 
 # Define library as dependent on the downloaded project
 add_dependencies(bdsg
