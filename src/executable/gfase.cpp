@@ -11,8 +11,8 @@
 
 using gfase::IncrementalIdMap;
 using gfase::handle_graph_to_gfa;
-
 using ghc::filesystem::path;
+
 using bdsg::HashGraph;
 using bdsg::MutablePathMutableHandleGraph;
 using handlegraph::path_handle_t;
@@ -53,9 +53,8 @@ void plot_graph(HandleGraph& graph, string filename_prefix){
 void unzip(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    unordered_map<nid_t,step_handle_t> node_to_path_step;
 
-    gfa_to_handle_graph(graph, id_map, node_to_path_step, gfa_path);
+    gfa_to_handle_graph(graph, id_map, gfa_path);
 
     // Output an image of the graph, can be uncommented for debugging
     plot_graph(graph, "test_unzip_unedited");
@@ -63,9 +62,9 @@ void unzip(path gfa_path){
     unordered_set<handle_t> to_be_destroyed;
 
     cout << graph.get_path_count() << '\n';
-    graph.for_each_path_handle([&](const path_handle_t& p) {
-        cout << graph.get_path_name(p) << "\n";
+    vector<string> path_names;
 
+    graph.for_each_path_handle([&](const path_handle_t& p) {
         string path_sequence;
 
         graph.for_each_step_in_path(p, [&](const step_handle_t s){
@@ -75,13 +74,10 @@ void unzip(path gfa_path){
             string sequence = graph.get_sequence(h);
             path_sequence += sequence;
 
-            auto iter = node_to_path_step.find(n);
-            if (iter != node_to_path_step.end()){
-                node_to_path_step.erase(iter);
-            }
-
             string name = id_map.get_name(n);
             cout << '\t' << name << " " << sequence << '\n';
+
+            to_be_destroyed.emplace(h);
         });
 
         // TODO: track provenance?
@@ -98,20 +94,14 @@ void unzip(path gfa_path){
         graph.follow_edges(path_stop_handle, false, [&](const handle_t& other){
             graph.create_edge(haplotype_handle, other);
         });
-
-        graph.for_each_step_in_path(p, [&](const step_handle_t s) {
-            handle_t h = graph.get_handle_of_step(s);
-            nid_t n = graph.get_id(h);
-
-            auto iter = node_to_path_step.find(n);
-            if (iter == node_to_path_step.end()) {
-                to_be_destroyed.emplace(h);
-            }
-        });
     });
 
     // Output an image of the graph, can be uncommented for debugging
     plot_graph(graph, "test_unzip_duplicated");
+
+    graph.for_each_path_handle([&](const path_handle_t& p) {
+        graph.destroy_path(p);
+    });
 
     for (auto& handle: to_be_destroyed){
         graph.destroy_handle(handle);
@@ -127,7 +117,10 @@ int main (int argc, char* argv[]){
 
     CLI::App app{"App description"};
 
-    app.add_option("-i,--input_gfa", gfa_path, "Path to GFA containing phased non-overlapping segments")
+    app.add_option(
+            "-i,--input_gfa",
+            gfa_path,
+            "Path to GFA containing phased non-overlapping segments")
             ->required();
 
     CLI11_PARSE(app, argc, argv);

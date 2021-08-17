@@ -31,9 +31,7 @@ nid_t parse_gfa_sequence_id(const string& s, IncrementalIdMap<string>& id_map);
 void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
-        unordered_map<nid_t,step_handle_t>& node_to_path_step,
         path gfa_file_path);
-
 
 
 }
