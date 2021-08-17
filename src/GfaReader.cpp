@@ -4,6 +4,12 @@
 #include <fstream>
 #include <string>
 
+#include <sys/stat.h>
+#include <ctime>
+#include <cstdio>
+
+using ::stat;
+using std::difftime;
 using std::stoi;
 using std::cout;
 using std::ofstream;
@@ -15,6 +21,21 @@ const char GfaReader::EOF_CODE = 'X';
 GFAIndex::GFAIndex(char type, uint64_t offset){
     this->type = type;
     this->offset = offset;
+}
+
+
+void GfaReader::ensure_index_up_to_date(){
+    struct stat index_file_stat;
+    stat(gfa_index_path.c_str(), &index_file_stat);
+
+    struct stat gfa_file_stat;
+    stat(gfa_path.c_str(), &gfa_file_stat);
+
+    cerr << "diff index_file_stat, gfa_file_stat: " << difftime(index_file_stat.st_ctime, gfa_file_stat.st_ctime) << '\n';
+
+    if (difftime(index_file_stat.st_ctime, gfa_file_stat.st_ctime) < 0){
+        throw runtime_error("ERROR index file is older than GFA: " + gfa_index_path.string());
+    }
 }
 
 
@@ -64,6 +85,8 @@ void GfaReader::read_index(){
     if(file_descriptor == -1) {
         throw runtime_error("ERROR: could not read " + this->gfa_index_path.string());
     }
+
+    ensure_index_up_to_date();
 
     // Find file size in bytes, calculate number of entries in file
     off_t file_length = lseek(file_descriptor, 0, SEEK_END);
@@ -261,6 +284,7 @@ void GfaReader::for_each_path(const function<void(string& path_name, vector<stri
                 else if (n_delimiters == 2){
                     if (c != ','){
                         if ((c == '+' or c == '-')){
+                            // TODO: check that reversal is always present
                             if (line[index+1] == ',') {
                                 // Add the reversal for the current node
                                 reversals.emplace_back((c == '-'));
@@ -297,6 +321,10 @@ void GfaReader::for_each_path(const function<void(string& path_name, vector<stri
             }
 
             index++;
+        }
+
+        if (cigars.size() != nodes.size() - 1){
+            throw runtime_error("ERROR: incorrect quantity of path cigars/overlaps for path: " + path_name);
         }
 
         f(path_name, nodes, reversals, cigars);

@@ -53,6 +53,7 @@ public:
     void index();
     void read_index();
     void write_index_to_binary_file();
+    void ensure_index_up_to_date();
     void map_sequences_by_node();
     void read_line(string& s, size_t index);
     uint64_t get_sequence_length(string node_name);

@@ -15,15 +15,13 @@ using gfase::handle_graph_to_gfa;
 using ghc::filesystem::path;
 using bdsg::HashGraph;
 using bdsg::MutablePathMutableHandleGraph;
-using bdsg::path_handle_t;
-using bdsg::step_handle_t;
-using bdsg::handle_t;
+using handlegraph::path_handle_t;
+using handlegraph::step_handle_t;
+using handlegraph::handle_t;
 
 using std::string;
 using std::cout;
 using std::cerr;
-
-
 
 
 void run_command(string& argument_string){
@@ -31,6 +29,23 @@ void run_command(string& argument_string){
 
     if (exit_code != 0){
         throw runtime_error("ERROR: command failed to run: " + argument_string);
+    }
+}
+
+
+void plot_graph(HandleGraph& graph, string filename_prefix){
+    // Output an image of the graph, can be uncommented for debugging
+    ofstream test_output(filename_prefix + ".gfa");
+    handle_graph_to_gfa(graph, test_output);
+    test_output.close();
+
+    if (graph.get_node_count() < 200) {
+        string command = "vg convert -g " + filename_prefix + ".gfa -p | vg view -d - | dot -Tpng -o "
+                         + filename_prefix + ".png";
+
+        cerr << "Running: " << command << '\n';
+
+        run_command(command);
     }
 }
 
@@ -43,21 +58,7 @@ void unzip(path gfa_path){
     gfa_to_handle_graph(graph, id_map, node_to_path_step, gfa_path);
 
     // Output an image of the graph, can be uncommented for debugging
-    {
-        string test_path_prefix = "test_gfase_unedited";
-        ofstream test_output(test_path_prefix + ".gfa");
-        handle_graph_to_gfa(graph, test_output);
-        test_output.close();
-
-        if (graph.get_node_count() < 200) {
-            string command = "vg convert -g " + test_path_prefix + ".gfa -p | vg view -d - | dot -Tpng -o "
-                             + test_path_prefix + ".png";
-
-            cerr << "Running: " << command << '\n';
-
-            run_command(command);
-        }
-    }
+    plot_graph(graph, "test_unzip_unedited");
 
     unordered_set<handle_t> to_be_destroyed;
 
@@ -88,10 +89,12 @@ void unzip(path gfa_path){
         auto path_start_handle = graph.get_handle_of_step(graph.path_begin(p));
         auto path_stop_handle = graph.get_handle_of_step(graph.path_back(p));
 
+        // Find neighboring nodes for the path and create edges to the new haplotype node (LEFT)
         graph.follow_edges(path_start_handle, true, [&](const handle_t& other){
             graph.create_edge(other, haplotype_handle);
         });
 
+        // Find neighboring nodes for the path and create edges to the new haplotype node (RIGHT)
         graph.follow_edges(path_stop_handle, false, [&](const handle_t& other){
             graph.create_edge(haplotype_handle, other);
         });
@@ -108,42 +111,14 @@ void unzip(path gfa_path){
     });
 
     // Output an image of the graph, can be uncommented for debugging
-    {
-        string test_path_prefix = "test_gfase_duplicated";
-        ofstream test_output(test_path_prefix + ".gfa");
-        handle_graph_to_gfa(graph, test_output);
-        test_output.close();
+    plot_graph(graph, "test_unzip_duplicated");
 
-        if (graph.get_node_count() < 200) {
-            string command = "vg convert -g " + test_path_prefix + ".gfa -p | vg view -d - | dot -Tpng -o "
-                             + test_path_prefix + ".png";
-
-            cerr << "Running: " << command << '\n';
-
-            run_command(command);
-        }
-    }
-
-    for (auto& doomed_handle: to_be_destroyed){
-        graph.destroy_handle(doomed_handle);
+    for (auto& handle: to_be_destroyed){
+        graph.destroy_handle(handle);
     }
 
     // Output an image of the graph, can be uncommented for debugging
-    {
-        string test_path_prefix = "test_gfase_unzipped";
-        ofstream test_output(test_path_prefix + ".gfa");
-        handle_graph_to_gfa(graph, test_output);
-        test_output.close();
-
-        if (graph.get_node_count() < 200) {
-            string command = "vg convert -g " + test_path_prefix + ".gfa -p | vg view -d - | dot -Tpng -o "
-                             + test_path_prefix + ".png";
-
-            cerr << "Running: " << command << '\n';
-
-            run_command(command);
-        }
-    }
+    plot_graph(graph, "test_unzip_final");
 }
 
 

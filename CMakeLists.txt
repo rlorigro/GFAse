@@ -45,6 +45,7 @@ include_directories(
 set(SOURCES
         src/BinaryIO.cpp
         src/GfaReader.cpp
+        src/GraphUtility.cpp
         src/handle_to_gfa.cpp
         src/gfa_to_handle.cpp
         src/IncrementalIdMap.cpp
@@ -118,56 +119,6 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 
-###############################################
-## ------------------------------------------ #
-## -------- LINKING EXTERNAL LIBRARY -------- #
-## ---------------- gfakluge ---------------- #
-## ------------------------------------------ #
-###############################################
-#
-## Need to explicitly enable ExternalProject functionality
-#include(ExternalProject)
-#
-## Download or update library as an external project
-#ExternalProject_Add(project_gfak
-#        GIT_REPOSITORY https://github.com/edawson/gfakluge.git
-#        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external/
-#        CONFIGURE_COMMAND ""
-##	    DOWNLOAD_COMMAND ""
-##        UPDATE_COMMAND ""
-#        BUILD_IN_SOURCE True
-#        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/gfak/
-#        INSTALL_COMMAND make PREFIX=${CMAKE_SOURCE_DIR}/external/gfak/ install
-#        )
-#
-## Define INSTALL_DIR as the install directory for external library
-#ExternalProject_Get_Property(project_gfak INSTALL_DIR)
-#
-#
-## THIS SECTION QUARANTINED FOR MAC compatibility :'(
-## ---
-## Create new library for external project (so it can be linked with main library)
-##add_library(gfak STATIC IMPORTED)
-##set_property(TARGET gfak
-##        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/bin/gfak)
-##
-### Define library as dependent on the downloaded project
-##add_dependencies(gfak project_gfak)
-## ---
-#
-#
-## Define main library as dependent on the downloaded project (transitively)
-#add_dependencies(GFAse project_gfak)
-#
-## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
-#include_directories(external/gfak/include/)
-#
-## Add runtime path for main library so it can access external library
-##set_property(TARGET GFAse PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/gfak")
-#
-#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
-
-
 ##############################################
 # ------------------------------------------ #
 # -------- LINKING EXTERNAL LIBRARY -------- #
@@ -187,8 +138,8 @@ message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
         GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-#        DOWNLOAD_COMMAND ""
-#        UPDATE_COMMAND ""
+        DOWNLOAD_COMMAND ""
+        UPDATE_COMMAND ""
         PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
         BUILD_IN_SOURCE True
@@ -250,6 +201,7 @@ find_package(Threads REQUIRED)
 
 set(TESTS
         test_gfareader
+        test_bfs
         )
 
 foreach(FILENAME_PREFIX ${TESTS})

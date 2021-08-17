@@ -32,24 +32,26 @@ void gfa_to_handle_graph(
 
     GfaReader gfa_reader(gfa_file_path);
 
+    // Create all the nodes/sequences
     gfa_reader.for_each_sequence([&](string& name, string& sequence){
         // TODO: check if node name is empty or node sequence is empty
         auto id = parse_gfa_sequence_id(name, id_map);
         graph.create_handle(sequence, id);
     });
 
+    // Create all the edges between nodes
     gfa_reader.for_each_link([&](string& node_a, bool reversal_a, string& node_b, bool reversal_b, string& cigar){
         const nid_t source_id = parse_gfa_sequence_id(node_a, id_map);
         const nid_t sink_id = parse_gfa_sequence_id(node_b, id_map);
 
         if (not graph.has_node(source_id)){
             throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
-                                                                               "contains non-existent node: " + node_a);
+                                "contains non-existent node: " + node_a);
         }
 
         if (not graph.has_node(sink_id)){
             throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
-                                                                               "contains non-existent node: " + node_b);
+                                "contains non-existent node: " + node_b);
         }
 
         // note: we're counting on implementations de-duplicating edges
@@ -62,23 +64,35 @@ void gfa_to_handle_graph(
         }
         else{
             throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
-                                                                               "contains non empty overlap: " + cigar);
+                                "contains non-empty overlap: " + cigar);
         }
     });
 
+    // Construct paths
     gfa_reader.for_each_path([&](string& path_name, vector<string>& nodes, vector<bool>& reversals, vector<string>& cigars){
         path_handle_t p = graph.create_path_handle(path_name);
 
-        for (size_t i=0; i<nodes.size(); i++){
-            cout << nodes[i] << '\n';
-            nid_t node_id = id_map.get_id(nodes[i]);
-            handle_t handle = graph.get_handle(node_id, reversals[i]);
-            step_handle_t step_handle = graph.append_step(p, handle);
-            node_to_path_step.emplace(node_id, step_handle);
+        handle_t prev_handle;
 
-            //TODO: check if path is valid (edge exists)
+        for (auto& cigar: cigars){
+            if (not (cigar == "0M" or cigar == "*")){
+                throw runtime_error("ERROR: cigar in path " + path_name + " contains non-empty overlap");
+            }
         }
 
+        for (size_t i=0; i<nodes.size(); i++){
+            nid_t node_id = id_map.get_id(nodes[i]);
+            handle_t handle = graph.get_handle(node_id, reversals[i]);
+
+            if (i > 0 and not graph.has_edge(prev_handle, handle)){
+                throw runtime_error("ERROR: graph has no edge between successive nodes in path: "
+                                    + nodes[i-1] + (reversals[i-1] ? "-" : "+") + " -> " + nodes[i] + (reversals[i] ? "-" : "+"));
+            }
+
+            step_handle_t step_handle = graph.append_step(p, handle);
+            node_to_path_step.emplace(node_id, step_handle);
+            prev_handle = handle;
+        }
     });
 }
 
