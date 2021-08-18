@@ -33,6 +33,8 @@ namespace gfase{
 
 void for_node_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f);
 
+void for_each_connected_component(HandleGraph& graph, const function<void(unordered_set<nid_t>& connected_component)>& f);
+
 }
 
 #endif //GFASE_GRAPHUTILITY_HPP

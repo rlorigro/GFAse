@@ -1,0 +1,79 @@
+#include "IncrementalIdMap.hpp"
+#include "gfa_to_handle.hpp"
+#include "handle_to_gfa.hpp"
+#include "GraphUtility.hpp"
+#include "Filesystem.hpp"
+
+#include "bdsg/hash_graph.hpp"
+
+#include <string>
+
+using gfase::IncrementalIdMap;
+using gfase::handle_graph_to_gfa;
+using gfase::for_each_connected_component;
+using gfase::for_node_in_bfs;
+
+using ghc::filesystem::path;
+using bdsg::HashGraph;
+using bdsg::MutablePathMutableHandleGraph;
+using handlegraph::path_handle_t;
+using handlegraph::step_handle_t;
+using handlegraph::handle_t;
+
+using std::string;
+using std::cout;
+using std::cerr;
+
+
+int main(){
+    path script_path = __FILE__;
+    path project_directory = script_path.parent_path().parent_path().parent_path();
+
+    // Get test VCF path
+    path relative_gfa_path = "data/connected_components.gfa";
+    path absolute_gfa_path = project_directory / relative_gfa_path;
+
+    HashGraph graph;
+    IncrementalIdMap<string> id_map;
+
+    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+
+    unordered_set<string> cc1 = {"a", "b", "c"};
+    unordered_set<string> cc2 = {"d", "e"};
+    bool found_cc1 = false;
+    bool found_cc2 = false;
+
+    for_each_connected_component(graph, [&](unordered_set<nid_t>& connected_component){
+        unordered_set<string> cc;
+
+        for (auto& n: connected_component){
+            auto name = id_map.get_name(n);
+            cc.emplace(name);
+        }
+
+        if (cc == cc1){
+            found_cc1 = true;
+        }
+        else if (cc == cc2){
+            found_cc2 = true;
+        }
+        else{
+            cerr << "BAD COMPONENT:" << '\n';
+            for (auto& item: cc){
+                cerr << item << '\n';
+            }
+            throw runtime_error("FAIL: connected component does not match any in truth set");
+        }
+    });
+
+    if (not found_cc1){
+        throw runtime_error("FAIL: cc1 not found");
+    }
+
+    if (not found_cc2){
+        throw runtime_error("FAIL: cc2 not found");
+    }
+
+    return 0;
+}
+

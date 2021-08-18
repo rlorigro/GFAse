@@ -1,0 +1,9 @@
+H	VN:Z:1.0
+S	a	A
+S	b	T
+S	c	A
+S	d	T
+S	e	TT
+L	a	+	b	+	0M
+L	b	+	c	+	0M
+L	d	+	e	+	0M
