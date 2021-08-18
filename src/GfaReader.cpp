@@ -167,6 +167,10 @@ void GfaReader::read_line(string& s, size_t index){
 
 
 void GfaReader::for_each_line_of_type(char type, const function<void(string& line)>& f) {
+    if (this->line_indexes_by_type.count(type) == 0){
+        return;
+    }
+
     string line;
     for(auto& item: this->line_indexes_by_type.at(type)){
         read_line(line, item);

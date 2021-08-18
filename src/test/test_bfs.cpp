@@ -36,9 +36,8 @@ int main(){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    unordered_map<nid_t,step_handle_t> node_to_path_step;
 
-    gfa_to_handle_graph(graph, id_map, node_to_path_step, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
 
     set<string> bfs_node_names;
     for_node_in_bfs(graph, 1, [&](const handle_t& h){

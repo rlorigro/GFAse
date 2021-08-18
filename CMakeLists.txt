@@ -200,8 +200,9 @@ find_package(Threads REQUIRED)
 # -------- TESTS --------
 
 set(TESTS
-        test_gfareader
+        test_connected_component_finder
         test_bfs
+        test_gfareader
         )
 
 foreach(FILENAME_PREFIX ${TESTS})

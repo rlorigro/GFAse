@@ -34,7 +34,6 @@ void run_command(string& argument_string){
 
 
 void plot_graph(HandleGraph& graph, string filename_prefix){
-    // Output an image of the graph, can be uncommented for debugging
     ofstream test_output(filename_prefix + ".gfa");
     handle_graph_to_gfa(graph, test_output);
     test_output.close();
@@ -99,10 +98,12 @@ void unzip(path gfa_path){
     // Output an image of the graph, can be uncommented for debugging
     plot_graph(graph, "test_unzip_duplicated");
 
+    // Destroy all the paths involved in the unzipping
     graph.for_each_path_handle([&](const path_handle_t& p) {
         graph.destroy_path(p);
     });
 
+    // Destroy the nodes that were duplicated into haplotypes
     for (auto& handle: to_be_destroyed){
         graph.destroy_handle(handle);
     }
