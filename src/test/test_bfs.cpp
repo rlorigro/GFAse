@@ -11,6 +11,7 @@
 using gfase::IncrementalIdMap;
 using gfase::handle_graph_to_gfa;
 using gfase::for_node_in_bfs;
+using gfase::for_edge_in_bfs;
 
 using ghc::filesystem::path;
 using bdsg::HashGraph;
@@ -82,6 +83,26 @@ int main(){
 
         throw runtime_error("FAIL: bfs node names do not match GfaReader node names");
     }
+
+    graph.for_each_handle([&](const handle_t& h){
+        auto id = graph.get_id(h);
+        auto name = id_map.get_name(id);
+
+        cerr << id << ' ' << name << '\n';
+    });
+
+//    set <pair <string,string> > bfs_edge_names;
+    for_edge_in_bfs(graph, 1, [&](const handle_t& h1, const handle_t& h2){
+        auto n1 = graph.get_id(h1);
+        auto name1 = id_map.get_name(n1);
+
+        auto n2 = graph.get_id(h2);
+        auto name2 = id_map.get_name(n2);
+
+//        bfs_node_names.emplace(name1, name2);
+        cerr << "Iterating edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
+    });
+
 
     return 0;
 }

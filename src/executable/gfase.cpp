@@ -49,6 +49,12 @@ void plot_graph(HandleGraph& graph, string filename_prefix){
 }
 
 
+void split_into_connected_components(HashGraph& graph, IncrementalIdMap<string> id_map){
+
+
+}
+
+
 void unzip(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
