@@ -7,6 +7,7 @@ void for_node_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(c
     queue<nid_t> q;
 
     q.emplace(start_node);
+    visited.emplace(start_node);
 
     while (not q.empty()) {
         nid_t n = q.front();
@@ -93,7 +94,6 @@ void for_edge_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(c
         });
 
         if (begin){
-            visited_nodes.emplace(start_node);
             begin = false;
         }
     }
@@ -123,7 +123,9 @@ void for_each_connected_component(HandleGraph& graph, const function<void(unorde
     }
 }
 
-
+/// For any 2 graphs with corresponding id maps, take a handle from the source graph and translate it into
+/// an id in the destination graph, adding it to the destination id_map if it does not yet exist.
+/// Then, return the id of the handle in source and destination as a pair
 pair<nid_t,nid_t> translate_id(HandleGraph& source_graph,
                   IncrementalIdMap<string>& source_id_map,
                   HandleGraph& destination_graph,
@@ -133,19 +135,28 @@ pair<nid_t,nid_t> translate_id(HandleGraph& source_graph,
     auto id = source_graph.get_id(source_handle);
     auto name = source_id_map.get_name(id);
 
+    cerr << "Translating: " << name << " with id " << id << '\n';
+
     nid_t translated_id;
     if (destination_id_map.exists(name)){
         translated_id = destination_id_map.get_id(name);
+        cerr << "exists already: " << translated_id << '\n';
     }
     else{
         translated_id = destination_id_map.insert(name);
+        cerr << "new id: " << translated_id << '\n';
     }
 
     return {id,translated_id};
 }
 
 
-void split_connected_components(HandleGraph& graph, IncrementalIdMap<string>& id_map, vector<HashGraph>& graphs, vector<IncrementalIdMap<string> >& id_maps) {
+void split_connected_components(
+        PathHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        vector<IncrementalIdMap<string> >& id_maps) {
+
     unordered_set<nid_t> all_nodes;
 
     graph.for_each_handle([&](const handle_t& h) {
@@ -154,22 +165,34 @@ void split_connected_components(HandleGraph& graph, IncrementalIdMap<string>& id
     });
 
     while (not all_nodes.empty()) {
+        cerr << "NEW CONNECTED COMPONENT" << '\n';
         graphs.emplace_back();
         id_maps.emplace_back();
 
+        unordered_set<string> paths_to_be_copied;
+
         auto iter = all_nodes.begin();
 
+        // Duplicate all the nodes
         for_node_in_bfs(graph, *iter, [&](const handle_t& h) {
             auto s = graph.get_sequence(h);
             nid_t id;
             nid_t other_id;
             tie(id, other_id) = translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
 
-            auto other_handle = graphs.back().create_handle(s, other_id);
+            assert(not graphs.back().has_node(other_id));
+            graphs.back().create_handle(s, other_id);
 
-            all_nodes.erase(id);
+            if (id != *iter) {
+                all_nodes.erase(id);
+            }
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
+                paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
+            });
         });
 
+        // Duplicate all the edges
         for_edge_in_bfs(graph, *iter, [&](const handle_t& handle_a, const handle_t& handle_b) {
             nid_t id_a;
             nid_t other_id_a;
@@ -185,11 +208,75 @@ void split_connected_components(HandleGraph& graph, IncrementalIdMap<string>& id
             auto other_handle_a = graphs.back().get_handle(other_id_a, reversal_a);
             auto other_handle_b = graphs.back().get_handle(other_id_b, reversal_b);
 
+            assert(not graphs.back().has_edge(other_handle_a, other_handle_b));
             graphs.back().create_edge(other_handle_a, other_handle_b);
         });
 
+        // Duplicate all the paths
+        for (auto& path_name: paths_to_be_copied){
+            auto p = graph.get_path_handle(path_name);
+            cerr << "copying path " << path_name << '\n';
 
+            assert(not graphs.back().has_path(path_name));
+            auto other_p = graphs.back().create_path_handle(path_name);
+
+            graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+                auto h = graph.get_handle_of_step(s);
+
+                nid_t id;
+                nid_t other_id;
+                tie(id, other_id) = translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
+
+                auto other_h = graph.get_handle(other_id, graph.get_is_reverse(h));
+
+                graphs.back().append_step(other_p, other_h);
+            });
+        }
+
+        all_nodes.erase(iter);
     }
+}
+
+
+void run_command(string& argument_string){
+    int exit_code = system(argument_string.c_str());
+
+    if (exit_code != 0){
+        throw runtime_error("ERROR: command failed to run: " + argument_string);
+    }
+}
+
+
+void plot_graph(HandleGraph& graph, string filename_prefix){
+    ofstream test_output(filename_prefix + ".gfa");
+    handle_graph_to_gfa(graph, test_output);
+    test_output.close();
+
+    if (graph.get_node_count() < 200) {
+        string command = "vg convert -g " + filename_prefix + ".gfa -p | vg view -d - | dot -Tpng -o "
+                         + filename_prefix + ".png";
+
+        cerr << "Running: " << command << '\n';
+
+        run_command(command);
+    }
+}
+
+
+void print_graph_paths(PathHandleGraph& graph, IncrementalIdMap<string>& id_map){
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        auto path_name = graph.get_path_name(p);
+        cerr << "Path " << path_name << '\n';
+
+        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+            auto h = graph.get_handle_of_step(s);
+            auto id = graph.get_id(h);
+            auto name = id_map.get_name(id);
+
+            cerr << name << '\n';
+        });
+    });
+
 }
 
 

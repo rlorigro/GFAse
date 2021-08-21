@@ -19,6 +19,7 @@ using gfase::handle_graph_to_gfa;
 
 using ghc::filesystem::path;
 using bdsg::MutablePathMutableHandleGraph;
+using bdsg::PathHandleGraph;
 using bdsg::path_handle_t;
 using bdsg::step_handle_t;
 using bdsg::handle_t;
@@ -36,6 +37,19 @@ void for_node_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(c
 void for_edge_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f);
 
 void for_each_connected_component(HandleGraph& graph, const function<void(unordered_set<nid_t>& connected_component)>& f);
+
+void split_connected_components(
+        PathHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        vector<IncrementalIdMap<string> >& id_maps);
+
+void run_command(string& argument_string);
+
+void plot_graph(HandleGraph& graph, string filename_prefix);
+
+void print_graph_paths(PathHandleGraph& graph, IncrementalIdMap<string>& id_map);
+
 
 }
 

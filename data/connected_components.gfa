@@ -1,9 +1,14 @@
 H	VN:Z:1.0
-S	a	A
+S	a	TA
 S	b	T
-S	c	A
-S	d	T
-S	e	TT
+S	c	TTT
+S	d	AT
+S	e	CC
+S	f	GG
 L	a	+	b	+	0M
-L	b	+	c	+	0M
-L	d	+	e	+	0M
+L	a	+	c	+	0M
+L	b	+	d	+	0M
+L	c	+	d	+	0M
+L	e	+	f	+	0M
+P	0-0	a+,b+,d+	0M,0M
+P	1-0	e+,f+	0M

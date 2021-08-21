@@ -138,8 +138,8 @@ message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
         GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-        DOWNLOAD_COMMAND ""
-        UPDATE_COMMAND ""
+#        DOWNLOAD_COMMAND ""
+#        UPDATE_COMMAND ""
         PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
         BUILD_IN_SOURCE True

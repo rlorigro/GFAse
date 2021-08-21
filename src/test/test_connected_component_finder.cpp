@@ -11,7 +11,9 @@
 using gfase::IncrementalIdMap;
 using gfase::handle_graph_to_gfa;
 using gfase::for_each_connected_component;
-using gfase::for_node_in_bfs;
+using gfase::split_connected_components;
+using gfase::print_graph_paths;
+using gfase::plot_graph;
 
 using ghc::filesystem::path;
 using bdsg::HashGraph;
@@ -72,6 +74,16 @@ int main(){
 
     if (not found_cc2){
         throw runtime_error("FAIL: cc2 not found");
+    }
+
+    vector<HashGraph> connected_component_graphs;
+    vector <IncrementalIdMap<string> > connected_component_ids;
+
+    split_connected_components(graph, id_map, connected_component_graphs, connected_component_ids);
+
+    for (size_t i=0; i<connected_component_graphs.size(); i++) {
+        plot_graph(connected_component_graphs[i], "component_" + to_string(i));
+        print_graph_paths(connected_component_graphs[i], connected_component_ids[i]);
     }
 
     return 0;
