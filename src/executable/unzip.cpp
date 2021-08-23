@@ -32,7 +32,6 @@ using std::cerr;
 
 void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map){
     unordered_set<nid_t> nodes_to_be_destroyed;
-//    unordered_set<path_handle_t> paths_to_be_destroyed;
 
     cout << graph.get_path_count() << '\n';
     vector<string> path_names;
@@ -55,12 +54,11 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             path_sequence += sequence;
 
             string name = id_map.get_name(n);
-            cerr << '\t' << name << " " << sequence << '\n';
+            cerr << '\t' << name << " " << (sequence.size() < 100 ? sequence : "--") << '\n';
 
             nodes_to_be_destroyed.emplace(n);
         });
 
-        // TODO: track provenance, update id_map?
         string haplotype_path_name = graph.get_path_name(p) + "_hap";
         auto new_id = id_map.insert(haplotype_path_name);
         handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);
@@ -78,28 +76,15 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             graph.create_edge(haplotype_handle, other);
         });
 
-        // Label the new haplotype node using a path to indicate which path it is derived from
+        // Label the new haplotype node using a path_name to indicate which path it is derived from
+        // TODO: track provenance, update id_map?
         auto haplotype_path_handle = graph.create_path_handle(haplotype_path_name);
         graph.append_step(haplotype_path_handle, haplotype_handle);
     }
 
-//    // Output an image of the graph, can be uncommented for debugging
-//    plot_graph(graph, "test_unzip_duplicated");
-
-//    // Destroy all the paths involved in the unzipping
-//    for (auto& p: paths){
-//        graph.destroy_path(p);
-//    }
-
     // Destroy the nodes that have had their sequences duplicated into haplotypes
     for (auto& n: nodes_to_be_destroyed){
         cerr << "Destroying: " << id_map.get_name(n) << '\n';
-
-//        auto h = graph.get_handle(n);
-//        graph.for_each_step_on_handle(h, [&](const step_handle_t& s) {
-//            cerr << graph.get_path_name(graph.get_path_handle_of_step(s)) << endl;
-//        });
-
         graph.destroy_handle(graph.get_handle(n));
     }
 
@@ -118,9 +103,10 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
                 return false;
             });
 
-            cerr << id_map.get_name(graph.get_id(h)) << " has_path: " << has_path << '\n';
+//            cerr << id_map.get_name(graph.get_id(h)) << " has_path: " << has_path << '\n';
         }
 
+        // Delete any component that has no path label
         if (not has_path) {
             for (auto& id: component) {
                 auto h = graph.get_handle(id);
@@ -138,9 +124,7 @@ void unzip_gfa(path gfa_path){
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
     // Output an image of the graph, can be uncommented for debugging
-    plot_graph(graph, "test_unzip_unedited");
-
-//    unzip(graph, id_map);
+//    plot_graph(graph, "test_unzip_unedited");
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
@@ -148,17 +132,15 @@ void unzip_gfa(path gfa_path){
     split_connected_components(graph, id_map, connected_components, connected_component_ids);
 
     for (size_t i=0; i<connected_components.size(); i++){
-        plot_graph(connected_components[i], "component_" + to_string(i));
-
         cerr << "Component " << to_string(i) << '\n';
         print_graph_paths(connected_components[i], connected_component_ids[i]);
 
         unzip(connected_components[i], connected_component_ids[i]);
-        plot_graph(connected_components[i], "component_" + to_string(i) + "_unzipped");
-    }
 
-//    // Output an image of the graph, can be uncommented for debugging
-//    plot_graph(graph, "test_unzip_final");
+        string filename_prefix = "component_" + to_string(i) + "_unzipped";
+        ofstream file(filename_prefix + ".gfa");
+        handle_graph_to_gfa(connected_components[i], connected_component_ids[i], file);
+    }
 }
 
 

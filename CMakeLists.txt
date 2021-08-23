@@ -221,7 +221,7 @@ endforeach()
 # -------- EXECUTABLES --------
 
 set(EXECUTABLES
-        gfase
+        unzip
         )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
@@ -245,11 +245,11 @@ endforeach()
 # Where to install
 set(BINARY_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-# The shared library goes to the bin directory.
-install(TARGETS
-        GFAse
-        gfase
-        DESTINATION ${BINARY_INSTALL_DIR})
+## The shared library goes to the bin directory.
+#install(TARGETS
+#        GFAse
+#        gfase
+#        DESTINATION ${BINARY_INSTALL_DIR})
 
 # Some potentially helpful messages
 message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")

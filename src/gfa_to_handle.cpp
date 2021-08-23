@@ -27,7 +27,8 @@ nid_t parse_gfa_sequence_id(const string& s, IncrementalIdMap<string>& id_map) {
 void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
-        path gfa_file_path){
+        path gfa_file_path,
+        bool ignore_singleton_paths){
 
     GfaReader gfa_reader(gfa_file_path);
 
@@ -69,6 +70,10 @@ void gfa_to_handle_graph(
 
     // Construct paths
     gfa_reader.for_each_path([&](string& path_name, vector<string>& nodes, vector<bool>& reversals, vector<string>& cigars){
+        if (ignore_singleton_paths and nodes.size() == 1){
+            return;
+        }
+
         path_handle_t p = graph.create_path_handle(path_name);
 
         handle_t prev_handle;
@@ -88,7 +93,7 @@ void gfa_to_handle_graph(
                                     + nodes[i-1] + (reversals[i-1] ? "-" : "+") + " -> " + nodes[i] + (reversals[i] ? "-" : "+"));
             }
 
-            step_handle_t step_handle = graph.append_step(p, handle);
+            graph.append_step(p, handle);
             prev_handle = handle;
         }
     });

@@ -46,9 +46,9 @@ void split_connected_components(
 
 void run_command(string& argument_string);
 
-void plot_graph(HandleGraph& graph, string filename_prefix);
+void plot_graph(const HandleGraph& graph, string filename_prefix);
 
-void print_graph_paths(PathHandleGraph& graph, IncrementalIdMap<string>& id_map);
+void print_graph_paths(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map);
 
 
 }

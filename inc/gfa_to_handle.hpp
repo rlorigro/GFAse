@@ -31,7 +31,8 @@ nid_t parse_gfa_sequence_id(const string& s, IncrementalIdMap<string>& id_map);
 void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
-        path gfa_file_path);
+        path gfa_file_path,
+        bool ignore_singleton_paths=true);
 
 
 }
