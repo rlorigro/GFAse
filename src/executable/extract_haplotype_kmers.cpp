@@ -65,6 +65,7 @@ public:
     deque<step_handle_t> steps;
     deque<size_t> lengths;
     deque<bool> is_diploid;
+    bool has_diploid;
     path_handle_t path;
 
     size_t start_index;
@@ -73,22 +74,26 @@ public:
     step_handle_t terminal_step;
     size_t terminal_index;
 
-    HaplotypePathKmer(const PathHandleGraph& graph,const path_handle_t& path, size_t k);
-
-    // K can be any size, so bit shift operations on an integer are not a simple option anymore
+    // K can be any size, so bit shift operations are not a simple option anymore
     deque<char> sequence;
     size_t k;
 
     /// Methods ///
+    HaplotypePathKmer(const PathHandleGraph& graph,const path_handle_t& path, size_t k);
+
     // skip - jump to a position (step_handle_t, size_t) in the path and update internal records
+    void initialize(step_handle_t s, size_t index);
 
     // step - walk a single bp forward and update internal records
     bool step();
+
+    bool update_has_diploid();
 };
 
 
 HaplotypePathKmer::HaplotypePathKmer(const PathHandleGraph& graph, const path_handle_t& path, size_t k):
     graph(graph),
+    has_diploid(false),
     path(path),
     k(k)
 {
@@ -97,16 +102,27 @@ HaplotypePathKmer::HaplotypePathKmer(const PathHandleGraph& graph, const path_ha
     }
 
     auto first_step = graph.path_begin(path);
-    auto first_handle = graph.get_handle_of_step(first_step);
-    bool step_is_diploid = is_haplotype_bubble(graph, first_step);
+    initialize(first_step, 0);
+}
 
-    steps.emplace_back(first_step);
-    lengths.emplace_back(graph.get_length(first_handle));
+
+void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
+    auto h = graph.get_handle_of_step(s);
+    bool step_is_diploid = is_haplotype_bubble(graph, s);
+
+    steps.clear();
+    lengths.clear();
+    is_diploid.clear();
+    sequence.clear();
+
+    steps.emplace_back(s);
+    lengths.emplace_back(graph.get_length(h));
     is_diploid.emplace_back(step_is_diploid);
-    sequence.emplace_back(graph.get_base(first_handle, 0));
+    sequence.emplace_back(graph.get_base(h, index));
+    update_has_diploid();
 
-    start_index = 0;
-    stop_index = 0;
+    start_index = index;
+    stop_index = index;
 
     terminal_step = graph.path_back(path);
     terminal_index = graph.get_length(graph.get_handle_of_step(terminal_step));
@@ -126,11 +142,14 @@ HaplotypePathKmer::HaplotypePathKmer(const PathHandleGraph& graph, const path_ha
     if (not sufficient_path_length){
         throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
     }
+
 }
 
 
 // TODO: switch to standard queue (only need to pop front and push back)
 bool HaplotypePathKmer::step(){
+    bool has_next_step = true;
+
     // If it is safe to increment this node
     if (stop_index + 1 < lengths.back()){
         stop_index++;
@@ -142,19 +161,26 @@ bool HaplotypePathKmer::step(){
         if (sequence.size() > k) {
             sequence.pop_front();
         }
-
     }
     // If the iterator is at the end of the node
     else {
         if (steps.back() != terminal_step){
-            auto next_step = graph.get_next_step(steps.back());
+            step_handle_t next_step = graph.get_next_step(steps.back());
             auto next_handle = graph.get_handle_of_step(next_step);
+
+            // Skip steps in path that are empty nodes
+            while(graph.get_length(next_handle) == 0){
+                next_step = graph.get_next_step(next_step);
+                next_handle = graph.get_handle_of_step(next_step);
+            }
+
             bool step_is_diploid = is_haplotype_bubble(graph, next_step);
 
             steps.emplace_back(next_step);
             lengths.emplace_back(graph.get_length(next_handle));
             is_diploid.emplace_back(step_is_diploid);
             sequence.emplace_back(graph.get_base(next_handle, 0));
+            update_has_diploid();
 
             // Use the deque like a cyclic queue
             if (sequence.size() > k) {
@@ -163,8 +189,11 @@ bool HaplotypePathKmer::step(){
 
             stop_index = 0;
         }
-        else {
+        else if (stop_index == lengths.back()){
             stop_index++;
+        }
+        else{
+            return false;
         }
     }
 
@@ -179,14 +208,27 @@ bool HaplotypePathKmer::step(){
         lengths.pop_front();
         steps.pop_front();
         is_diploid.pop_front();
+        update_has_diploid();
     }
 
-    bool has_next_step = true;
-    if (steps.back() == terminal_step and stop_index == terminal_index){
+    if (steps.back() == terminal_step and stop_index >= terminal_index){
         has_next_step = false;
     }
 
     return has_next_step;
+}
+
+
+bool HaplotypePathKmer::update_has_diploid(){
+    bool has_diploid_nodes = false;
+    for (size_t i=0; i<this->steps.size(); i++) {
+        if (this->is_diploid[i]){
+            has_diploid_nodes = true;
+        }
+    }
+
+    has_diploid = has_diploid_nodes;
+    return has_diploid_nodes;
 }
 
 
@@ -200,31 +242,32 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
     plot_graph(graph, "start_graph");
 
+    bool prev_has_diploid;
+
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     graph.for_each_path_handle([&](const path_handle_t& p){
-        cerr << "----" << '\n';
-        cerr << graph.get_path_name(p) << '\n';
+        cerr << ">" << graph.get_path_name(p) << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
 
         while (kmer.step()){
-//            cerr << "--" << '\n';
-            bool contains_diploid_nodes = false;
-            for (size_t i=0; i<kmer.steps.size(); i++) {
-//                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.steps[i])));
-//                cerr << node_name << " " << graph.get_sequence(graph.get_handle_of_step(kmer.steps[i])) << " " << kmer.is_diploid[i] << '\n';
-
-                if (kmer.is_diploid[i]){
-                    contains_diploid_nodes = true;
-                }
-            }
-
-            if (contains_diploid_nodes){
+            if (kmer.has_diploid){
                 for (auto& c: kmer.sequence){
                     cerr << c;
                 }
                 cerr << '\n';
             }
+            else{
+                auto h = graph.get_handle_of_step(kmer.steps.back());
+                auto length = graph.get_length(h);
+
+                if (length > k + 1){
+                    kmer.initialize(kmer.steps.back(), length - k + 1);
+                    prev_has_diploid = false;
+                }
+            }
+
+            prev_has_diploid = kmer.has_diploid;
         }
     });
 }
