@@ -222,6 +222,7 @@ endforeach()
 
 set(EXECUTABLES
         unzip
+        extract_haplotype_kmers
         )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
