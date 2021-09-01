@@ -49,6 +49,7 @@ set(SOURCES
         src/handle_to_gfa.cpp
         src/gfa_to_handle.cpp
         src/IncrementalIdMap.cpp
+        src/kmer_unordered_set.cpp
         )
 
 
@@ -203,6 +204,7 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_gfareader
+        test_kmer_unordered_set
         )
 
 foreach(FILENAME_PREFIX ${TESTS})
