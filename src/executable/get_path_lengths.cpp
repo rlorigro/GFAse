@@ -59,9 +59,9 @@ int main (int argc, char* argv[]){
     CLI::App app{"App description"};
 
     app.add_option(
-                    "-i,--input_gfa",
-                    gfa_path,
-                    "Path to GFA containing phased non-overlapping segments")
+            "-i,--input_gfa",
+            gfa_path,
+            "Path to GFA containing phased non-overlapping segments")
             ->required();
 
     CLI11_PARSE(app, argc, argv);
