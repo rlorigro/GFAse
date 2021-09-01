@@ -28,8 +28,20 @@ bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s){
         result = false;
     }
     else{
-        throw runtime_error("ERROR: multiploid step in path for node: " + to_string(graph.get_id(h)));
-        return result;
+        auto p = graph.get_path_handle_of_step(s);
+
+        // If this is the terminal step, its ok for it to overlap (because the paths may have been extended)
+        // If internal node is multiploid, then it must be error
+        if (not (s == graph.path_back(p) or s == graph.path_begin(p))) {
+            auto path_name = graph.get_path_name(p);
+
+            throw runtime_error(
+                    "ERROR: multiploid step in path " + path_name + " for node: " + to_string(graph.get_id(h)));
+        }
+        else{
+            // If terminal node and multiploid, it should not be treated as diploid
+            result = false;
+        }
     }
 
     return result;
