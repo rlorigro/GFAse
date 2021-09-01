@@ -1,3 +1,4 @@
+#include "HaplotypePathKmer.hpp"
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
@@ -10,6 +11,7 @@
 
 #include <string>
 
+using gfase::HaplotypePathKmer;
 using gfase::IncrementalIdMap;
 using gfase::for_each_connected_component;
 using gfase::split_connected_components;
@@ -30,163 +32,83 @@ using std::cout;
 using std::cerr;
 
 
-bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s){
-    auto h = graph.get_handle_of_step(s);
+// Find any nodes that are adjacent to the beginning and end of a path, as long as they are the only adjacent node
+pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph, const handle_t& h, bool left){
+    handle_t adjacent_handle;
+    size_t n_adjacent = 0;
+    bool success = false;
 
-    size_t n_other_paths_on_handle = 0;
-    graph.for_each_step_on_handle(h, [&](const step_handle_t& s_other){
-        if (s_other != s){
-            n_other_paths_on_handle++;
+    graph.follow_edges(h, left, [&](const handle_t& other_handle){
+        if (n_adjacent > 0){
+            return false;
+        }
+
+        adjacent_handle = other_handle;
+        n_adjacent++;
+
+        return true;
+    });
+
+    // Only return true if there was exactly one adjacent handle
+    if (n_adjacent == 1){
+        success = true;
+    }
+
+    return {adjacent_handle, success};
+}
+
+
+void extend_paths(MutablePathMutableHandleGraph& graph){
+    vector<pair <path_handle_t, handle_t> > to_be_prepended;
+    vector<pair <path_handle_t, handle_t> > to_be_appended;
+
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
+        auto end_handle = graph.get_handle_of_step(graph.path_back(p));
+
+        auto left_result = find_singleton_adjacent_handle(graph, begin_handle, true);
+        auto right_result = find_singleton_adjacent_handle(graph, end_handle, false);
+
+        if (left_result.second){
+            size_t n_paths = 0;
+            graph.for_each_step_on_handle(left_result.first, [&](const step_handle_t& s){
+                n_paths++;
+            });
+
+            // Verify that there is not already some other path covering the adjacent node
+            if (n_paths == 0) {
+                to_be_prepended.emplace_back(p, left_result.first);
+            }
+            else{
+                throw runtime_error("ERROR: node left of haplotype path " + graph.get_path_name(p) + " is covered by other paths");
+            }
+        }
+
+        if (right_result.second){
+            size_t n_paths = 0;
+            graph.for_each_step_on_handle(right_result.first, [&](const step_handle_t& s){
+                n_paths++;
+            });
+
+            // Verify that there is not already some other path covering the adjacent node
+            if (n_paths == 0) {
+                to_be_appended.emplace_back(p, right_result.first);
+            }
+            else{
+                throw runtime_error("ERROR: node right haplotype path " + graph.get_path_name(p) + " is covered by other paths");
+            }
         }
     });
 
-    bool result;
-    if (n_other_paths_on_handle == 0){
-        // Must be haplotype bubble if paths are correct
-        result = true;
-    }
-    else if (n_other_paths_on_handle == 1){
-        // Not part of a bubble
-        result = false;
-    }
-    else{
-        throw runtime_error("ERROR: multiploid step in path for node: " + to_string(graph.get_id(h)));
-        return result;
+    for (auto& item: to_be_prepended){
+        // PREpend the LEFT side node if it meets the conditions
+        graph.prepend_step(item.first, item.second);
     }
 
-    return result;
-}
-
-
-class HaplotypePathKmer{
-public:
-    /// Attributes ///
-    const PathHandleGraph& graph;
-    deque<step_handle_t> steps;
-    deque<size_t> lengths;
-    deque<bool> is_diploid;
-    path_handle_t path;
-
-    size_t start_index;
-    size_t stop_index;
-
-    step_handle_t terminal_step;
-    size_t terminal_index;
-
-    HaplotypePathKmer(const PathHandleGraph& graph,const path_handle_t& path, size_t k);
-
-    // K can be any size, so bit shift operations on an integer are not a simple option anymore
-    deque<char> sequence;
-    size_t k;
-
-    /// Methods ///
-    // skip - jump to a position (step_handle_t, size_t) in the path and update internal records
-
-    // step - walk a single bp forward and update internal records
-    bool step();
-};
-
-
-HaplotypePathKmer::HaplotypePathKmer(const PathHandleGraph& graph, const path_handle_t& path, size_t k):
-    graph(graph),
-    path(path),
-    k(k)
-{
-    if (k < 1){
-        throw runtime_error("ERROR: k must be at least 1");
+    for (auto& item: to_be_appended){
+        // Append the RIGHT side node if it meets the conditions
+        graph.append_step(item.first, item.second);
     }
-
-    auto first_step = graph.path_begin(path);
-    auto first_handle = graph.get_handle_of_step(first_step);
-    bool step_is_diploid = is_haplotype_bubble(graph, first_step);
-
-    steps.emplace_back(first_step);
-    lengths.emplace_back(graph.get_length(first_handle));
-    is_diploid.emplace_back(step_is_diploid);
-    sequence.emplace_back(graph.get_base(first_handle, 0));
-
-    start_index = 0;
-    stop_index = 0;
-
-    terminal_step = graph.path_back(path);
-    terminal_index = graph.get_length(graph.get_handle_of_step(terminal_step));
-
-    bool sufficient_path_length = true;
-
-    while (sequence.size() < k - 1){
-        // Preload the kmer queue up until it almost has k elements
-        this->step();
-
-        // Verify that this kmer actually fits in the path
-        if (steps.back() == terminal_step and stop_index + 1 >= terminal_index) {
-            sufficient_path_length = false;
-        }
-    }
-
-    if (not sufficient_path_length){
-        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
-    }
-}
-
-
-// TODO: switch to standard queue (only need to pop front and push back)
-bool HaplotypePathKmer::step(){
-    // If it is safe to increment this node
-    if (stop_index + 1 < lengths.back()){
-        stop_index++;
-
-        auto h = graph.get_handle_of_step(steps.back());
-        sequence.emplace_back(graph.get_base(h,stop_index));
-
-        // Use the deque like a cyclic queue
-        if (sequence.size() > k) {
-            sequence.pop_front();
-        }
-
-    }
-    // If the iterator is at the end of the node
-    else {
-        if (steps.back() != terminal_step){
-            auto next_step = graph.get_next_step(steps.back());
-            auto next_handle = graph.get_handle_of_step(next_step);
-            bool step_is_diploid = is_haplotype_bubble(graph, next_step);
-
-            steps.emplace_back(next_step);
-            lengths.emplace_back(graph.get_length(next_handle));
-            is_diploid.emplace_back(step_is_diploid);
-            sequence.emplace_back(graph.get_base(next_handle, 0));
-
-            // Use the deque like a cyclic queue
-            if (sequence.size() > k) {
-                sequence.pop_front();
-            }
-
-            stop_index = 0;
-        }
-        else {
-            stop_index++;
-        }
-    }
-
-    // Handle the trailing end of the kmer (queue front)
-    if (start_index < lengths.front()) {
-        if (sequence.size() == k) {
-            start_index++;
-        }
-    }
-    else{
-        start_index = 0;
-        lengths.pop_front();
-        steps.pop_front();
-        is_diploid.pop_front();
-    }
-
-    bool has_next_step = true;
-    if (steps.back() == terminal_step and stop_index == terminal_index){
-        has_next_step = false;
-    }
-
-    return has_next_step;
 }
 
 
@@ -196,35 +118,40 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
-    cerr << "Iterating paths" << '\n';
-
     plot_graph(graph, "start_graph");
+
+    cerr << "Extending paths into haploid regions..." << '\n';
+
+    extend_paths(graph);
+
+    cerr << "Iterating path kmers..." << '\n';
+
+    bool prev_has_diploid;
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     graph.for_each_path_handle([&](const path_handle_t& p){
-        cerr << "----" << '\n';
-        cerr << graph.get_path_name(p) << '\n';
+        cerr << ">" << graph.get_path_name(p) << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
 
         while (kmer.step()){
-//            cerr << "--" << '\n';
-            bool contains_diploid_nodes = false;
-            for (size_t i=0; i<kmer.steps.size(); i++) {
-//                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.steps[i])));
-//                cerr << node_name << " " << graph.get_sequence(graph.get_handle_of_step(kmer.steps[i])) << " " << kmer.is_diploid[i] << '\n';
-
-                if (kmer.is_diploid[i]){
-                    contains_diploid_nodes = true;
-                }
-            }
-
-            if (contains_diploid_nodes){
+            if (kmer.has_diploid){
                 for (auto& c: kmer.sequence){
                     cerr << c;
                 }
                 cerr << '\n';
             }
+            else{
+                auto h = graph.get_handle_of_step(kmer.steps.back());
+                auto length = graph.get_length(h);
+
+                if (length > k + 1){
+                    kmer.initialize(kmer.steps.back(), length - k + 1);
+                    prev_has_diploid = false;
+                }
+            }
+
+            prev_has_diploid = kmer.has_diploid;
         }
     });
 }

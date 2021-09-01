@@ -332,19 +332,6 @@ void GfaReader::for_each_path(const function<void(string& path_name, vector<stri
             index++;
         }
 
-        cerr << "----" << '\n';
-        cerr << path_name << '\n';
-        for (size_t i=0; i<nodes.size(); i++){
-            cerr << nodes[i] << (reversals[i] ? '-' : '+') << ',';
-        }
-        cerr << '\n';
-
-        for (auto& c: cigars){
-            cerr << c << ',';
-        }
-        cerr << '\n';
-        cerr << cigars.empty() << " " << cigars.size() << " " << nodes.size() << '\n';
-
         if (cigars.size() != nodes.size() - 1){
             throw runtime_error("ERROR: incorrect quantity of path cigars/overlaps for path: " + path_name);
         }

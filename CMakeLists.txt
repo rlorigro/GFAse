@@ -45,9 +45,10 @@ include_directories(
 set(SOURCES
         src/BinaryIO.cpp
         src/GfaReader.cpp
-        src/GraphUtility.cpp
-        src/handle_to_gfa.cpp
         src/gfa_to_handle.cpp
+        src/GraphUtility.cpp
+        src/HaplotypePathKmer.cpp
+        src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         src/kmer_unordered_set.cpp
         )
@@ -225,6 +226,7 @@ endforeach()
 set(EXECUTABLES
         unzip
         extract_haplotype_kmers
+        get_path_lengths
         )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
