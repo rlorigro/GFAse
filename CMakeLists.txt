@@ -151,14 +151,21 @@ ExternalProject_Add(project_bdsg
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_bdsg INSTALL_DIR)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(LIB_SUFFIX "dylib")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(LIB_SUFFIX "so")
+endif()
+
+
 # Create new library for external project (so it can be linked with main library)
 add_library(bdsg SHARED IMPORTED)
 set_property(TARGET bdsg
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbdsg.so)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbdsg.${LIB_SUFFIX})
 
 add_library(divsufsort SHARED IMPORTED)
 set_property(TARGET divsufsort
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.so)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.${LIB_SUFFIX})
 
 add_library(libhandlegraph STATIC IMPORTED)
 set_property(TARGET libhandlegraph
@@ -166,7 +173,7 @@ set_property(TARGET libhandlegraph
 
 add_library(libsdsl SHARED IMPORTED)
 set_property(TARGET libsdsl
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.so)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.${LIB_SUFFIX})
 
 # Define library as dependent on the downloaded project
 add_dependencies(bdsg
@@ -259,4 +266,3 @@ message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
 message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-
