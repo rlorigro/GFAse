@@ -4,23 +4,25 @@
 #include "kmer_unordered_set.hpp"
 #include <unordered_set>
 #include <fstream>
-// #include "Filesystem.hpp"
+#include "Filesystem.hpp"
 
 using namespace std;
-// using ghc::filesystem::path;
+using ghc::filesystem::path;
 
 
 void KmerSets::get_parent_kmer_sets(){
 	// ask ryan about how to set up this file path for getting the file from the data folder
-	// path script_path = __FILE__;
-	// path project_directory = script_path.parent_path().parent_path().parent_path();
+	path script_path = __FILE__;
+	path project_directory = script_path.parent_path().parent_path().parent_path();
 
     // Get test region kmers
-    string absolute_hg04_kmer_list_path = "/Users/mmmeredi/Desktop/paten/czi/mode2_unzipper/GFAse/data/hg04.all.homo.unique.kmer.1000.fa";
-    // path absolute_kmerList = project_directory / relative_gfa_path;
+    path relative_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
+    // string absolute_hg04_kmer_list_path = "/Users/mmmeredi/Desktop/paten/czi/mode2_unzipper/GFAse/data/hg04.all.homo.unique.kmer.1000.fa";
+    path absolute_kmer_list_path = project_directory / relative_gfa_path;
 
 	// Read from the text file
-	ifstream MyReadFile(absolute_hg04_kmer_list_path);
+	// ifstream MyReadFile(absolute_hg04_kmer_list_path);
+	ifstream MyReadFile(absolute_kmer_list_path);
 
 	string line_txt;
 	// Use a while loop to read the file line by line
