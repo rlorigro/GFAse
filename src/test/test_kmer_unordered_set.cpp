@@ -10,7 +10,7 @@ int main() {
 
 	KmerSets KS;
 	KS.get_parent_kmer_sets();
-	KS.fill_kmer_sets();  // with kmers that match the child set here
+	// KS.fill_kmer_sets();  // with kmers that match the child set here
 	KS.find_haplotype_single_kmer_count("GACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC"); // dad kmer
 	KS.find_haplotype_single_kmer_count("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATCG"); // mom kmer
 	KS.find_haplotype_kmer_set_count(child_kmer_set);

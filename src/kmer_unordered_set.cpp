@@ -10,35 +10,46 @@ using namespace std;
 using ghc::filesystem::path;
 
 
-void KmerSets::get_parent_kmer_sets(){
-	// ask ryan about how to set up this file path for getting the file from the data folder
-	path script_path = __FILE__;
-	path project_directory = script_path.parent_path().parent_path().parent_path();
-
-    // Get test region kmers
-    path relative_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
-    // string absolute_hg04_kmer_list_path = "/Users/mmmeredi/Desktop/paten/czi/mode2_unzipper/GFAse/data/hg04.all.homo.unique.kmer.1000.fa";
-    path absolute_kmer_list_path = project_directory / relative_gfa_path;
-
+void KmerSets::load_file_into_unordered_set(path file_path, unordered_set <string>& set){
 	// Read from the text file
-	// ifstream MyReadFile(absolute_hg04_kmer_list_path);
-	ifstream MyReadFile(absolute_kmer_list_path);
+	ifstream KmerFile(file_path);
+	cout << "absolute_kmer_list_path: " << file_path << endl << endl;
 
 	string line_txt;
 	// Use a while loop to read the file line by line
-	while (getline (MyReadFile, line_txt)) {
+	while (getline (KmerFile, line_txt)) {
 		// look for the > delimiting the kmer ID
 		size_t found = line_txt.rfind('>');
 		if (found!=string::npos){
 			// insert the kmer into the respective kmer set
 			// the line after the '>' in a fa
-			getline (MyReadFile, line_txt);
-			mom_kmer_set.insert(line_txt);
+			getline (KmerFile, line_txt);
+			set.insert(line_txt);
+			// cout << " kmer " << line_txt << endl << endl;
 		}
 	}
-
 	// Close the file
-	MyReadFile.close();
+	KmerFile.close();
+	
+}
+
+
+void KmerSets::get_parent_kmer_sets(){
+	// set up this file path for getting the file from the data folder
+	path script_path = __FILE__;
+	path project_directory = script_path.parent_path().parent_path(); // this path is different than the one ryan uses in GfaReader and I'm not sure why
+
+    // Get test parent1 kmers
+    path relative_hap1_kmer_list_path = "data/hg03.all.homo.unique.kmer.1000.fa";
+    path absolute_hap1_kmer_list_path = project_directory / relative_hap1_kmer_list_path;
+
+    // Get test parent2 kmers
+    path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
+    path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
+
+    load_file_into_unordered_set(absolute_hap1_kmer_list_path,dad_kmer_set);
+    load_file_into_unordered_set(absolute_hap2_kmer_list_path,mom_kmer_set);
+
 }
 
 void KmerSets::fill_kmer_sets() {
@@ -85,7 +96,7 @@ bool KmerSets::find_haplotype_kmer_set_count(unordered_set <string> child_kmers)
 			dad_kmer_count++;
 			}
 		}
-	cout << "checking kmer set:" << endl;
+	cout << "checking kmer set." << endl;
 	cout << " found " << mom_kmer_count << " mom kmers." << endl;
 	cout << " found " << dad_kmer_count << " dad kmers." << endl << endl ;
 	return 0;
