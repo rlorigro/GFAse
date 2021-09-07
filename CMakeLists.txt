@@ -53,6 +53,7 @@ set(SOURCES
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
+        src/kmer_unordered_set.cpp
         )
 
 
@@ -215,6 +216,7 @@ set(TESTS
         test_bfs
         test_binary_sequence
         test_gfareader
+        test_kmer_unordered_set
         )
 
 foreach(FILENAME_PREFIX ${TESTS})
@@ -235,6 +237,7 @@ endforeach()
 set(EXECUTABLES
         unzip
         extract_haplotype_kmers
+        extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
         )
 
