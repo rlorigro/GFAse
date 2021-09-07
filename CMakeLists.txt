@@ -215,6 +215,8 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_binary_sequence
+        test_binary_sequence_performance
+        test_nonbinary_sequence_performance
         test_gfareader
         test_kmer_unordered_set
         )
