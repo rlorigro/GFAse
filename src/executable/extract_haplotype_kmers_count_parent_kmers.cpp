@@ -185,15 +185,15 @@ int main (int argc, char* argv[]){
             ->required();
 
     app.add_option(
-            "-p,--paternal_kmer_fa",
+            "-p,--paternal_kmer_FASTA",
             paternal_kmers,
-            "paternal kmers in .fa format")
+            "paternal kmers in FASTA format")
             ->required();
 
     app.add_option(
-            "-m,--maternal_kmer_fa",
+            "-m,--maternal_kmer_FASTA",
             maternal_kmers,
-            "maternal kmers in .fa format")
+            "maternal kmers in FASTA format")
             ->required();
 
     CLI11_PARSE(app, argc, argv);
