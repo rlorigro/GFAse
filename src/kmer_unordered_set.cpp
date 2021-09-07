@@ -9,11 +9,33 @@
 using namespace std;
 using ghc::filesystem::path;
 
+KmerSets::KmerSets(){};
+
+KmerSets::KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_arg){
+	// set kmer file paths
+	hap1_kmer_fa_path = hap1_kmer_fa_path_arg;
+	hap2_kmer_fa_path = hap2_kmer_fa_path_arg;
+
+	// Test files for hap1 and hap2 parents
+    ifstream h1_test_stream(this->hap1_kmer_fa_path);
+    if (not h1_test_stream.is_open()){
+        throw runtime_error("ERROR: file could not be opened: " + this->hap1_kmer_fa_path.string());
+    }
+
+    ifstream h2_test_stream(this->hap2_kmer_fa_path);
+    if (not h2_test_stream.is_open()){
+        throw runtime_error("ERROR: file could not be opened: " + this->hap2_kmer_fa_path.string());
+    }
+
+    // fill the kmer sets 
+    load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
+    load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
+}
 
 void KmerSets::load_file_into_unordered_set(path file_path, unordered_set <string>& set){
 	// Read from the text file
 	ifstream KmerFile(file_path);
-	cout << "absolute_kmer_list_path: " << file_path << endl << endl;
+	cout << "kmer path: " << file_path << endl << endl;
 
 	string line_txt;
 	// Use a while loop to read the file line by line
@@ -33,7 +55,6 @@ void KmerSets::load_file_into_unordered_set(path file_path, unordered_set <strin
 	
 }
 
-
 void KmerSets::get_parent_kmer_sets(){
 	// set up this file path for getting the file from the data folder
 	path script_path = __FILE__;
@@ -47,58 +68,49 @@ void KmerSets::get_parent_kmer_sets(){
     path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
     path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
 
-    load_file_into_unordered_set(absolute_hap1_kmer_list_path,dad_kmer_set);
-    load_file_into_unordered_set(absolute_hap2_kmer_list_path,mom_kmer_set);
+    load_file_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set);
+    load_file_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set);
 
 }
 
-void KmerSets::fill_kmer_sets() {
-	// hard code filled 
-	mom_kmer_set.insert("GATTATTTTTACATTAAGGTTATCACCTCAAATCCTTTTTTAAAAATAGTCAGCA");
-	mom_kmer_set.insert("GATTATTTTTACATTAAGGTTATCACCTCAAATCCTTTTTTAAAAATAGTCAGCC");
-	mom_kmer_set.insert("GATTATTTTTACATTAAGGTTATCACCTCAAATCCTTTTTTAAAAATAGTCAGCT"); // child match
-	
-	dad_kmer_set.insert("AACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC");
-	dad_kmer_set.insert("CACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC");
-	dad_kmer_set.insert("GACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC"); // child match
-
-}
-
-// make a single kmer find
+// single kmer find
 bool KmerSets::find_haplotype_single_kmer_count(string child_kmer) {
-	mom_kmer_count = 0;
-	dad_kmer_count = 0;
+	hap1_kmer_count = 0;
+	hap2_kmer_count = 0;
 
-	if (mom_kmer_set.find(child_kmer) != mom_kmer_set.end()){
-		mom_kmer_count++;
+	if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
+		hap1_kmer_count++;
 		}
 
-	if (dad_kmer_set.find(child_kmer) != dad_kmer_set.end()){
-		dad_kmer_count++;		}
+	if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
+		hap2_kmer_count++;		
+		}
 
 	cout << " Checking single kmer: " << child_kmer << endl;
-	cout << " found " << mom_kmer_count << " mom kmers." << endl ;
-	cout << " found " << dad_kmer_count << " dad kmers." << endl << endl ;
+	cout << " found " << hap1_kmer_count << " hap1 (hg03) kmers." << endl ;
+	cout << " found " << hap2_kmer_count << " hap2 (hg04) kmers." << endl << endl ;
 	return 0;
 }
 
+// kmer set find
 bool KmerSets::find_haplotype_kmer_set_count(unordered_set <string> child_kmers) {
 	unordered_set <string> :: iterator itr;
-	mom_kmer_count = 0;
-	dad_kmer_count = 0;
+	hap1_kmer_count = 0;
+	hap2_kmer_count = 0;
+
 	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
 		{
-		if (mom_kmer_set.find(*itr) != mom_kmer_set.end()){
-			mom_kmer_count++;
+		if (hap1_kmer_set.find(*itr) != hap1_kmer_set.end()){
+			hap1_kmer_count++;
 			}
 
-		if (dad_kmer_set.find(*itr) != dad_kmer_set.end()){
-			dad_kmer_count++;
+		if (hap2_kmer_set.find(*itr) != hap2_kmer_set.end()){
+			hap2_kmer_count++;
 			}
 		}
 	cout << "checking kmer set." << endl;
-	cout << " found " << mom_kmer_count << " mom kmers." << endl;
-	cout << " found " << dad_kmer_count << " dad kmers." << endl << endl ;
+	cout << " found " << hap1_kmer_count << " hap1 (hg03) kmers." << endl;
+	cout << " found " << hap2_kmer_count << " hap2 (hg04) kmers." << endl << endl ;
 	return 0;
 }
 

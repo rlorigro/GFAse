@@ -1,5 +1,5 @@
-#ifndef GFASE_GFAREADER_HPP
-#define GFASE_GFAREADER_HPP
+#ifndef GFASE_KMERSETS_HPP
+#define GFASE_KMERSETS_HPP
 
 #include <iostream>
 #include <list>
@@ -18,14 +18,19 @@ class KmerSets {
 	private:
 		// sets for each member of the trio
 		// unordered_set <string> childKmerSet ;
-		unordered_set <string> mom_kmer_set ; // 482,003,862 hg04.all.homo.unique.ks.kmer.fa 	16G 
-		unordered_set <string> dad_kmer_set ; // 716,947,716 hg03.all.homo.unique.kmer.fa 	    24G
-		int mom_kmer_count;
-		int dad_kmer_count;
+		unordered_set <string> hap1_kmer_set ; // 482,003,862 hg04.all.homo.unique.ks.kmer.fa 	16G 
+		unordered_set <string> hap2_kmer_set ; // 716,947,716 hg03.all.homo.unique.kmer.fa 	    24G
+		// path to kmer parent files as input from command line
+		path hap1_kmer_fa_path;
+		path hap2_kmer_fa_path;
+
+		int hap1_kmer_count;
+		int hap2_kmer_count;
 
 	/// Methods ///
 	public:
-		void fill_kmer_sets();
+		KmerSets();
+		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_arg);
 		void load_file_into_unordered_set(path file_path, unordered_set <string>& set);
 		void get_parent_kmer_sets();
 		bool find_haplotype_kmer_set_count(unordered_set <string>);
@@ -33,4 +38,4 @@ class KmerSets {
 
 };
 
-#endif //GFASE_GFAREADER_HPP
+#endif //GFASE_KMERSETS_HPP

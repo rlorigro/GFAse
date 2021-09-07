@@ -233,6 +233,7 @@ endforeach()
 set(EXECUTABLES
         unzip
         extract_haplotype_kmers
+        extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
         )
 

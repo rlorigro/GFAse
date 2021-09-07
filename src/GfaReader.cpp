@@ -67,6 +67,10 @@ GfaReader::GfaReader(path gfa_path){
     }
 
     this->map_sequences_by_node();
+
+    
+
+
 }
 
 
