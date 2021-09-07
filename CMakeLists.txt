@@ -44,6 +44,7 @@ include_directories(
 # Define our shared library sources. NOT test/executables.
 set(SOURCES
         src/BinaryIO.cpp
+        src/BinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/GraphUtility.cpp
@@ -213,6 +214,7 @@ find_package(Threads REQUIRED)
 set(TESTS
         test_connected_component_finder
         test_bfs
+        test_binary_sequence
         test_gfareader
         test_kmer_unordered_set
         )
