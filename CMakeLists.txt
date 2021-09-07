@@ -50,6 +50,8 @@ set(SOURCES
         src/HaplotypePathKmer.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
+        src/MurmurHash2.cpp
+        src/MurmurHash3.cpp
         src/kmer_unordered_set.cpp
         )
 
