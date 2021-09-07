@@ -12,6 +12,7 @@
 
 #include <string>
 
+using namespace gfase;
 using gfase::HaplotypePathKmer;
 using gfase::IncrementalIdMap;
 using gfase::for_each_connected_component;
@@ -144,7 +145,8 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
                     kmer_string+=c;
                 }
                 // compare kmer to parental kmers
-                ks.find_haplotype_single_kmer_count(kmer_string);
+                pair <bool,bool> hap1_hap2 = ks.find_haplotype_single_kmer_count(kmer_string);
+                cerr << " hap1: " << hap1_hap2.first << " hap2: " << hap1_hap2.second;
                 cerr << '\n'; 
 
             }

@@ -13,6 +13,8 @@ using ghc::filesystem::path;
 
 // Hashtable to implement a hashtable of kmers 
 
+namespace gfase {
+
 class KmerSets {
 	/// Attributes ///
 	private:
@@ -33,8 +35,10 @@ class KmerSets {
 		void load_file_into_unordered_set(path file_path, unordered_set <string>& set);
 		void get_parent_kmer_sets();
 		bool find_haplotype_kmer_set_count(unordered_set <string>);
-		bool find_haplotype_single_kmer_count(string child_kmer);
+		pair<bool,bool> find_haplotype_single_kmer_count(string child_kmer);
 
 };
+
+}
 
 #endif //GFASE_KMERSETS_HPP

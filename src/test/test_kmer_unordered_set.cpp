@@ -2,6 +2,8 @@
 #include <unordered_set>
 #include <string>
 
+using namespace gfase;
+
 int main() {
 	unordered_set <string> child_kmer_set;
 	child_kmer_set.insert("GATTATTTTTACATTAAGGTTATCACCTCAAATCCTTTTTTAAAAATAGTCAGCA");

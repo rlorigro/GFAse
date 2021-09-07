@@ -9,6 +9,8 @@
 using namespace std;
 using ghc::filesystem::path;
 
+namespace gfase {
+
 KmerSets::KmerSets(){};
 
 KmerSets::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path){
@@ -74,22 +76,25 @@ void KmerSets::get_parent_kmer_sets(){
 }
 
 // single kmer find
-bool KmerSets::find_haplotype_single_kmer_count(string child_kmer) {
+//pair<bool,bool> that contains {hap0_found,hap1_found}
+pair<bool,bool> KmerSets::find_haplotype_single_kmer_count(string child_kmer) {
 	hap1_kmer_count = 0;
 	hap2_kmer_count = 0;
+	bool hap1_found = false;
+	bool hap2_found = false; 
 
 	if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
 		hap1_kmer_count++;
+		hap1_found = true;
 		}
 
 	if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
-		hap2_kmer_count++;		
+		hap2_kmer_count++;	
+		hap2_found=true;	
 		}
 
-	cout << " Checking single kmer: " << child_kmer << endl;
-	cout << " found " << hap1_kmer_count << " hap1 (hg03) kmers." << endl ;
-	cout << " found " << hap2_kmer_count << " hap2 (hg04) kmers." << endl << endl ;
-	return 0;
+	// consider that this limits to 2 haplotype assemblies
+	return pair(hap1_found,hap2_found);
 }
 
 // kmer set find
@@ -114,4 +119,4 @@ bool KmerSets::find_haplotype_kmer_set_count(unordered_set <string> child_kmers)
 	return 0;
 }
 
-
+}
