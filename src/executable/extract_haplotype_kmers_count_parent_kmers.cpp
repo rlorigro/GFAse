@@ -185,13 +185,13 @@ int main (int argc, char* argv[]){
             ->required();
 
     app.add_option(
-            "-p,--paternal_kmer_FASTA",
+            "-p,--paternal_kmers",
             paternal_kmers,
             "paternal kmers in FASTA format")
             ->required();
 
     app.add_option(
-            "-m,--maternal_kmer_FASTA",
+            "-m,--maternal_kmers",
             maternal_kmers,
             "maternal kmers in FASTA format")
             ->required();
