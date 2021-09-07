@@ -1,6 +1,9 @@
 #ifndef SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
 #define SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
 
+#include "MurmurHash3.hpp"
+#include "MurmurHash2.hpp"
+
 #include <type_traits>
 #include <vector>
 #include <bitset>
@@ -34,7 +37,13 @@ public:
     BinarySequence(string& s);
     void shift(char c);
     void to_string(string& s);
+    size_t get_byte_length() const;
 };
+
+template <class T> bool operator==(const BinarySequence<T>& a, const BinarySequence<T>& b)
+{
+    return a.sequence == b.sequence;
+}
 
 
 template <class T> const array<char,4> BinarySequence<T>::index_to_base = {'A','C','G','T'};
@@ -127,7 +136,108 @@ template<class T> void BinarySequence<T>::to_string(string& s){
 }
 
 
+template <class T> size_t BinarySequence<T>::get_byte_length() const{
+    size_t bit_length = size_t(length)*2;
+    size_t byte_length = bit_length/8 + (bit_length % 8 != 0);
+
+    return byte_length;
 }
+
+
+}
+
+
+namespace std {
+template<>
+class hash<gfase::BinarySequence<uint64_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<uint64_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+template<>
+class hash<gfase::BinarySequence<int64_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<int64_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+template<>
+class hash<gfase::BinarySequence<uint32_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<uint32_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<int32_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<int32_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<uint16_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<uint16_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<int16_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<int16_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<uint8_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<uint8_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<int8_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<int8_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<__uint128_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<__uint128_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+template<>
+class hash<gfase::BinarySequence<__int128_t> > {
+public:
+    size_t operator()(const gfase::BinarySequence<__int128_t>& s) const {
+        return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
+    }
+};
+
+
+}
+
 
 
 #endif //SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
