@@ -11,10 +11,10 @@ using ghc::filesystem::path;
 
 KmerSets::KmerSets(){};
 
-KmerSets::KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_arg){
+KmerSets::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path){
 	// set kmer file paths
-	hap1_kmer_fa_path = hap1_kmer_fa_path_arg;
-	hap2_kmer_fa_path = hap2_kmer_fa_path_arg;
+	this->hap1_kmer_fa_path = hap1_kmer_fa_path;
+	this->hap2_kmer_fa_path = hap2_kmer_fa_path;
 
 	// Test files for hap1 and hap2 parents
     ifstream h1_test_stream(this->hap1_kmer_fa_path);

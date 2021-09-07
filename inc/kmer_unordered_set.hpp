@@ -17,9 +17,8 @@ class KmerSets {
 	/// Attributes ///
 	private:
 		// sets for each member of the trio
-		// unordered_set <string> childKmerSet ;
-		unordered_set <string> hap1_kmer_set ; // 482,003,862 hg04.all.homo.unique.ks.kmer.fa 	16G 
-		unordered_set <string> hap2_kmer_set ; // 716,947,716 hg03.all.homo.unique.kmer.fa 	    24G
+		unordered_set <string> hap1_kmer_set ; 
+		unordered_set <string> hap2_kmer_set ; 
 		// path to kmer parent files as input from command line
 		path hap1_kmer_fa_path;
 		path hap2_kmer_fa_path;
