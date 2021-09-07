@@ -44,12 +44,15 @@ include_directories(
 # Define our shared library sources. NOT test/executables.
 set(SOURCES
         src/BinaryIO.cpp
+        src/BinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/GraphUtility.cpp
         src/HaplotypePathKmer.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
+        src/MurmurHash2.cpp
+        src/MurmurHash3.cpp
         )
 
 
@@ -210,6 +213,7 @@ find_package(Threads REQUIRED)
 set(TESTS
         test_connected_component_finder
         test_bfs
+        test_binary_sequence
         test_gfareader
         )
 
