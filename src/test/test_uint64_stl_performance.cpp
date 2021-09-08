@@ -1,21 +1,17 @@
 #include "FixedBinarySequence.hpp"
 #include "Filesystem.hpp"
-#include "sparsepp/spp.h"
 #include "CLI11.hpp"
 
-#include <map>
-
+#include <unordered_set>
 #include <string>
 
 using ghc::filesystem::path;
-using gfase::FixedBinarySequence;
 
+using std::unordered_set;
 using std::ifstream;
 using std::string;
 using std::cout;
 using std::cerr;
-using spp::sparse_hash_set;
-using std::map;
 using std::runtime_error;
 
 
@@ -35,15 +31,15 @@ void test_performance(path kmer_file_path){
     ifstream file(kmer_file_path);
     string line;
 
-    sparse_hash_set <FixedBinarySequence <uint64_t> > kmers;
+    unordered_set <uint64_t> hash_table;
 
+    uint64_t i = 0;
     while (getline(file, line)){
         if (line[0] == '>'){
             continue;
         }
         else{
-            strip_trailing_space(line);
-            kmers.emplace(line);
+            hash_table.emplace(i);
         }
     }
 }
