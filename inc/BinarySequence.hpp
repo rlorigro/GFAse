@@ -13,6 +13,7 @@
 
 using std::runtime_error;
 using std::is_integral;
+using std::to_string;
 using std::vector;
 using std::bitset;
 using std::string;
@@ -27,7 +28,7 @@ template<class T> class BinarySequence {
 public:
     /// Attributes ///
     vector <T> sequence;
-    size_t length;
+    uint16_t length;
 
     static const array<char,4> index_to_base;
     static const array<uint16_t,128> base_to_index;
@@ -41,12 +42,14 @@ public:
     void print_as_bits() const;
 };
 
+
 template <class T> void BinarySequence<T>::print_as_bits() const {
     for (auto& item: sequence){
         cerr << bitset<sizeof(T)*8>(item) << ' ';
     }
     cerr << '\n';
 }
+
 
 template <class T> bool operator==(const BinarySequence<T>& a, const BinarySequence<T>& b)
 {
@@ -104,13 +107,9 @@ template <class T> void BinarySequence<T>::shift(char c){
     sequence.back() |= bits;
     length++;
 
-//    cerr << int(shift_size) << '\n';
-//    cerr << bitset<sizeof(T)*8>(bits) << '\n';
-//
-//    for (auto& s: sequence) {
-//        cerr << bitset<sizeof(T)*8>(s);
-//    }
-//    cerr << '\n';
+    if (length >= (1<<sizeof(length)*8) - 1){
+        throw runtime_error("ERROR: attempting to append to maximum length BinarySequence: " + std::to_string(length));
+    }
 }
 
 
@@ -164,6 +163,7 @@ public:
     }
 };
 
+
 template<>
 class hash<gfase::BinarySequence<int64_t> > {
 public:
@@ -171,6 +171,7 @@ public:
         return MurmurHash64A(s.sequence.data(), int(s.get_byte_length()), 14741);
     }
 };
+
 
 template<>
 class hash<gfase::BinarySequence<uint32_t> > {
