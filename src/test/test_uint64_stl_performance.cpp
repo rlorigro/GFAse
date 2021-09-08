@@ -41,6 +41,7 @@ void test_performance(path kmer_file_path){
         else{
             hash_table.emplace(i);
         }
+        i++;
     }
 }
 
