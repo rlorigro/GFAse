@@ -45,6 +45,7 @@ include_directories(
 set(SOURCES
         src/BinaryIO.cpp
         src/BinarySequence.cpp
+        src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/GraphUtility.cpp
@@ -239,9 +240,10 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_binary_sequence
+        test_fixed_binary_sequence
         test_binary_sequence_performance
         test_nonbinary_sequence_performance
-        test_binary_sequence_sparsepp_performance
+        test_fixed_binary_sequence_sparsepp_performance
         test_nonbinary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
