@@ -1,9 +1,11 @@
 #include "BinarySequence.hpp"
-#include "unordered_set"
-#include "map"
+#include <unordered_set>
+#include <list>
+#include <map>
 
 using gfase::BinarySequence;
 using std::unordered_set;
+using std::list;
 using std::map;
 using std::runtime_error;
 
@@ -170,18 +172,27 @@ int main(){
         }
     }
 
-//    {
-//        BinarySequence<float> bs(s);
-//
-//        string s2;
-//        bs.to_string(s2);
-//
-//        cerr << s2 << '\n';
-//
-//        if (s != s2){
-//            throw runtime_error("ERROR: input sequence does not match output sequence: " + s + " != " + s2);
-//        }
-//    }
+    vector<string> test_kmers = {
+            "TTAAAAAAAAAAAAAAATTAAAAAAAAAAAAAAAAAAAAAAAAATAAAAAAAAAA",
+            "TTAAAAAAAAAAAAAAATTAAAAAAAAAAAAAAAAAAAAATAAAAAAAAAAAAAA",
+            "TTAAACACTTAGCTGAGTTAAACACTTAGCTGAGGCATGGTGATGCATGCCTATA",
+            "TTAAATAATTAAAGTCATTAAATAATTAAAGTCATCTTTTCAATGAATGCATTGC",
+            "TTAACCCAGTCTCCTTTTTAACCCAGTCTCCTTTGTTAGTTTAGCTAATTTTAGT",
+            "TTAATTAAATTTGTACATTAATTAAATTTGTACATCAAAATGATTGAAATAAATC",
+            "TTACCAAAATCATAATATTACCAAAATCATAATACATTTAACGTAGACCTGAAAT",
+            "TTACTATGAATAATTATTTACTATGAATAATTATATGCCTGCAAATTAGAAAACA",
+            "TTACTCCATTCCATATTTTACTCCATTCCATATTACCTCCTATCTCCCACTCTAT",
+            "TTAGATGGGTGTGCTAGTTAGATGGGTGTGCTAGCGGGCGCCTGTAATCTCAGCT",
+            "TTAGATGGGTGTGCTAGTTAGATGGGTGTGCTAGCGGGTGCCTGTAATCTCAGCT",
+            "TTAGCCAAGCATGATGGTTAGCCAAGCATGATGGTGCATGTCTGTGGTCCCAGCT",
+            "TTAGCCAGGCATGGTGGTTAGCCAGGCATGGTGGCACTTGCCTGTAATCCCAGCT"
+    };
+
+    list <BinarySequence<uint64_t> > binary_kmers;
+    for (auto& kmer: test_kmers){
+        binary_kmers.emplace_back(kmer);
+        binary_kmers.back().print_as_bits();
+    }
 
 
     {

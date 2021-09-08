@@ -38,7 +38,15 @@ public:
     void shift(char c);
     void to_string(string& s);
     size_t get_byte_length() const;
+    void print_as_bits() const;
 };
+
+template <class T> void BinarySequence<T>::print_as_bits() const {
+    for (auto& item: sequence){
+        cerr << bitset<sizeof(T)*8>(item) << ' ';
+    }
+    cerr << '\n';
+}
 
 template <class T> bool operator==(const BinarySequence<T>& a, const BinarySequence<T>& b)
 {

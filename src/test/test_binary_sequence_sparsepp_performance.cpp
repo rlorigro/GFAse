@@ -1,30 +1,21 @@
-#include "HaplotypePathKmer.hpp"
-#include "IncrementalIdMap.hpp"
 #include "BinarySequence.hpp"
-#include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
 #include "Filesystem.hpp"
+#include "sparsepp/spp.h"
 #include "CLI11.hpp"
 
-#include <unordered_set>
+#include <fstream>
 #include <map>
+
 #include <string>
 
-using gfase::HaplotypePathKmer;
-using gfase::IncrementalIdMap;
-using gfase::BinarySequence;
-using gfase::for_each_connected_component;
-using gfase::split_connected_components;
-using gfase::handle_graph_to_gfa;
-using gfase::print_graph_paths;
-using gfase::plot_graph;
-
 using ghc::filesystem::path;
+using gfase::BinarySequence;
 
+using std::ifstream;
 using std::string;
 using std::cout;
 using std::cerr;
-using std::unordered_set;
+using spp::sparse_hash_set;
 using std::map;
 using std::runtime_error;
 
@@ -45,7 +36,7 @@ void test_performance(path kmer_file_path){
     ifstream file(kmer_file_path);
     string line;
 
-    unordered_set <string> kmers;
+    sparse_hash_set <BinarySequence <uint64_t> > kmers;
 
     while (getline(file, line)){
         if (line[0] == '>'){

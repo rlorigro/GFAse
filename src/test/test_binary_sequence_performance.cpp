@@ -1,36 +1,18 @@
-#include "HaplotypePathKmer.hpp"
-#include "IncrementalIdMap.hpp"
 #include "BinarySequence.hpp"
-#include "gfa_to_handle.hpp"
-#include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
 #include "Filesystem.hpp"
-#include "GfaReader.hpp"
 #include "CLI11.hpp"
 
-#include "unordered_set"
-#include "map"
-#include "bdsg/hash_graph.hpp"
+#include <fstream>
+#include <unordered_set>
+#include <map>
 
 #include <string>
 
-using gfase::HaplotypePathKmer;
-using gfase::IncrementalIdMap;
 using gfase::BinarySequence;
-using gfase::for_each_connected_component;
-using gfase::split_connected_components;
-using gfase::handle_graph_to_gfa;
-using gfase::print_graph_paths;
-using gfase::plot_graph;
 
 using ghc::filesystem::path;
-using bdsg::HashGraph;
-using bdsg::MutablePathMutableHandleGraph;
-using bdsg::MutablePathDeletableHandleGraph;
-using handlegraph::path_handle_t;
-using handlegraph::step_handle_t;
-using handlegraph::handle_t;
 
+using std::ifstream;
 using std::string;
 using std::cout;
 using std::cerr;
