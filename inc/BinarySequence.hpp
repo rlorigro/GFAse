@@ -93,6 +93,11 @@ template<class T> BinarySequence<T>::BinarySequence(string& s):
 
 template <class T> void BinarySequence<T>::shift(char c){
     T bits = base_to_index.at(c);
+
+    if (bits == 4){
+        throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(c,1));
+    }
+
     uint8_t shift_size = (2*length) % (sizeof(T)*8);
 
     // If we have reached the beginning of a new word, append the word vector with 0

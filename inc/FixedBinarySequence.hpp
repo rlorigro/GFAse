@@ -77,7 +77,7 @@ template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence()
 
 
 template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(string& s):
-    sequence({})
+    sequence({})  // Bracket initializer ensures the array is filled with zeros
 {
     static_assert(is_integral<T>::value, "ERROR: provided type for FixedBinarySequence is not integer");
 
@@ -85,6 +85,11 @@ template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(stri
     size_t word_index = 0;
     for (auto& c: s){
         T bits = base_to_index.at(c);
+
+        if (bits == 4){
+            throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(c,1));
+        }
+
         uint8_t shift_size = (2*length) % (sizeof(T)*8);
 
         if (shift_size == 0 and length > 0){
@@ -132,6 +137,7 @@ template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s
 
 
 namespace std {
+
 template <size_t T2> class hash<gfase::FixedBinarySequence<uint64_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<uint64_t,T2>& s) const {
