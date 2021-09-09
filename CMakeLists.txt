@@ -245,12 +245,8 @@ set(TESTS
         test_nonbinary_sequence_performance
         test_fixed_binary_sequence_sparsepp_performance
         test_nonbinary_sequence_sparsepp_performance
-        test_minimal_sparsepp_performance
-        test_minimal_stl_performance
         test_gfareader
         test_kmer_unordered_set
-        test_uint64_sparsepp_performance
-        test_uint64_stl_performance
         )
 
 foreach(FILENAME_PREFIX ${TESTS})
