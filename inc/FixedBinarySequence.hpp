@@ -24,10 +24,10 @@ using std::cerr;
 namespace gfase {
 
 
-template<class T> class FixedBinarySequence {
+template<class T, size_t T2> class FixedBinarySequence {
 public:
     /// Attributes ///
-    vector <T> sequence;
+    array <T,T2> sequence;
 
     static const array<char,4> index_to_base;
     static const array<uint16_t,128> base_to_index;
@@ -40,7 +40,7 @@ public:
 };
 
 
-template <class T> void FixedBinarySequence<T>::print_as_bits() const {
+template <class T, size_t T2> void FixedBinarySequence<T,T2>::print_as_bits() const {
     for (auto& item: sequence){
         cerr << bitset<sizeof(T)*8>(item) << ' ';
     }
@@ -48,14 +48,14 @@ template <class T> void FixedBinarySequence<T>::print_as_bits() const {
 }
 
 
-template <class T> bool operator==(const FixedBinarySequence<T>& a, const FixedBinarySequence<T>& b)
+template <class T, size_t T2> bool operator==(const FixedBinarySequence<T,T2>& a, const FixedBinarySequence<T,T2>& b)
 {
     return a.sequence == b.sequence;
 }
 
 
-template <class T> const array<char,4> FixedBinarySequence<T>::index_to_base = {'A','C','G','T'};
-template <class T> const array<uint16_t,128> FixedBinarySequence<T>::base_to_index = {
+template <class T, size_t T2> const array<char,4> FixedBinarySequence<T,T2>::index_to_base = {'A','C','G','T'};
+template <class T, size_t T2> const array<uint16_t,128> FixedBinarySequence<T,T2>::base_to_index = {
         4,4,4,4,4,4,4,4,4,4,      // 0
         4,4,4,4,4,4,4,4,4,4,      // 10
         4,4,4,4,4,4,4,4,4,4,      // 20
@@ -72,58 +72,58 @@ template <class T> const array<uint16_t,128> FixedBinarySequence<T>::base_to_ind
 };
 
 
-template<class T> FixedBinarySequence<T>::FixedBinarySequence()
+template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence()
 {}
 
 
-template<class T> FixedBinarySequence<T>::FixedBinarySequence(string& s)
+template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(string& s):
+    sequence({})
 {
     static_assert(is_integral<T>::value, "ERROR: provided type for FixedBinarySequence is not integer");
 
     size_t length = 0;
+    size_t word_index = 0;
     for (auto& c: s){
         T bits = base_to_index.at(c);
         uint8_t shift_size = (2*length) % (sizeof(T)*8);
 
-        // If we have reached the beginning of a new word, append the word vector with 0
-        if (shift_size == 0){
-            sequence.emplace_back(0);
+        if (shift_size == 0 and length > 0){
+            word_index++;
         }
-        // Otherwise shift the last word over to prepare to insert another base
         else {
             bits <<= shift_size;
         }
 
-        sequence.back() |= bits;
+//        cerr << bitset<sizeof(T)*8>(sequence.at(word_index)) << '\n';
+//        cerr << bitset<sizeof(T)*8>(bits) << '\n';
+
+        sequence.at(word_index) |= bits;
         length++;
     }
 }
 
 
-template<class T> void FixedBinarySequence<T>::to_string(string& s, size_t length){
+template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s, size_t length){
     if (sequence.empty()){
         return;
     }
 
     T mask = 3;
+    size_t bp_per_word = (sizeof(T)*8)/2;
+    T word;
 
-    size_t n_bits = sizeof(T)*8;
-    size_t n_leftover_bases = length - (n_bits*(sequence.size() - 1))/2;
-
-    for (size_t i=0; i<sequence.size(); i++){
-        T word = sequence[i];
-        size_t l = n_bits/2;
-
-        if (i == sequence.size() - 1){
-            l = n_leftover_bases;
+    for (size_t i=0; i<length; i++){
+        if (i % bp_per_word == 0) {
+            word = sequence[i/bp_per_word];
         }
+
+//        cerr << bitset<sizeof(T)*8>(word) << '\n';
+//        cerr << bitset<sizeof(T)*8>(mask) << '\n';
 
         // Iterate/consume the word and produce bases (chars)
-        for (size_t j=0; j<l; j++){
-            auto index = word & mask;
-            s += index_to_base[index];
-            word >>= 2;
-        }
+        auto index = word & mask;
+        s += index_to_base.at(index);
+        word >>= 2;
     }
 }
 
@@ -132,91 +132,81 @@ template<class T> void FixedBinarySequence<T>::to_string(string& s, size_t lengt
 
 
 namespace std {
-template<>
-class hash<gfase::FixedBinarySequence<uint64_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<uint64_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<uint64_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<uint64_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint64_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<int64_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<int64_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<int64_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<int64_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int64_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<uint32_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<uint32_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<uint32_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<uint32_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint32_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<int32_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<int32_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<int32_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<int32_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int32_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<uint16_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<uint16_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<uint16_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<uint16_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint16_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<int16_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<int16_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<int16_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<int16_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int16_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<uint8_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<uint8_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<uint8_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<uint8_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint8_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<int8_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<int8_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<int8_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<int8_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int8_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<__uint128_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<__uint128_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<__uint128_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<__uint128_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__uint128_t)), 14741);
     }
 };
 
 
-template<>
-class hash<gfase::FixedBinarySequence<__int128_t> > {
+template <size_t T2> class hash<gfase::FixedBinarySequence<__int128_t,T2> > {
 public:
-    size_t operator()(const gfase::FixedBinarySequence<__int128_t>& s) const {
+    size_t operator()(const gfase::FixedBinarySequence<__int128_t,T2>& s) const {
         return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__int128_t)), 14741);
     }
 };

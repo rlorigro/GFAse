@@ -35,7 +35,7 @@ void test_performance(path kmer_file_path){
     ifstream file(kmer_file_path);
     string line;
 
-    sparse_hash_set <FixedBinarySequence <uint64_t> > kmers;
+    sparse_hash_set <FixedBinarySequence <uint64_t,2> > kmers;
 
     while (getline(file, line)){
         if (line[0] == '>'){
