@@ -1,16 +1,16 @@
-#include "BinarySequence.hpp"
+#include "FixedBinarySequence.hpp"
 #include <unordered_set>
 #include <list>
 #include <map>
 
-using gfase::BinarySequence;
+using gfase::FixedBinarySequence;
 using std::unordered_set;
 using std::list;
 using std::map;
 using std::runtime_error;
 
 
-template <class T> void print_bucket_info(unordered_set <BinarySequence<T> >& set){
+template <class T, size_t T2> void print_bucket_info(unordered_set <FixedBinarySequence<T,T2> >& set){
     cerr << "total buckets: " << set.bucket_count() << '\n';
 
     map <size_t,size_t> observed_bucket_sizes;
@@ -21,17 +21,17 @@ template <class T> void print_bucket_info(unordered_set <BinarySequence<T> >& se
     for (auto& item: observed_bucket_sizes){
         cerr << item.first << ' ' << item.second << '\n';
     }
-
 }
+
 
 int main(){
     string s = "ATATATATATAT";
 
     {
-        BinarySequence<uint64_t> bs(s);
+        FixedBinarySequence<uint64_t,8> bs(s);
 
         string s2;
-        bs.to_string(s2);
+        bs.to_string(s2, s.size());
 
         cerr << s2 << '\n';
 
@@ -41,17 +41,17 @@ int main(){
     }
 
     {
-        BinarySequence<uint16_t> bs(s);
+        FixedBinarySequence<uint16_t,2> bs(s);
 
         cerr << "Sequence size: " << bs.sequence.size() << '\n';
 
         string s2;
-        bs.to_string(s2);
+        bs.to_string(s2, s.size());
 
         cerr << s2 << '\n';
 
         s2.clear();
-        bs.to_string(s2);
+        bs.to_string(s2, s.size());
 
         cerr << s2 << '\n';
 
@@ -62,10 +62,10 @@ int main(){
 
     s = "ACCGGGTTTT";
     {
-        BinarySequence<uint64_t> bs(s);
+        FixedBinarySequence<uint64_t,2> bs(s);
 
         string s2;
-        bs.to_string(s2);
+        bs.to_string(s2, s.size());
 
         cerr << s2 << '\n';
 
@@ -77,95 +77,95 @@ int main(){
     for (size_t i=0; i<1024; i++){
         string random_sequence;
 
-        for (size_t j=0; j<i; j++){
+        for (size_t j=0; j<8; j++){
             size_t base_index = rand() % 4;
-            random_sequence += BinarySequence<int>::index_to_base[base_index];
+            random_sequence += FixedBinarySequence<int,2>::index_to_base[base_index];
         }
 
-        BinarySequence<uint8_t> bs_u8(random_sequence);
-        BinarySequence<int8_t> bs_8(random_sequence);
-        BinarySequence<uint16_t> bs_u16(random_sequence);
-        BinarySequence<int16_t> bs_16(random_sequence);
-        BinarySequence<uint32_t> bs_u32(random_sequence);
-        BinarySequence<int32_t> bs_32(random_sequence);
-        BinarySequence<uint64_t> bs_u64(random_sequence);
-        BinarySequence<int64_t> bs_64(random_sequence);
-        BinarySequence<__uint128_t> bs_u128(random_sequence);
-        BinarySequence<__int128_t> bs_128(random_sequence);
-        BinarySequence<int> bs_int(random_sequence);
 
+        FixedBinarySequence<uint8_t,2> bs_u8(random_sequence);
         string s_bs_u8;
-        bs_u8.to_string(s_bs_u8);
+        bs_u8.to_string(s_bs_u8, random_sequence.size());
 
         if (random_sequence != s_bs_u8){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_u8 + "\nfor type u8");
         }
 
+        FixedBinarySequence<int8_t,2> bs_8(random_sequence);
         string s_bs_8;
-        bs_8.to_string(s_bs_8);
+        bs_8.to_string(s_bs_8, random_sequence.size());
 
         if (random_sequence != s_bs_8){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_8 + "\nfor type 8");
         }
 
+        FixedBinarySequence<uint16_t,2> bs_u16(random_sequence);
         string s_bs_u16;
-        bs_u16.to_string(s_bs_u16);
+        bs_u16.to_string(s_bs_u16, random_sequence.size());
 
         if (random_sequence != s_bs_u16){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_u16 + "\nfor type u16");
         }
 
+        FixedBinarySequence<int16_t,2> bs_16(random_sequence);
         string s_bs_16;
-        bs_16.to_string(s_bs_16);
+        bs_16.to_string(s_bs_16, random_sequence.size());
 
         if (random_sequence != s_bs_16){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_16 + "\nfor type 16");
         }
 
+        FixedBinarySequence<uint32_t,2> bs_u32(random_sequence);
         string s_bs_u32;
-        bs_u32.to_string(s_bs_u32);
+        bs_u32.to_string(s_bs_u32, random_sequence.size());
 
         if (random_sequence != s_bs_u32){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_u32 + "\nfor type u32");
         }
 
+        FixedBinarySequence<int32_t,2> bs_32(random_sequence);
         string s_bs_32;
-        bs_32.to_string(s_bs_32);
+        bs_32.to_string(s_bs_32, random_sequence.size());
 
         if (random_sequence != s_bs_32){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_32 + "\nfor type 32");
         }
 
+        FixedBinarySequence<uint64_t,2> bs_u64(random_sequence);
         string s_bs_u64;
-        bs_u64.to_string(s_bs_u64);
+        bs_u64.to_string(s_bs_u64, random_sequence.size());
 
         if (random_sequence != s_bs_u64){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_u64 + "\nfor type u64");
         }
 
+        FixedBinarySequence<int64_t,2> bs_64(random_sequence);
         string s_bs_64;
-        bs_64.to_string(s_bs_64);
+        bs_64.to_string(s_bs_64, random_sequence.size());
 
         if (random_sequence != s_bs_64){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_64 + "\nfor type 64");
         }
 
+        FixedBinarySequence<__uint128_t,2> bs_u128(random_sequence);
         string s_bs_u128;
-        bs_u128.to_string(s_bs_u128);
+        bs_u128.to_string(s_bs_u128, random_sequence.size());
 
         if (random_sequence != s_bs_u128){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_u128 + "\nfor type u128");
         }
 
+        FixedBinarySequence<__int128_t,2> bs_128(random_sequence);
         string s_bs_128;
-        bs_128.to_string(s_bs_128);
+        bs_128.to_string(s_bs_128, random_sequence.size());
 
         if (random_sequence != s_bs_128){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_128 + "\nfor type 128");
         }
 
+        FixedBinarySequence<int,2> bs_int(random_sequence);
         string s_bs_int;
-        bs_int.to_string(s_bs_int);
+        bs_int.to_string(s_bs_int, random_sequence.size());
 
         if (random_sequence != s_bs_int){
             throw runtime_error("ERROR: input sequence does not match output sequence:\n\t" + s + "\n\t" + s_bs_int + "\nfor type int");
@@ -188,7 +188,7 @@ int main(){
             "TTAGCCAGGCATGGTGGTTAGCCAGGCATGGTGGCACTTGCCTGTAATCCCAGCT"
     };
 
-    list <BinarySequence<uint64_t> > binary_kmers;
+    list <FixedBinarySequence<uint64_t,2> > binary_kmers;
     for (auto& kmer: test_kmers){
         binary_kmers.emplace_back(kmer);
         binary_kmers.back().print_as_bits();
@@ -196,17 +196,17 @@ int main(){
 
 
     {
-        unordered_set <BinarySequence<uint8_t> > set_u8;
-        unordered_set <BinarySequence<int8_t> > set_8;
-        unordered_set <BinarySequence<uint16_t> > set_u16;
-        unordered_set <BinarySequence<int16_t> > set_16;
-        unordered_set <BinarySequence<uint32_t> > set_u32;
-        unordered_set <BinarySequence<int32_t> > set_32;
-        unordered_set <BinarySequence<uint64_t> > set_u64;
-        unordered_set <BinarySequence<int64_t> > set_64;
-        unordered_set <BinarySequence<__uint128_t> > set_u128;
-        unordered_set <BinarySequence<__int128_t> > set_128;
-        unordered_set <BinarySequence<int> > set_int;
+        unordered_set <FixedBinarySequence<uint8_t,16> > set_u8;
+        unordered_set <FixedBinarySequence<int8_t,16> > set_8;
+        unordered_set <FixedBinarySequence<uint16_t,8> > set_u16;
+        unordered_set <FixedBinarySequence<int16_t,8> > set_16;
+        unordered_set <FixedBinarySequence<uint32_t,4> > set_u32;
+        unordered_set <FixedBinarySequence<int32_t,4> > set_32;
+        unordered_set <FixedBinarySequence<uint64_t,2> > set_u64;
+        unordered_set <FixedBinarySequence<int64_t,2> > set_64;
+        unordered_set <FixedBinarySequence<__uint128_t,1> > set_u128;
+        unordered_set <FixedBinarySequence<__int128_t,1> > set_128;
+        unordered_set <FixedBinarySequence<int,4> > set_int;
 
         set_u8.reserve(16000);
         set_8.reserve(16000);
@@ -225,20 +225,20 @@ int main(){
 
             for (size_t j = 0; j < 55; j++) {
                 size_t base_index = rand() % 4;
-                random_sequence += BinarySequence<int>::index_to_base[base_index];
+                random_sequence += FixedBinarySequence<int,4>::index_to_base[base_index];
             }
 
-            BinarySequence<uint8_t> bs_u8(random_sequence);
-            BinarySequence<int8_t> bs_8(random_sequence);
-            BinarySequence<uint16_t> bs_u16(random_sequence);
-            BinarySequence<int16_t> bs_16(random_sequence);
-            BinarySequence<uint32_t> bs_u32(random_sequence);
-            BinarySequence<int32_t> bs_32(random_sequence);
-            BinarySequence<uint64_t> bs_u64(random_sequence);
-            BinarySequence<int64_t> bs_64(random_sequence);
-            BinarySequence<__uint128_t> bs_u128(random_sequence);
-            BinarySequence<__int128_t> bs_128(random_sequence);
-            BinarySequence<int> bs_int(random_sequence);
+            FixedBinarySequence<uint8_t,16> bs_u8(random_sequence);
+            FixedBinarySequence<int8_t,16> bs_8(random_sequence);
+            FixedBinarySequence<uint16_t,8> bs_u16(random_sequence);
+            FixedBinarySequence<int16_t,8> bs_16(random_sequence);
+            FixedBinarySequence<uint32_t,4> bs_u32(random_sequence);
+            FixedBinarySequence<int32_t,4> bs_32(random_sequence);
+            FixedBinarySequence<uint64_t,2> bs_u64(random_sequence);
+            FixedBinarySequence<int64_t,2> bs_64(random_sequence);
+            FixedBinarySequence<__uint128_t,1> bs_u128(random_sequence);
+            FixedBinarySequence<__int128_t,1> bs_128(random_sequence);
+            FixedBinarySequence<int,4> bs_int(random_sequence);
 
             set_u8.emplace(bs_u8);
             set_8.emplace(bs_8);

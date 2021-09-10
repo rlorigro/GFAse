@@ -45,6 +45,7 @@ include_directories(
 set(SOURCES
         src/BinaryIO.cpp
         src/BinarySequence.cpp
+        src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/GraphUtility.cpp
@@ -200,6 +201,30 @@ include_directories(external/bdsg/include/
 message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 
 
+##############################################
+# ------------------------------------------ #
+# -------- LINKING EXTERNAL LIBRARY -------- #
+# ---------------- sparsepp ---------------- #
+# ------------------------------------------ #
+##############################################
+
+
+ExternalProject_Add(project_sparsepp
+        GIT_REPOSITORY https://github.com/greg7mdp/sparsepp.git
+        TIMEOUT 5
+        CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+        PREFIX "${CMAKE_CURRENT_BINARY_DIR}"
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND "" # Disable install step, is a header only lib!
+        )
+
+add_dependencies(GFAse project_sparsepp)
+
+# Specify include dir
+ExternalProject_Get_Property(project_sparsepp SOURCE_DIR)
+include_directories(${SOURCE_DIR}/sparsepp)
+
 ############################################
 # ---------------------------------------- #
 # -------- Generating executables -------- #
@@ -215,6 +240,11 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_binary_sequence
+        test_fixed_binary_sequence
+        test_binary_sequence_performance
+        test_nonbinary_sequence_performance
+        test_fixed_binary_sequence_sparsepp_performance
+        test_nonbinary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
         )
