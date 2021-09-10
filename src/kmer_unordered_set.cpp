@@ -5,7 +5,6 @@
 #include <unordered_set>
 #include <fstream>
 #include "Filesystem.hpp"
-// #include <bits/stdc++.h>
 
 using namespace std;
 using ghc::filesystem::path;
@@ -57,6 +56,7 @@ void KmerSets::get_size_of_kmer_file(path file_path, string hap){
 		num_hap2_kmers=fileline.tellg()/fsize;
 		cout << hap << " kmer file path: " << file_path << "\n # kmers: " << num_hap2_kmers << endl;
 	}
+	fileline.close();
 
 }
 
