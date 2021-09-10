@@ -166,6 +166,7 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
             prev_has_diploid = kmer.has_diploid;
         }    
     });
+    ks.normalize_kmer_counts();
     ks.print_component_parent_conf_matrix();
 }
 
