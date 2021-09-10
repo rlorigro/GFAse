@@ -129,13 +129,17 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
 
     cerr << "Iterating path kmers..." << '\n';
 
+    cerr << " Number of (components?) in Graph: " << graph.get_path_count() << '\n';
+
     bool prev_has_diploid;
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     graph.for_each_path_handle([&](const path_handle_t& p){
         cerr << ">" << graph.get_path_name(p) << '\n';
- 
+
         HaplotypePathKmer kmer(graph, p, k);
+
+        string component_path_string = graph.get_path_name(p);
 
         while (kmer.step()){
             if (kmer.has_diploid){
@@ -145,8 +149,7 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
                     kmer_string+=c;
                 }
                 // compare kmer to parental kmers
-                pair <bool,bool> hap1_hap2 = ks.find_haplotype_single_kmer_count(kmer_string);
-                cerr << " hap1: " << hap1_hap2.first << " hap2: " << hap1_hap2.second;
+                ks.increment_parental_kmer_count(component_path_string, kmer_string);
                 cerr << '\n'; 
 
             }
@@ -161,8 +164,9 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
             }
 
             prev_has_diploid = kmer.has_diploid;
-        }
+        }    
     });
+    ks.print_component_parent_conf_matrix();
 }
 
 

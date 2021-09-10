@@ -4,6 +4,7 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include <map>
 #include <unordered_set>
 #include <fstream>
 #include "Filesystem.hpp"
@@ -15,6 +16,7 @@ using ghc::filesystem::path;
 
 namespace gfase {
 
+
 class KmerSets {
 	/// Attributes ///
 	private:
@@ -24,9 +26,13 @@ class KmerSets {
 		// path to kmer parent files as input from command line
 		path hap1_kmer_fa_path;
 		path hap2_kmer_fa_path;
-
-		int hap1_kmer_count;
-		int hap2_kmer_count;
+		// component and haplotype 
+		int graph_component;
+		int component_haplotype;
+		static const int parent_hap1_int = 0; // hg03 paternal 
+		static const int parent_hap2_int = 1; // hg04 maternal
+		// < component,  [component_hap_path][parent_hap_int] >
+		map<int, int [2][2]> component_map;
 
 	/// Methods ///
 	public:
@@ -34,9 +40,10 @@ class KmerSets {
 		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_arg);
 		void load_file_into_unordered_set(path file_path, unordered_set <string>& set);
 		void get_parent_kmer_sets();
-		bool find_haplotype_kmer_set_count(unordered_set <string>);
-		pair<bool,bool> find_haplotype_single_kmer_count(string child_kmer);
-
+		bool find_haplotype_kmer_set_count(string, unordered_set <string>);
+		void parse_path_string(string);
+		bool increment_parental_kmer_count(string, string );
+		void print_component_parent_conf_matrix();
 };
 
 }

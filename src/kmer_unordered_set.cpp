@@ -75,48 +75,52 @@ void KmerSets::get_parent_kmer_sets(){
 
 }
 
+void KmerSets::print_component_parent_conf_matrix() {
+	cout << "Number of graph components: " << component_map.size() << endl;
+	
+	for (int i = 0; i < component_map.size(); i++) {
+
+		cout << "component: " << i << "\n  _pat__mat_" << endl;
+		
+		for (int j = 0; j < 2; j++) {
+			cout << j << " | " << component_map[i][j][parent_hap1_int] << " | " << component_map[i][j][parent_hap2_int] << " |" <<endl;
+		}
+		cout << endl;
+	}
+}
+
+void KmerSets::parse_path_string(string path_string){
+	int string_delim = path_string.find('-');
+	this->graph_component = stoi(path_string.substr(0,string_delim));
+	this->component_haplotype = stoi(path_string.substr(string_delim+1,path_string.length()));
+}
+
 // single kmer find
-//pair<bool,bool> that contains {hap0_found,hap1_found}
-pair<bool,bool> KmerSets::find_haplotype_single_kmer_count(string child_kmer) {
-	hap1_kmer_count = 0;
-	hap2_kmer_count = 0;
-	bool hap1_found = false;
-	bool hap2_found = false; 
+bool KmerSets::increment_parental_kmer_count( string path_hap_string, string child_kmer) {
+
+	parse_path_string(path_hap_string);
 
 	if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
-		hap1_kmer_count++;
-		hap1_found = true;
+		component_map[graph_component][component_haplotype][parent_hap1_int]++;
 		}
 
 	if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
-		hap2_kmer_count++;	
-		hap2_found=true;	
+		component_map[graph_component][component_haplotype][parent_hap2_int]++;	
 		}
 
-	// consider that this limits to 2 haplotype assemblies
-	return pair(hap1_found,hap2_found);
-}
-
-// kmer set find
-bool KmerSets::find_haplotype_kmer_set_count(unordered_set <string> child_kmers) {
-	unordered_set <string> :: iterator itr;
-	hap1_kmer_count = 0;
-	hap2_kmer_count = 0;
-
-	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
-		{
-		if (hap1_kmer_set.find(*itr) != hap1_kmer_set.end()){
-			hap1_kmer_count++;
-			}
-
-		if (hap2_kmer_set.find(*itr) != hap2_kmer_set.end()){
-			hap2_kmer_count++;
-			}
-		}
-	cout << "checking kmer set." << endl;
-	cout << " found " << hap1_kmer_count << " hap1 (hg03) kmers." << endl;
-	cout << " found " << hap2_kmer_count << " hap2 (hg04) kmers." << endl << endl ;
 	return 0;
 }
+
+bool KmerSets::find_haplotype_kmer_set_count(string path_hap_string, unordered_set <string> child_kmers) {
+
+	unordered_set <string> :: iterator itr;
+	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
+		{
+			increment_parental_kmer_count(path_hap_string,*itr);
+		}
+
+	return 0;
+}
+
 
 }
