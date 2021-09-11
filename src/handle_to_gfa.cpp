@@ -110,22 +110,4 @@ void handle_graph_to_gfa(const PathHandleGraph& graph, const IncrementalIdMap<st
     });
 }
 
-
-// TODO write this method to use the overlaps and id map to write the linkages/sequences in the canonical direction
-// using the canonical names as well, wherever possible
-void handle_graph_to_canonical_gfa(const HandleGraph& graph, const string& output_path){
-
-    throw runtime_error("ERROR: called unfinished method 'handle_graph_to_canonical_gfa'");
-//    ofstream output_gfa(output_path);
-//    graph.for_each_handle([&](handle_t& node){
-//
-//    });
-//
-//    graph.for_each_edge([&](edge_t& edge){
-//
-//    });
-}
-
-
-
 }

@@ -2,7 +2,7 @@
 
 namespace gfase {
 
-void for_node_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
+void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
     unordered_set<nid_t> visited;
     queue<nid_t> q;
 
@@ -43,7 +43,7 @@ void for_node_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(c
 }
 
 
-void for_edge_in_bfs(HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f) {
+void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f) {
     unordered_set<nid_t> visited_nodes;
     unordered_map <handle_t, unordered_set<handle_t> > visited_edges;
 
@@ -126,8 +126,8 @@ void for_each_connected_component(HandleGraph& graph, const function<void(unorde
 /// For any 2 graphs with corresponding id maps, take a handle from the source graph and translate it into
 /// an id in the destination graph, adding it to the destination id_map if it does not yet exist.
 /// Then, return the id of the handle in source and destination as a pair
-pair<nid_t,nid_t> translate_id(HandleGraph& source_graph,
-                  IncrementalIdMap<string>& source_id_map,
+pair<nid_t,nid_t> translate_id(const HandleGraph& source_graph,
+                  const IncrementalIdMap<string>& source_id_map,
                   HandleGraph& destination_graph,
                   IncrementalIdMap<string>& destination_id_map,
                   handle_t source_handle){
@@ -135,16 +135,12 @@ pair<nid_t,nid_t> translate_id(HandleGraph& source_graph,
     auto id = source_graph.get_id(source_handle);
     auto name = source_id_map.get_name(id);
 
-    cerr << "Translating: " << name << " with id " << id << '\n';
-
     nid_t translated_id;
     if (destination_id_map.exists(name)){
         translated_id = destination_id_map.get_id(name);
-        cerr << "exists already: " << translated_id << '\n';
     }
     else{
         translated_id = destination_id_map.insert(name);
-        cerr << "new id: " << translated_id << '\n';
     }
 
     return {id,translated_id};
@@ -152,10 +148,11 @@ pair<nid_t,nid_t> translate_id(HandleGraph& source_graph,
 
 
 void split_connected_components(
-        PathHandleGraph& graph,
+        MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
         vector<HashGraph>& graphs,
-        vector<IncrementalIdMap<string> >& id_maps) {
+        vector<IncrementalIdMap<string> >& id_maps,
+        bool delete_visited_components) {
 
     unordered_set<nid_t> all_nodes;
 
@@ -170,30 +167,38 @@ void split_connected_components(
         id_maps.emplace_back();
 
         unordered_set<string> paths_to_be_copied;
+        unordered_set<nid_t> to_be_deleted;
 
-        auto iter = all_nodes.begin();
+        auto start_node = *all_nodes.begin();
 
         // Duplicate all the nodes
-        for_node_in_bfs(graph, *iter, [&](const handle_t& h) {
+        for_node_in_bfs(graph, start_node, [&](const handle_t& h) {
             auto s = graph.get_sequence(h);
             nid_t id;
             nid_t other_id;
             tie(id, other_id) = translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
 
+            cerr << "iterating " << id << '\n';
+
             assert(not graphs.back().has_node(other_id));
             graphs.back().create_handle(s, other_id);
-
-            if (id != *iter) {
-                all_nodes.erase(id);
-            }
 
             graph.for_each_step_on_handle(h, [&](const step_handle_t s){
                 paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
             });
+
+            if (delete_visited_components) {
+                to_be_deleted.emplace(id);
+            }
+
+            if (id != start_node) {
+                all_nodes.erase(id);
+                cerr << "erasing " << id << '\n';
+            }
         });
 
         // Duplicate all the edges
-        for_edge_in_bfs(graph, *iter, [&](const handle_t& handle_a, const handle_t& handle_b) {
+        for_edge_in_bfs(graph, start_node, [&](const handle_t& handle_a, const handle_t& handle_b) {
             nid_t id_a;
             nid_t other_id_a;
             tie(id_a, other_id_a) = translate_id(graph, id_map, graphs.back(), id_maps.back(), handle_a);
@@ -215,7 +220,6 @@ void split_connected_components(
         // Duplicate all the paths
         for (auto& path_name: paths_to_be_copied){
             auto p = graph.get_path_handle(path_name);
-            cerr << "copying path " << path_name << '\n';
 
             assert(not graphs.back().has_path(path_name));
             auto other_p = graphs.back().create_path_handle(path_name);
@@ -233,7 +237,72 @@ void split_connected_components(
             });
         }
 
-        all_nodes.erase(iter);
+        all_nodes.erase(start_node);
+        cerr << "erasing " << start_node << '\n';
+
+        if (delete_visited_components) {
+            for (auto& n: to_be_deleted) {
+                cerr << "deleting " << n << '\n';
+                auto h = graph.get_handle(n);
+                graph.destroy_handle(h);
+            }
+        }
+    }
+}
+
+
+
+
+void write_connected_components_to_gfas(
+        const MutablePathDeletableHandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        path output_directory) {
+
+    unordered_set<nid_t> all_nodes;
+
+    graph.for_each_handle([&](const handle_t& h) {
+        auto n = graph.get_id(h);
+        all_nodes.emplace(n);
+    });
+
+    size_t i = 0;
+    while (not all_nodes.empty()) {
+        cerr << "NEW CONNECTED COMPONENT" << '\n';
+        string filename_prefix = output_directory / ("component_" + to_string(i));
+        ofstream file(filename_prefix + ".gfa");
+
+        unordered_set<string> paths_to_be_copied;
+        unordered_set<nid_t> to_be_deleted;
+
+        auto start_node = *all_nodes.begin();
+
+        // Duplicate all the nodes
+        for_node_in_bfs(graph, start_node, [&](const handle_t& h) {
+            auto id = graph.get_id(h);
+            if (id != start_node){
+                all_nodes.erase(id);
+            }
+
+            write_node_to_gfa(graph, h, file);
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
+                paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
+            });
+
+        });
+
+        // Duplicate all the edges
+        for_edge_in_bfs(graph, start_node, [&](const handle_t& handle_a, const handle_t& handle_b) {
+            write_edge_to_gfa(graph, {handle_a, handle_b}, file);
+        });
+
+        // Duplicate all the paths
+        for (auto& path_name: paths_to_be_copied){
+            write_path_to_gfa(graph, id_map, graph.get_path_handle(path_name), file);
+        }
+
+        all_nodes.erase(start_node);
+        i++;
     }
 }
 

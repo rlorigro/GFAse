@@ -240,13 +240,13 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_binary_sequence
-        test_fixed_binary_sequence
         test_binary_sequence_performance
-        test_nonbinary_sequence_performance
+        test_fixed_binary_sequence
         test_fixed_binary_sequence_sparsepp_performance
-        test_nonbinary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
+        test_nonbinary_sequence_performance
+        test_nonbinary_sequence_sparsepp_performance
         )
 
 foreach(FILENAME_PREFIX ${TESTS})
@@ -265,10 +265,12 @@ endforeach()
 # -------- EXECUTABLES --------
 
 set(EXECUTABLES
-        unzip
+        create_bandage_path_color_table
         extract_haplotype_kmers
         extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
+        split_connected_components
+        unzip
         )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})

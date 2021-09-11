@@ -4,7 +4,6 @@
 #include "CLI11.hpp"
 
 #include <map>
-
 #include <string>
 
 using ghc::filesystem::path;

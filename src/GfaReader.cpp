@@ -58,7 +58,7 @@ GfaReader::GfaReader(path gfa_path){
         this->index();
         cerr << "done\n";
     }
-        // If index is found, load it
+    // If index is found, load it
     else{
         cerr << "Found index, loading from disk: " << this->gfa_index_path << " ... ";
 
@@ -66,7 +66,7 @@ GfaReader::GfaReader(path gfa_path){
         cerr << "done\n";
     }
 
-    this->map_sequences_by_node();
+//    this->map_sequences_by_node();
 
 }
 
