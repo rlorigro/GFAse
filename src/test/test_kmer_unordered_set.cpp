@@ -10,12 +10,11 @@ int main() {
 	KS.get_parent_kmer_sets();
 	// change string into int 
 	int pathi = 0;
-	string path_string = "0-1"; // mom cout , dad count
-
+	string path_string = "0-1"; 
 
 	// test single kmer counting
 	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGAAAGATCTGAACACCTCATTAATAAGATATACA"); // dad kmer
-	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGCATGAAACATATGAAGCAAAAAGTGAAAGTCCC");
+	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGCATGAAACATATGAAGCAAAAAGTGAAAGTCCC"); // dad kmer
 
 	path_string = "0-0";
 	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAATTAAAAAA");
