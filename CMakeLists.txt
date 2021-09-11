@@ -269,7 +269,6 @@ set(EXECUTABLES
         extract_haplotype_kmers
         extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
-        phase_graph_components
         )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
