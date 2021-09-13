@@ -4,6 +4,7 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include <array>
 #include <map>
 #include <unordered_set>
 #include <fstream>
@@ -29,21 +30,21 @@ class KmerSets {
 		float num_hap1_kmers;
 		float num_hap2_kmers;
 		// component and haplotype 
-		int graph_component;
-		int component_haplotype;
-		static const int parent_hap1_int = 0; // hg03 paternal 
-		static const int parent_hap2_int = 1; // hg04 maternal
-		// < component,  [component_hap_path][parent_hap_int] >
-		map<int, float [2][2]> component_map;
+		size_t graph_component;
+		size_t component_haplotype;
+		static const size_t parent_hap1_index = 0; // hg03 paternal 
+		static const size_t parent_hap2_index = 1; // hg04 maternal
+		// < component,  [component_hap_path][parent_hap_index] >
+		map<size_t, array <array <float,2>, 2>> component_map;
 
 	/// Methods ///
 	public:
 		KmerSets();
 		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args);
-		void load_file_into_unordered_set(path , unordered_set <string>& , string);
-		void get_size_of_kmer_file(path , string );
+		void load_file_into_unordered_set(path , unordered_set <string>& );
+		float get_size_of_kmer_file(path);
 		void get_parent_kmer_sets();
-		bool find_haplotype_kmer_set_count(string, unordered_set <string>);
+		bool parental_kmer_count_for_kmer_set(string, unordered_set <string>);
 		void parse_path_string(string);
 		bool increment_parental_kmer_count(string, string );
 		void normalize_kmer_counts();

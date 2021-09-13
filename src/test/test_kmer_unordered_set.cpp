@@ -8,8 +8,8 @@ int main() {
 	
 	KmerSets KS;
 	KS.get_parent_kmer_sets();
-	// change string into int 
-	int pathi = 0;
+	// change string into size_t 
+	size_t pathi = 0;
 	string path_string = "0-1"; 
 
 	// test single kmer counting
@@ -29,7 +29,7 @@ int main() {
 	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACCCAAAAAA"); // mat
 	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAAAATAAA"); // mat
 	
-	KS.find_haplotype_kmer_set_count(path_string, child_kmer_set);
+	KS.parental_kmer_count_for_kmer_set(path_string, child_kmer_set);
 
 	KS.print_component_parent_conf_matrix();
 

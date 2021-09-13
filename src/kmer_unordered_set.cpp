@@ -1,6 +1,7 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include <array>
 #include "kmer_unordered_set.hpp"
 #include <unordered_set>
 #include <fstream>
@@ -29,12 +30,17 @@ KmerSets::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path){
         throw runtime_error("ERROR: file could not be opened: " + this->hap2_kmer_fa_path.string());
     }
 
-    // fill the kmer sets 
-    load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set, "hap1");
-    load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set, "hap2");
+    // get the nimber of kmers for each parent 
+    num_hap1_kmers=get_size_of_kmer_file(hap1_kmer_fa_path);
+    num_hap2_kmers=get_size_of_kmer_file(hap2_kmer_fa_path);
+    cerr << " hap1 kmer file path: " << hap1_kmer_fa_path << "\n # kmers: " << num_hap1_kmers << endl;
+	cerr << " hap2 kmer file path: " << hap2_kmer_fa_path << "\n # kmers: " << num_hap2_kmers << endl;    
+	// fill the kmer sets 
+    load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
+    load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
 }
 
-void KmerSets::get_size_of_kmer_file(path file_path, string hap){
+float KmerSets::get_size_of_kmer_file(path file_path){
 	// # of kmers by (total file size/size of 2 lines)
 
 	// size of 2 fa lines = size of 1 kmer
@@ -47,22 +53,13 @@ void KmerSets::get_size_of_kmer_file(path file_path, string hap){
     fsize = fileline.tellg() - fsize;
     // move to end
     fileline.seekg(0,ios_base::end);
-	// set number of kmer variables
-	if (hap=="hap1"){
-		num_hap1_kmers=fileline.tellg()/fsize;
-		cout << hap << " kmer file path: " << file_path << "\n # kmers: " << num_hap1_kmers << endl;
-	}
-	if (hap=="hap2"){
-		num_hap2_kmers=fileline.tellg()/fsize;
-		cout << hap << " kmer file path: " << file_path << "\n # kmers: " << num_hap2_kmers << endl;
-	}
+	float size = fileline.tellg()/fsize;
 	fileline.close();
 
+	return size;
 }
 
-void KmerSets::load_file_into_unordered_set(path file_path, unordered_set <string>& set, string hap){
-	
-	get_size_of_kmer_file(file_path, hap);
+void KmerSets::load_file_into_unordered_set(path file_path, unordered_set <string>& set ){
 
 	// Read from the text file
 	ifstream KmerFile(file_path);
@@ -96,8 +93,8 @@ void KmerSets::get_parent_kmer_sets(){
     path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
     path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
 
-    load_file_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set,"hap1");
-    load_file_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set,"hap2");
+    load_file_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set);
+    load_file_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set);
 
 }
 
@@ -105,19 +102,19 @@ void KmerSets::get_parent_kmer_sets(){
 void KmerSets::print_component_parent_conf_matrix() {
 	cout << "Number of graph components: " << component_map.size() << endl;
 	
-	for (int i = 0; i < component_map.size(); i++) {
+	for (size_t i = 0; i < component_map.size(); i++) {
 
-		cout << "component: " << i << "\n   pat\tmat" << endl;
+		cout << "component: " << i << "\n  |pat\t|mat" << endl;
 		
-		for (int j = 0; j < 2; j++) {
-			cout << j << " |" << component_map[i][j][parent_hap1_int] << "\t|" << component_map[i][j][parent_hap2_int] << "\t|" <<endl;
+		for (size_t j = 0; j < 2; j++) {
+			cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
 		}
 		cout << endl;
 	}
 }
 
 void KmerSets::parse_path_string(string path_string){
-	int string_delim = path_string.find('-');
+	size_t string_delim = path_string.find('-');
 	this->graph_component = stoi(path_string.substr(0,string_delim));
 	this->component_haplotype = stoi(path_string.substr(string_delim+1,path_string.length()));
 }
@@ -129,11 +126,11 @@ bool KmerSets::increment_parental_kmer_count( string path_hap_string, string chi
 	parse_path_string(path_hap_string);
 
 	if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
-		component_map[graph_component][component_haplotype][parent_hap1_int]++;
+		component_map[graph_component][component_haplotype][parent_hap1_index]++;
 		}
 
 	if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
-		component_map[graph_component][component_haplotype][parent_hap2_int]++;	
+		component_map[graph_component][component_haplotype][parent_hap2_index]++;	
 		}
 
 	return 0;
@@ -143,24 +140,24 @@ void KmerSets::normalize_kmer_counts(){
 	// divide by # of kmers for each parent
 
 	cerr << "Normalize Component Map..\n";
-	for (int i = 0; i < component_map.size(); i++) {		
-		for (int j = 0; j < 2; j++) {
-			float raw_count = component_map[i][j][parent_hap1_int];
-			component_map[i][j][parent_hap1_int] = (raw_count/num_hap1_kmers);
+	for (size_t i = 0; i < component_map.size(); i++) {		
+		for (size_t j = 0; j < 2; j++) {
+			float raw_count = component_map[i][j][parent_hap1_index];
+			component_map[i][j][parent_hap1_index] = (raw_count/num_hap1_kmers);
 
-			raw_count = component_map[i][j][parent_hap2_int];
-			component_map[i][j][parent_hap2_int] = (raw_count/num_hap2_kmers);
+			raw_count = component_map[i][j][parent_hap2_index];
+			component_map[i][j][parent_hap2_index] = (raw_count/num_hap2_kmers);
 
 		}
 	}
 }
 
-bool KmerSets::find_haplotype_kmer_set_count(string path_hap_string, unordered_set <string> child_kmers) {
+bool KmerSets::parental_kmer_count_for_kmer_set(string path_name, unordered_set <string> child_kmers) {
 
 	unordered_set <string> :: iterator itr;
 	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
 		{
-			increment_parental_kmer_count(path_hap_string,*itr);
+			increment_parental_kmer_count(path_name,*itr);
 		}
 
 	return 0;
