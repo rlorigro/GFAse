@@ -39,17 +39,8 @@ KmerSets::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path){
     load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
     load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
 
-    cout << endl << "empty component_map: " << endl;
-    for (size_t i = 0; i < 2; i++) {
-
-		cout << "component: " << i << endl << "  |pat\t|mat" << endl;
-		
-		for (size_t j = 0; j < 2; j++) {
-			cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
-		}
-		cout << endl;
-	}
 }
+
 
 
 float KmerSets::get_size_of_kmer_file(path file_path){
