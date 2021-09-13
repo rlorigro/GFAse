@@ -38,7 +38,19 @@ KmerSets::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path){
 	// fill the kmer sets 
     load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
     load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
+
+    cout << endl << "empty component_map: " << endl;
+    for (size_t i = 0; i < 2; i++) {
+
+		cout << "component: " << i << endl << "  |pat\t|mat" << endl;
+		
+		for (size_t j = 0; j < 2; j++) {
+			cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
+		}
+		cout << endl;
+	}
 }
+
 
 float KmerSets::get_size_of_kmer_file(path file_path){
 	// # of kmers by (total file size/size of 2 lines)
@@ -98,21 +110,6 @@ void KmerSets::get_parent_kmer_sets(){
 
 }
 
-
-void KmerSets::print_component_parent_conf_matrix() {
-	cout << "Number of graph components: " << component_map.size() << endl;
-	
-	for (size_t i = 0; i < component_map.size(); i++) {
-
-		cout << "component: " << i << "\n  |pat\t|mat" << endl;
-		
-		for (size_t j = 0; j < 2; j++) {
-			cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
-		}
-		cout << endl;
-	}
-}
-
 void KmerSets::parse_path_string(string path_string){
 	size_t string_delim = path_string.find('-');
 	this->graph_component = stoi(path_string.substr(0,string_delim));
@@ -136,6 +133,17 @@ bool KmerSets::increment_parental_kmer_count( string path_hap_string, string chi
 	return 0;
 }
 
+bool KmerSets::increment_parental_kmer_count(string path_name, unordered_set <string> child_kmers) {
+
+	unordered_set <string> :: iterator itr;
+	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
+		{
+			increment_parental_kmer_count(path_name,*itr);
+		}
+
+	return 0;
+}
+
 void KmerSets::normalize_kmer_counts(){
 	// divide by # of kmers for each parent
 
@@ -152,15 +160,18 @@ void KmerSets::normalize_kmer_counts(){
 	}
 }
 
-bool KmerSets::parental_kmer_count_for_kmer_set(string path_name, unordered_set <string> child_kmers) {
+void KmerSets::print_component_parent_conf_matrix() {
+	cout << "Number of graph components: " << component_map.size() << endl;
+	
+	for (size_t i = 0; i < component_map.size(); i++) {
 
-	unordered_set <string> :: iterator itr;
-	for (itr = child_kmers.begin(); itr != child_kmers.end(); itr++)
-		{
-			increment_parental_kmer_count(path_name,*itr);
+		cout << "component: " << i << "\n  |pat\t|mat" << endl;
+		
+		for (size_t j = 0; j < 2; j++) {
+			cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
 		}
-
-	return 0;
+		cout << endl;
+	}
 }
 
 

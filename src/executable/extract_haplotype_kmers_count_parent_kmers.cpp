@@ -129,7 +129,7 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
 
     cerr << "Iterating path kmers..." << '\n';
 
-    cerr << " Number of (components?) in Graph: " << graph.get_path_count() << '\n';
+    cerr << " Number of components in graph: " << graph.get_path_count() << '\n';
 
     bool prev_has_diploid;
 

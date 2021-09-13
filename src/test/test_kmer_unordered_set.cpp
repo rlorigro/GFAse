@@ -29,7 +29,7 @@ int main() {
 	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACCCAAAAAA"); // mat
 	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAAAATAAA"); // mat
 	
-	KS.parental_kmer_count_for_kmer_set(path_string, child_kmer_set);
+	KS.increment_parental_kmer_count(path_string, child_kmer_set);
 
 	KS.print_component_parent_conf_matrix();
 
