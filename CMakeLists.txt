@@ -267,8 +267,8 @@ endforeach()
 set(EXECUTABLES
         create_bandage_path_color_table
         extract_haplotype_kmers
-        extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
+        phase_haplotype_paths
         remove_empty_nodes
         split_connected_components
         unzip
