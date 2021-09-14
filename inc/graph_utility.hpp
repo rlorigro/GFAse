@@ -1,5 +1,5 @@
-#ifndef GFASE_GRAPHUTILITY_HPP
-#define GFASE_GRAPHUTILITY_HPP
+#ifndef GFASE_GRAPH_UTILITY_HPP
+#define GFASE_GRAPH_UTILITY_HPP
 
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
@@ -60,4 +60,4 @@ void print_graph_paths(const PathHandleGraph& graph, const IncrementalIdMap<stri
 
 }
 
-#endif //GFASE_GRAPHUTILITY_HPP
+#endif //GFASE_GRAPH_UTILITY_HPP

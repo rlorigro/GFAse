@@ -48,13 +48,13 @@ set(SOURCES
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
-        src/GraphUtility.cpp
+        src/graph_utility.cpp
         src/HaplotypePathKmer.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
-        src/kmer_unordered_set.cpp
+        src/KmerSets.cpp
         )
 
 

@@ -2,7 +2,7 @@
 #include "IncrementalIdMap.hpp"
 #include "BinarySequence.hpp"
 #include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "CLI11.hpp"
 

@@ -1,7 +1,7 @@
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
 #include "CLI11.hpp"
@@ -28,6 +28,9 @@ using handlegraph::handle_t;
 using std::string;
 using std::cout;
 using std::cerr;
+
+
+// TODO: fix for whole genome, missing nodes/links in path ??
 
 
 void split_gfa_components(path gfa_path){

@@ -1,4 +1,4 @@
-#include "GraphUtility.hpp"
+#include "graph_utility.hpp"
 
 namespace gfase {
 

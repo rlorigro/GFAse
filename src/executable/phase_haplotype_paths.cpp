@@ -2,10 +2,10 @@
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
-#include "kmer_unordered_set.hpp"
+#include "KmerSets.hpp"
 #include "CLI11.hpp"
 
 #include "bdsg/hash_graph.hpp"

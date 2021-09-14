@@ -1,6 +1,6 @@
 #include "BinarySequence.hpp"
 #include "Filesystem.hpp"
-#include "sparsepp/spp.h"
+#include "spp.h"
 #include "CLI11.hpp"
 
 #include <fstream>
@@ -11,11 +11,11 @@
 using ghc::filesystem::path;
 using gfase::BinarySequence;
 
+using spp::sparse_hash_set;
 using std::ifstream;
 using std::string;
 using std::cout;
 using std::cerr;
-using spp::sparse_hash_set;
 using std::map;
 using std::runtime_error;
 

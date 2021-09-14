@@ -1,7 +1,7 @@
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
-#include "GraphUtility.hpp"
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
 #include "CLI11.hpp"
