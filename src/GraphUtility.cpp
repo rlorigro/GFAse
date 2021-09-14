@@ -251,8 +251,6 @@ void split_connected_components(
 }
 
 
-
-
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
