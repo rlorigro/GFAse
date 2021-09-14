@@ -269,6 +269,7 @@ set(EXECUTABLES
         extract_haplotype_kmers
         extract_haplotype_kmers_count_parent_kmers
         get_path_lengths
+        remove_empty_nodes
         split_connected_components
         unzip
         )
