@@ -41,12 +41,12 @@ class KmerSets {
 	public:
 		KmerSets();
 		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args);
-		float get_size_of_kmer_file(path);
-		void load_file_into_unordered_set(path , unordered_set <string>& );		
+		float get_size_of_kmer_file(path file_path);
+		void load_file_into_unordered_set(path file_path, unordered_set <string>& set);		
 		void get_parent_kmer_sets();
-		void parse_path_string(string);
-		bool increment_parental_kmer_count(string, string );
-		bool increment_parental_kmer_count(string, unordered_set <string>);
+		void parse_path_string(string path_string);
+		bool increment_parental_kmer_count(string path_hap_string, string child_kmer);
+		bool increment_parental_kmer_count(string path_name, unordered_set <string> child_kmers);
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix();
 };
