@@ -1,5 +1,7 @@
 #include "FixedBinarySequence.hpp"
 #include <unordered_set>
+#include <string>
+#include <deque>
 #include <list>
 #include <map>
 

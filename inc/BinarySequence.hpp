@@ -5,11 +5,12 @@
 #include "MurmurHash2.hpp"
 
 #include <type_traits>
+#include <iostream>
 #include <vector>
 #include <bitset>
 #include <string>
+#include <deque>
 #include <array>
-#include <iostream>
 
 using std::runtime_error;
 using std::is_integral;
@@ -17,6 +18,7 @@ using std::to_string;
 using std::vector;
 using std::bitset;
 using std::string;
+using std::deque;
 using std::array;
 using std::cerr;
 
@@ -36,6 +38,7 @@ public:
     /// Methods ///
     BinarySequence();
     BinarySequence(string& s);
+    BinarySequence(deque<char>& s);
     void shift(char c);
     void to_string(string& s);
     size_t get_byte_length() const;
@@ -81,6 +84,17 @@ template<class T> BinarySequence<T>::BinarySequence():
 
 
 template<class T> BinarySequence<T>::BinarySequence(string& s):
+        length(0)
+{
+    static_assert(is_integral<T>::value, "ERROR: provided type for BinarySequence is not integer");
+
+    for (auto& c: s){
+        shift(c);
+    }
+}
+
+
+template<class T> BinarySequence<T>::BinarySequence(deque<char>& s):
         length(0)
 {
     static_assert(is_integral<T>::value, "ERROR: provided type for BinarySequence is not integer");

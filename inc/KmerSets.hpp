@@ -44,7 +44,7 @@ template <class T> class KmerSets {
 		KmerSets();
 		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args);
 		float get_size_of_kmer_file(path file_path);
-		void load_file_into_unordered_set(path file_path, unordered_set <T>& set);
+		void load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s);
 		void get_parent_kmer_sets();
         pair<size_t, size_t> parse_path_string(string path_string);
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
@@ -57,7 +57,7 @@ template <class T> class KmerSets {
 template <class T> KmerSets<T>::KmerSets():
         num_hap1_kmers(0),
         num_hap2_kmers(0)
-{};
+{}
 
 
 template <class T> KmerSets<T>::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path):
@@ -75,15 +75,15 @@ template <class T> KmerSets<T>::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_
         throw runtime_error("ERROR: file could not be opened: " + this->hap2_kmer_fa_path.string());
     }
 
-    // Get the nimber of kmers for each parent
+    // Get the number of kmers for each parent
     num_hap1_kmers=get_size_of_kmer_file(hap1_kmer_fa_path);
     num_hap2_kmers=get_size_of_kmer_file(hap2_kmer_fa_path);
     cerr << " hap1 kmer file path: " << hap1_kmer_fa_path << "\n # kmers: " << num_hap1_kmers << endl;
     cerr << " hap2 kmer file path: " << hap2_kmer_fa_path << "\n # kmers: " << num_hap2_kmers << endl;
 
     // Fill the kmer sets
-    load_file_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
-    load_file_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
+    load_fasta_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
+    load_fasta_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
 }
 
 
@@ -93,11 +93,11 @@ template <class T> float KmerSets<T>::get_size_of_kmer_file(path file_path){
     // Size of 2 fa lines = size of 1 kmer
     ifstream fileline(file_path, ios::binary );
     streampos fsize = 0;
-    string fline;
+    string line;
 
     // Move 1 kmer = 2 lines through file and store size
-    getline(fileline, fline);
-    getline(fileline, fline);
+    getline(fileline, line);
+    getline(fileline, line);
     fsize = fileline.tellg() - fsize;
 
     // Move to end
@@ -109,21 +109,18 @@ template <class T> float KmerSets<T>::get_size_of_kmer_file(path file_path){
 }
 
 
-template <class T> void KmerSets<T>::load_file_into_unordered_set(path file_path, unordered_set <T>& set ){
+template <class T> void KmerSets<T>::load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s){
 
     // Read from the text file
     ifstream KmerFile(file_path);
 
-    string line_txt;
+    string line;
     // Use a while loop to read the file line by line
-    while (getline (KmerFile, line_txt)) {
-        // Look for the > delimiting the kmer ID
-        size_t found = line_txt.rfind('>');
-        if (found!=string::npos){
-            // Insert kmer (line after the '>') into set
-            getline (KmerFile, line_txt);
-            set.insert(line_txt);
+    while (getline (KmerFile, line)) {
+        if (line[0] == '>'){
+            continue;
         }
+        s.emplace(line);
     }
     // Close the file
     KmerFile.close();
@@ -143,8 +140,8 @@ template <class T> void KmerSets<T>::get_parent_kmer_sets(){
     path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
     path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
 
-    load_file_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set);
-    load_file_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set);
+    load_fasta_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set);
+    load_fasta_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set);
 }
 
 
@@ -200,7 +197,6 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
 
             raw_count = component_map[i][j][parent_hap2_index];
             component_map[i][j][parent_hap2_index] = (raw_count/num_hap2_kmers);
-
         }
     }
 }

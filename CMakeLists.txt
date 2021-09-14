@@ -54,6 +54,7 @@ set(SOURCES
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
+        src/Phase.cpp
         src/KmerSets.cpp
         )
 
@@ -245,6 +246,7 @@ set(TESTS
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
+        test_phase_haplotype_paths
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         )

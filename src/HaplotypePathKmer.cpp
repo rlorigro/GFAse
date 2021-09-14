@@ -93,6 +93,7 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
         // Verify that this kmer actually fits in the path
         if (steps.back() == terminal_step and stop_index + 1 >= terminal_index) {
             sufficient_path_length = false;
+            break;
         }
     }
 

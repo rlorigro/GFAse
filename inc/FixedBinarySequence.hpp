@@ -8,6 +8,7 @@
 #include <vector>
 #include <bitset>
 #include <string>
+#include <deque>
 #include <array>
 #include <iostream>
 
@@ -17,6 +18,7 @@ using std::to_string;
 using std::vector;
 using std::bitset;
 using std::string;
+using std::deque;
 using std::array;
 using std::cerr;
 
@@ -35,6 +37,7 @@ public:
     /// Methods ///
     FixedBinarySequence();
     FixedBinarySequence(string& s);
+    FixedBinarySequence(deque<char>& s);
     void to_string(string& s, size_t length);
     void print_as_bits() const;
 };
@@ -77,6 +80,39 @@ template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence()
 
 
 template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(string& s):
+    sequence({})  // Bracket initializer ensures the array is filled with zeros
+{
+    static_assert(is_integral<T>::value, "ERROR: provided type for FixedBinarySequence is not integer");
+
+    size_t length = 0;
+    size_t word_index = 0;
+    for (auto& c: s){
+        T bits = base_to_index.at(c);
+
+        if (bits == 4){
+            throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(c,1));
+        }
+
+        uint8_t shift_size = (2*length) % (sizeof(T)*8);
+
+        if (shift_size == 0 and length > 0){
+            word_index++;
+        }
+        else {
+            bits <<= shift_size;
+        }
+
+//        cerr << bitset<sizeof(T)*8>(sequence.at(word_index)) << '\n';
+//        cerr << bitset<sizeof(T)*8>(bits) << '\n';
+
+        sequence.at(word_index) |= bits;
+        length++;
+    }
+}
+
+
+// TODO: figure out how to deduplicate this with templates
+template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(deque<char>& s):
     sequence({})  // Bracket initializer ensures the array is filled with zeros
 {
     static_assert(is_integral<T>::value, "ERROR: provided type for FixedBinarySequence is not integer");
