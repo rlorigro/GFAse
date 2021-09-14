@@ -145,12 +145,12 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
             if (kmer.has_diploid){
                 string kmer_string;
                 for (auto& c: kmer.sequence){
-                    cerr << c; 
+                    // cerr << c; 
                     kmer_string+=c;
                 }
                 // compare kmer to parental kmers
                 ks.increment_parental_kmer_count(component_path_string, kmer_string);
-                cerr << '\n'; 
+                // cerr << '\n'; 
 
             }
             else{

@@ -113,6 +113,14 @@ bool KmerSets::increment_parental_kmer_count( string path_hap_string, string chi
 	// this is done for each kmer - consider moving it out of this function
 	parse_path_string(path_hap_string);
 
+	// zero-innitialize the arrays' for each component
+	auto iter = component_map.find(graph_component);
+	if (iter == component_map.end()){
+		component_map.insert({graph_component, {{{0,0},{0,0}}}});
+		// cout << " first time innitializing: " << graph_component << " " << component_map[graph_component][component_haplotype][parent_hap1_index] << " " << component_map[graph_component][component_haplotype][parent_hap2_index]<< endl;
+		// 	}
+
+	// find child_kmer in each parent kmer_set
 	if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
 		component_map[graph_component][component_haplotype][parent_hap1_index]++;
 		}
