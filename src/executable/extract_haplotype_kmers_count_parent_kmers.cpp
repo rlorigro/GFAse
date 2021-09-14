@@ -12,6 +12,7 @@
 
 #include <string>
 
+using namespace gfase;
 using gfase::HaplotypePathKmer;
 using gfase::IncrementalIdMap;
 using gfase::for_each_connected_component;
@@ -128,24 +129,28 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
 
     cerr << "Iterating path kmers..." << '\n';
 
+    cerr << " Number of components in graph: " << graph.get_path_count() << '\n';
+
     bool prev_has_diploid;
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     graph.for_each_path_handle([&](const path_handle_t& p){
         cerr << ">" << graph.get_path_name(p) << '\n';
- 
+
         HaplotypePathKmer kmer(graph, p, k);
+
+        string component_path_string = graph.get_path_name(p);
 
         while (kmer.step()){
             if (kmer.has_diploid){
                 string kmer_string;
                 for (auto& c: kmer.sequence){
-                    cerr << c; 
+                    // cerr << c; 
                     kmer_string+=c;
                 }
                 // compare kmer to parental kmers
-                ks.find_haplotype_single_kmer_count(kmer_string);
-                cerr << '\n'; 
+                ks.increment_parental_kmer_count(component_path_string, kmer_string);
+                // cerr << '\n'; 
 
             }
             else{
@@ -159,8 +164,10 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k, path paternal_kme
             }
 
             prev_has_diploid = kmer.has_diploid;
-        }
+        }    
     });
+    ks.normalize_kmer_counts();
+    ks.print_component_parent_conf_matrix();
 }
 
 

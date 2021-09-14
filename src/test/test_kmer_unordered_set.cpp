@@ -2,17 +2,35 @@
 #include <unordered_set>
 #include <string>
 
-int main() {
-	unordered_set <string> child_kmer_set;
-	child_kmer_set.insert("GATTATTTTTACATTAAGGTTATCACCTCAAATCCTTTTTTAAAAATAGTCAGCA");
-	child_kmer_set.insert("GGACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTG");
-	child_kmer_set.insert("GACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC");
+using namespace gfase;
 
+int main() {
+	
 	KmerSets KS;
 	KS.get_parent_kmer_sets();
-	// KS.fill_kmer_sets();  // with kmers that match the child set here
-	KS.find_haplotype_single_kmer_count("GACTCTTCCCAGATGGATTTGAAACTTGAAATATGGAGGATAGAACTGTTACTGC"); // dad kmer
-	KS.find_haplotype_single_kmer_count("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATCG"); // mom kmer
-	// KS.find_haplotype_kmer_set_count(child_kmer_set);
+	// change string into size_t 
+	size_t pathi = 0;
+	string path_string = "0-1"; 
+
+	// test single kmer counting
+	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGAAAGATCTGAACACCTCATTAATAAGATATACA"); // dad kmer
+	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGCATGAAACATATGAAGCAAAAAGTGAAAGTCCC"); // dad kmer
+
+	path_string = "0-0";
+	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAATTAAAAAA");
+	
+	path_string = "0-1";
+	KS.increment_parental_kmer_count( path_string,"AAAAAAAAAAAAAAAAAAGGTGTCCATCCGAAAACCACCATTAAGAAACTCAGAC"); // dad kmer
+
+	// test kmer set counting
+	path_string = "1-1";
+	unordered_set <string> child_kmer_set;
+	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAGGTGAAAGATCTGAACACCTCATTAATAAGATATACA"); //pat
+	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACCCAAAAAA"); // mat
+	child_kmer_set.insert("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAAAATAAA"); // mat
+	
+	KS.increment_parental_kmer_count(path_string, child_kmer_set);
+
+	KS.print_component_parent_conf_matrix();
 
 }
