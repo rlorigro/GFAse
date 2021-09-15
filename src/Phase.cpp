@@ -116,7 +116,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         }
     });
 
-    ks.normalize_kmer_counts();
+//    ks.normalize_kmer_counts();
     ks.print_component_parent_conf_matrix();
 }
 
