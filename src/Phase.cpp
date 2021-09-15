@@ -1,6 +1,7 @@
 #include "FixedBinarySequence.hpp"
 #include "Phase.hpp"
 
+
 namespace gfase{
 
 
@@ -42,33 +43,11 @@ void extend_paths(MutablePathMutableHandleGraph& graph) {
         auto right_result = find_singleton_adjacent_handle(graph, end_handle, false);
 
         if (left_result.second) {
-            size_t n_paths = 0;
-            graph.for_each_step_on_handle(left_result.first, [&](const step_handle_t& s) {
-                n_paths++;
-            });
-
-            // Verify that there is not already some other path covering the adjacent node
-            if (n_paths == 0) {
-                to_be_prepended.emplace_back(p, left_result.first);
-            } else {
-                throw runtime_error(
-                        "ERROR: node left of haplotype path " + graph.get_path_name(p) + " is covered by other paths");
-            }
+            to_be_prepended.emplace_back(p, left_result.first);
         }
 
         if (right_result.second) {
-            size_t n_paths = 0;
-            graph.for_each_step_on_handle(right_result.first, [&](const step_handle_t& s) {
-                n_paths++;
-            });
-
-            // Verify that there is not already some other path covering the adjacent node
-            if (n_paths == 0) {
-                to_be_appended.emplace_back(p, right_result.first);
-            } else {
-                throw runtime_error(
-                        "ERROR: node right haplotype path " + graph.get_path_name(p) + " is covered by other paths");
-            }
+            to_be_appended.emplace_back(p, right_result.first);
         }
     });
 
@@ -82,8 +61,6 @@ void extend_paths(MutablePathMutableHandleGraph& graph) {
         graph.append_step(item.first, item.second);
     }
 }
-
-
 
 
 void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
@@ -138,7 +115,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
             prev_has_diploid = kmer.has_diploid;
         }
     });
-//    ks.normalize_kmer_counts();
+
+    ks.normalize_kmer_counts();
     ks.print_component_parent_conf_matrix();
 }
 
