@@ -37,8 +37,8 @@ public:
 
     /// Methods ///
     BinarySequence();
-    BinarySequence(string& s);
-    BinarySequence(deque<char>& s);
+    BinarySequence(const BinarySequence& s);
+    template <class T2> BinarySequence(const T2& s);
     void shift(char c);
     void to_string(string& s);
     size_t get_byte_length() const;
@@ -83,18 +83,13 @@ template<class T> BinarySequence<T>::BinarySequence():
 {}
 
 
-template<class T> BinarySequence<T>::BinarySequence(string& s):
-        length(0)
-{
-    static_assert(is_integral<T>::value, "ERROR: provided type for BinarySequence is not integer");
-
-    for (auto& c: s){
-        shift(c);
-    }
-}
+template <class T> BinarySequence<T>::BinarySequence(const BinarySequence<T>& s):
+        sequence(s.sequence),
+        length(s.length)
+{}
 
 
-template<class T> BinarySequence<T>::BinarySequence(deque<char>& s):
+template<class T> template <class T2> BinarySequence<T>::BinarySequence(const T2& s):
         length(0)
 {
     static_assert(is_integral<T>::value, "ERROR: provided type for BinarySequence is not integer");
