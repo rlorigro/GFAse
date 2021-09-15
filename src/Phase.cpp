@@ -5,64 +5,6 @@
 namespace gfase{
 
 
-// Find any nodes that are adjacent to the beginning and end of a path, as long as they are the only adjacent node
-pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph, const handle_t& h, bool left) {
-    handle_t adjacent_handle;
-    size_t n_adjacent = 0;
-    bool success = false;
-
-    graph.follow_edges(h, left, [&](const handle_t& other_handle) {
-        if (n_adjacent > 0) {
-            return false;
-        }
-
-        adjacent_handle = other_handle;
-        n_adjacent++;
-
-        return true;
-    });
-
-    // Only return true if there was exactly one adjacent handle
-    if (n_adjacent == 1) {
-        success = true;
-    }
-
-    return {adjacent_handle, success};
-}
-
-
-void extend_paths(MutablePathMutableHandleGraph& graph) {
-    vector<pair<path_handle_t, handle_t> > to_be_prepended;
-    vector<pair<path_handle_t, handle_t> > to_be_appended;
-
-    graph.for_each_path_handle([&](const path_handle_t& p) {
-        auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
-        auto end_handle = graph.get_handle_of_step(graph.path_back(p));
-
-        auto left_result = find_singleton_adjacent_handle(graph, begin_handle, true);
-        auto right_result = find_singleton_adjacent_handle(graph, end_handle, false);
-
-        if (left_result.second) {
-            to_be_prepended.emplace_back(p, left_result.first);
-        }
-
-        if (right_result.second) {
-            to_be_appended.emplace_back(p, right_result.first);
-        }
-    });
-
-    for (auto& item: to_be_prepended) {
-        // PREpend the LEFT side node if it meets the conditions
-        graph.prepend_step(item.first, item.second);
-    }
-
-    for (auto& item: to_be_appended) {
-        // Append the RIGHT side node if it meets the conditions
-        graph.append_step(item.first, item.second);
-    }
-}
-
-
 void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
     HashGraph graph;
     IncrementalIdMap<string> id_map;
@@ -70,7 +12,10 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
-    // plot_graph(graph, "start_graph");
+    cerr << "Identifying diploid paths..." << '\n';
+
+    vector<path_handle_t> diploid_paths;
+    find_diploid_paths(graph, diploid_paths);
 
     cerr << "Extending paths into haploid regions..." << '\n';
 

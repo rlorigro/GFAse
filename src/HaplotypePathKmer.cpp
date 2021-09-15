@@ -4,6 +4,7 @@
 
 using std::runtime_error;
 using std::to_string;
+using std::cerr;
 
 
 namespace gfase{
@@ -32,11 +33,19 @@ bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s){
 
         // If this is the terminal step, its ok for it to overlap (because the paths may have been extended)
         // If internal node is multiploid, then it must be error
-        if (not (s == graph.path_back(p) or s == graph.path_begin(p))) {
-            auto path_name = graph.get_path_name(p);
+        cerr << "step: " << graph.get_id(graph.get_handle_of_step(s)) << " begin: " << graph.get_id(graph.get_handle_of_step(graph.path_begin(p))) << '\n';
 
-            throw runtime_error(
-                    "ERROR: multiploid step in path " + path_name + " for node: " + to_string(graph.get_id(h)));
+        if (not (s == graph.path_back(p) or s == graph.path_begin(p))) {
+//            auto path_name = graph.get_path_name(p);
+//
+//            cerr << "ERROR: node has >2 paths: " << '\n';
+//
+//            graph.for_each_step_on_handle(h, [&](const step_handle_t& s_other){
+//                cerr << '\t' << graph.get_path_name(graph.get_path_handle_of_step(s_other)) << '\n';
+//            });
+//
+//            throw runtime_error(
+//                    "ERROR: multiploid step in path " + path_name + " for node: " + to_string(graph.get_id(h)));
         }
         else{
             // If terminal node and multiploid, it should not be treated as diploid
@@ -97,9 +106,9 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
         }
     }
 
-    if (not sufficient_path_length){
-        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
-    }
+//    if (not sufficient_path_length){
+//        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
+//    }
 
 }
 
