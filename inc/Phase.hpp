@@ -38,7 +38,7 @@ pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph
 void extend_paths(MutablePathMutableHandleGraph& graph);
 
 
-void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers);
+void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter='.');
 
 }
 

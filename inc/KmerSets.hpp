@@ -20,6 +20,9 @@ using ghc::filesystem::path;
 namespace gfase {
 
 
+pair<string, size_t> parse_path_string(string path_name, char delimiter);
+
+
 template <class T> class KmerSets {
 	/// Attributes ///
 	private:
@@ -28,7 +31,10 @@ template <class T> class KmerSets {
 		sparse_hash_set <T> hap2_kmer_set ;
 
         // < component,  [component_hap_path][parent_hap_index] >
-        map<size_t, array <array <float,2>, 2> > component_map;
+        unordered_map<string, array <array <float,2>, 2> > component_map;
+
+        // Character to use to split the path names into {component_name, haplotype}
+        char path_delimiter;
 
         // Path to kmer parent files as input from command line
 		path hap1_kmer_fa_path;
@@ -42,25 +48,27 @@ template <class T> class KmerSets {
 	/// Methods ///
 	public:
 		KmerSets();
-		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args);
+		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args, char path_delimiter='c');
 		float get_size_of_kmer_file(path file_path);
 		void load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s);
 		void get_parent_kmer_sets();
-        pair<size_t, size_t> parse_path_string(string path_string);
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
 		void increment_parental_kmer_count(string path_name, unordered_set <T> child_kmers);
+        void increment_parental_kmer_count(string component_name, size_t component_haplotype, T child_kmer);
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix();
 };
 
 
 template <class T> KmerSets<T>::KmerSets():
+        path_delimiter('-'),
         num_hap1_kmers(0),
         num_hap2_kmers(0)
 {}
 
 
-template <class T> KmerSets<T>::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path):
+template <class T> KmerSets<T>::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path, char path_delimiter):
+        path_delimiter(path_delimiter),
         hap1_kmer_fa_path(hap1_kmer_fa_path),
         hap2_kmer_fa_path(hap2_kmer_fa_path)
 {
@@ -145,36 +153,37 @@ template <class T> void KmerSets<T>::get_parent_kmer_sets(){
 }
 
 
-template <class T> pair<size_t, size_t> KmerSets<T>::parse_path_string(string path_name){
-    size_t string_delim = path_name.find('-');
-    size_t graph_component = stoi(path_name.substr(0,string_delim));
-    size_t component_haplotype = stoi(path_name.substr(string_delim+1,path_name.length()));
+// Single kmer find
+template <class T> void KmerSets<T>::increment_parental_kmer_count(string path_name, T child_kmer) {
+    string graph_component;
+    size_t component_haplotype;
 
-    return {graph_component, component_haplotype};
+    // This is done for each kmer - consider moving it out of this function
+    tie(graph_component, component_haplotype) = parse_path_string(path_name, path_delimiter);
+
+    increment_parental_kmer_count(graph_component, component_haplotype, child_kmer);
 }
 
 
 // Single kmer find
-template <class T> void KmerSets<T>::increment_parental_kmer_count( string path_name, T child_kmer) {
-    size_t graph_component;
-    size_t component_haplotype;
-
-    // This is done for each kmer - consider moving it out of this function
-    tie(graph_component, component_haplotype) = parse_path_string(path_name);
+template <class T> void KmerSets<T>::increment_parental_kmer_count(
+        string component_name,
+        size_t component_haplotype,
+        T child_kmer) {
 
     // Zero-initialize the arrays for each component
-    auto iter = component_map.find(graph_component);
+    auto iter = component_map.find(component_name);
     if (iter == component_map.end()){
-        component_map.insert({graph_component, {{{0,0},{0,0}}}});
+        component_map.insert({component_name, {{{0, 0}, {0, 0}}}});
     }
 
     // Find child_kmer in each parent kmer_set
     if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
-        component_map[graph_component][component_haplotype][parent_hap1_index]++;
+        component_map[component_name][component_haplotype][parent_hap1_index]++;
     }
 
     if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
-        component_map[graph_component][component_haplotype][parent_hap2_index]++;
+        component_map[component_name][component_haplotype][parent_hap2_index]++;
     }
 }
 
@@ -190,13 +199,10 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
     // Divide by # of kmers for each parent
 
     cerr << "Normalize Component Map..\n";
-    for (size_t i = 0; i < component_map.size(); i++) {
+    for (auto& [name, component]: component_map) {
         for (size_t j = 0; j < 2; j++) {
-            float raw_count = component_map[i][j][parent_hap1_index];
-            component_map[i][j][parent_hap1_index] = (raw_count/num_hap1_kmers);
-
-            raw_count = component_map[i][j][parent_hap2_index];
-            component_map[i][j][parent_hap2_index] = (raw_count/num_hap2_kmers);
+            component[j][parent_hap1_index] /= num_hap1_kmers;
+            component[j][parent_hap2_index] /= num_hap2_kmers;
         }
     }
 }
@@ -205,12 +211,12 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
 template <class T> void KmerSets<T>::print_component_parent_conf_matrix() {
     cout << "Number of graph components: " << component_map.size() << endl;
 
-    for (size_t i = 0; i < component_map.size(); i++) {
+    for (const auto& [name, component]: component_map) {
 
-        cout << "component: " << i << "\n  |pat\t|mat" << endl;
+        cout << "component: " << name << "\n  |pat\t|mat" << endl;
 
         for (size_t j = 0; j < 2; j++) {
-            cout << j << " |" << component_map[i][j][parent_hap1_index] << "\t|" << component_map[i][j][parent_hap2_index] << "\t|" <<endl;
+            cout << j << " |" << component[j][parent_hap1_index] << "\t|" << component[j][parent_hap2_index] << "\t|" <<endl;
         }
         cout << endl;
     }

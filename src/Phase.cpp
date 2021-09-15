@@ -84,7 +84,9 @@ void extend_paths(MutablePathMutableHandleGraph& graph) {
 }
 
 
-void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers) {
+
+
+void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
     HashGraph graph;
     IncrementalIdMap<string> id_map;
     KmerSets<FixedBinarySequence<uint64_t, 2> > ks(paternal_kmers, maternal_kmers);
@@ -105,20 +107,25 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     graph.for_each_path_handle([&](const path_handle_t& p) {
-        cerr << ">" << graph.get_path_name(p) << '\n';
+        string path_name = graph.get_path_name(p);
+        cerr << ">" << path_name << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
 
-        string component_path_string = graph.get_path_name(p);
+        string component_name;
+        size_t haplotype;
+
+        tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
         while (kmer.step()) {
             if (kmer.has_diploid) {
+                // Construct binary kmer sequence
                 FixedBinarySequence<uint64_t,2> s(kmer.sequence);
 
-                // compare kmer to parental kmers
-                ks.increment_parental_kmer_count(component_path_string, s);
-
-            } else {
+                // Compare kmer to parental kmers
+                ks.increment_parental_kmer_count(component_name, haplotype, s);
+            }
+            else {
                 auto h = graph.get_handle_of_step(kmer.steps.back());
                 auto length = graph.get_length(h);
 
