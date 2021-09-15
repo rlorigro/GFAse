@@ -380,7 +380,6 @@ void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& dip
         bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
 
         if (begin_is_bubble and end_is_bubble){
-            cerr << "diploid bubble: " << graph.get_path_name(p) << '\n';
             diploid_paths.emplace_back(p);
         }
     });
