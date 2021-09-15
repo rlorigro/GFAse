@@ -33,8 +33,6 @@ bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s){
 
         // If this is the terminal step, its ok for it to overlap (because the paths may have been extended)
         // If internal node is multiploid, then it must be error
-        cerr << "step: " << graph.get_id(graph.get_handle_of_step(s)) << " begin: " << graph.get_id(graph.get_handle_of_step(graph.path_begin(p))) << '\n';
-
         if (not (s == graph.path_back(p) or s == graph.path_begin(p))) {
 //            auto path_name = graph.get_path_name(p);
 //
