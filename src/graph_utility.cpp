@@ -353,7 +353,7 @@ pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph
 
     graph.follow_edges(h, left, [&](const handle_t& other_handle) {
         if (n_adjacent > 0) {
-            return false;
+            return false;   // Exit loop
         }
 
         adjacent_handle = other_handle;

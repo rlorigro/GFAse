@@ -17,7 +17,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     vector<path_handle_t> diploid_paths;
     find_diploid_paths(graph, diploid_paths);
 
-    cerr << "Extending paths into haploid regions..." << '\n';
+    cerr << "Extending paths by 1..." << '\n';
 
     extend_paths(graph);
 
@@ -28,7 +28,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     bool prev_has_diploid;
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
-    graph.for_each_path_handle([&](const path_handle_t& p) {
+    for (auto& p: diploid_paths) {
         string path_name = graph.get_path_name(p);
         cerr << ">" << path_name << '\n';
 
@@ -59,7 +59,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
             prev_has_diploid = kmer.has_diploid;
         }
-    });
+    }
 
 //    ks.normalize_kmer_counts();
     ks.print_component_parent_conf_matrix();
