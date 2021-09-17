@@ -4,6 +4,7 @@
 #include "Filesystem.hpp"
 #include "spp.h"
 
+#include <unordered_set>
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
