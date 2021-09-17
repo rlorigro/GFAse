@@ -281,7 +281,7 @@ void write_connected_components_to_gfas(
                 all_nodes.erase(id);
             }
 
-            write_node_to_gfa(graph, h, file);
+            write_node_to_gfa(graph, id_map, h, file);
 
             graph.for_each_step_on_handle(h, [&](const step_handle_t s){
                 paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
@@ -291,7 +291,7 @@ void write_connected_components_to_gfas(
 
         // Duplicate all the edges
         for_edge_in_bfs(graph, start_node, [&](const handle_t& handle_a, const handle_t& handle_b) {
-            write_edge_to_gfa(graph, {handle_a, handle_b}, file);
+            write_edge_to_gfa(graph, id_map, {handle_a, handle_b}, file);
         });
 
         // Duplicate all the paths

@@ -21,12 +21,13 @@ namespace gfase {
 
 char get_reversal_character(const HandleGraph& graph, const handle_t& node);
 
-
 void write_node_to_gfa(const HandleGraph& graph, const handle_t& node, ostream& output_file);
 
+void write_node_to_gfa(const HandleGraph& graph, const IncrementalIdMap<string>& id_map, const handle_t& node, ostream& output_file);
 
 void write_edge_to_gfa(const HandleGraph& graph, const edge_t& edge, ostream& output_file);
 
+void write_edge_to_gfa(const HandleGraph& graph, const IncrementalIdMap<string>& id_map, const edge_t& edge, ostream& output_file);
 
 void write_path_to_gfa(
         const PathHandleGraph& graph,
@@ -34,10 +35,7 @@ void write_path_to_gfa(
         const path_handle_t& path,
         ostream& output_file);
 
-
-/// With no consideration for directionality, just dump all the edges/nodes into GFA format
 void handle_graph_to_gfa(const HandleGraph& graph, ostream& output_gfa);
-
 
 void handle_graph_to_gfa(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ostream& output_gfa);
 
