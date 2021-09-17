@@ -3,6 +3,7 @@
 
 #include "bdsg/hash_graph.hpp"
 
+#include <functional>
 #include <deque>
 
 using bdsg::HashGraph;
@@ -13,6 +14,7 @@ using handlegraph::path_handle_t;
 using handlegraph::step_handle_t;
 using handlegraph::handle_t;
 
+using std::function;
 using std::deque;
 
 
@@ -25,6 +27,7 @@ bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s);
 class HaplotypePathKmer {
 public:
     /// Attributes ///
+private:
     const PathHandleGraph& graph;
     deque <step_handle_t> steps;
     deque <size_t> lengths;
@@ -42,6 +45,7 @@ public:
     deque<char> sequence;
     size_t k;
 
+public:
     /// Methods ///
     HaplotypePathKmer(const PathHandleGraph& graph, const path_handle_t& path, size_t k);
 
@@ -50,6 +54,8 @@ public:
 
     // step - walk a single bp forward and update internal records
     bool step();
+
+    void for_each_haploid_kmer(const function<void(deque<char>& sequence)>& f);
 
     bool update_has_diploid();
 };

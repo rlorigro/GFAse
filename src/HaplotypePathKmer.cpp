@@ -79,10 +79,16 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
     is_diploid.clear();
     sequence.clear();
 
+    step_is_diploid = is_haplotype_bubble(graph, s);
+
     steps.emplace_back(s);
     lengths.emplace_back(graph.get_length(h));
     is_diploid.emplace_back(step_is_diploid);
-    sequence.emplace_back(graph.get_base(h, index));
+
+    if (lengths.back() > 0) {
+        sequence.emplace_back(graph.get_base(h, index));
+    }
+
     update_has_diploid();
 
     start_index = index;
@@ -99,7 +105,7 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
 
         // Verify that this kmer actually fits in the path
         if (steps.back() == terminal_step and stop_index + 1 >= terminal_index) {
-            sufficient_path_length = false;
+            // Insufficient path length, kmer will be shorter than k
             break;
         }
     }
@@ -111,9 +117,28 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
 }
 
 
+void HaplotypePathKmer::for_each_haploid_kmer(const function<void(deque<char>& sequence)>& f){
+    while (step()) {
+        if (has_diploid) {
+            f(sequence);
+        }
+        else {
+            auto h = graph.get_handle_of_step(steps.back());
+            auto length = graph.get_length(h);
+
+            // Skip to the end of long nodes if they are not diploid
+            if (length > k + 1) {
+                initialize(steps.back(), length - k + 1);
+            }
+        }
+    }
+}
+
+
 // TODO: switch to standard queue (only need to pop front and push back)
 bool HaplotypePathKmer::step(){
     bool has_next_step = true;
+    bool found_empty_node = false;
 
     // If it is safe to increment this node
     if (stop_index + 1 < lengths.back()){
@@ -127,24 +152,25 @@ bool HaplotypePathKmer::step(){
             sequence.pop_front();
         }
     }
-        // If the iterator is at the end of the node
+    // If the iterator is at the end of the node
     else {
         if (steps.back() != terminal_step){
             step_handle_t next_step = graph.get_next_step(steps.back());
             auto next_handle = graph.get_handle_of_step(next_step);
-
-            // Skip steps in path that are empty nodes
-            while(graph.get_length(next_handle) == 0){
-                next_step = graph.get_next_step(next_step);
-                next_handle = graph.get_handle_of_step(next_step);
-            }
 
             bool step_is_diploid = is_haplotype_bubble(graph, next_step);
 
             steps.emplace_back(next_step);
             lengths.emplace_back(graph.get_length(next_handle));
             is_diploid.emplace_back(step_is_diploid);
-            sequence.emplace_back(graph.get_base(next_handle, 0));
+
+            if (lengths.back() > 0) {
+                sequence.emplace_back(graph.get_base(next_handle, 0));
+            }
+            else{
+                found_empty_node = true;
+            }
+
             update_has_diploid();
 
             // Use the deque like a cyclic queue
@@ -178,6 +204,10 @@ bool HaplotypePathKmer::step(){
 
     if (steps.back() == terminal_step and stop_index >= terminal_index){
         has_next_step = false;
+    }
+
+    if (found_empty_node){
+        return step();
     }
 
     return has_next_step;

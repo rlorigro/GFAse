@@ -60,24 +60,12 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
         HaplotypePathKmer kmer(graph, p, k);
 
-        while (kmer.step()){
-            // The kmer may attempt to initialize in a path that is not long enough.
-            // In which case it fails silently...
-            if (kmer.has_diploid and kmer.sequence.size() == k){
-//                for (auto& c: kmer.sequence){
-//                    cerr << c;
-//                }
-//                cerr << '\n';
+        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
+            for (const auto& c: sequence){
+                cerr << c;
             }
-            else{
-                auto h = graph.get_handle_of_step(kmer.steps.back());
-                auto length = graph.get_length(h);
-
-                if (length > k + 1 and kmer.steps.back() != kmer.terminal_step){
-                    kmer.initialize(kmer.steps.back(), length - k + 1);
-                }
-            }
-        }
+            cerr << '\n';
+        });
     }
 }
 

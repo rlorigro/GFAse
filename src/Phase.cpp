@@ -12,6 +12,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
+    plot_graph(graph, "start_graph");
+
     cerr << "Identifying diploid paths..." << '\n';
 
     vector<path_handle_t> diploid_paths;
@@ -25,8 +27,6 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Number of components in graph: " << graph.get_path_count() << '\n';
 
-    bool prev_has_diploid;
-
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     for (auto& p: diploid_paths) {
         string path_name = graph.get_path_name(p);
@@ -39,26 +39,16 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
-        while (kmer.step()) {
-            if (kmer.has_diploid) {
-                // Construct binary kmer sequence
-                FixedBinarySequence<uint64_t,2> s(kmer.sequence);
+        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
+            FixedBinarySequence<uint64_t,2> s(sequence);
 
-                // Compare kmer to parental kmers
-                ks.increment_parental_kmer_count(component_name, haplotype, s);
-            }
-            else {
-                auto h = graph.get_handle_of_step(kmer.steps.back());
-                auto length = graph.get_length(h);
-
-                if (length > k + 1) {
-                    kmer.initialize(kmer.steps.back(), length - k + 1);
-                    prev_has_diploid = false;
-                }
-            }
-
-            prev_has_diploid = kmer.has_diploid;
-        }
+            // Compare kmer to parental kmers
+            ks.increment_parental_kmer_count(component_name, haplotype, s);
+//            for (const auto& c: sequence){
+//                cerr << c;
+//            }
+//            cerr << '\n';
+        });
     }
 
 //    ks.normalize_kmer_counts();
