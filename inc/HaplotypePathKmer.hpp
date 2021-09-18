@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <deque>
+#include <string>
 
 using bdsg::HashGraph;
 using handlegraph::MutablePathMutableHandleGraph;
@@ -16,6 +17,7 @@ using handlegraph::handle_t;
 
 using std::function;
 using std::deque;
+using std::string;
 
 
 namespace gfase {
@@ -58,6 +60,10 @@ public:
     void for_each_haploid_kmer(const function<void(deque<char>& sequence)>& f);
 
     bool update_has_diploid();
+
+    step_handle_t get_step_of_kmer_start() const;
+    size_t get_index_of_kmer_start() const;
+    void print();
 };
 
 

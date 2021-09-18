@@ -1,9 +1,11 @@
 #include "HaplotypePathKmer.hpp"
 
 #include <stdexcept>
+#include <string>
 
 using std::runtime_error;
 using std::to_string;
+using std::string;
 using std::cerr;
 
 
@@ -110,6 +112,8 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
         }
     }
 
+
+
 //    if (not sufficient_path_length){
 //        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
 //    }
@@ -128,6 +132,7 @@ void HaplotypePathKmer::for_each_haploid_kmer(const function<void(deque<char>& s
 
             // Skip to the end of long nodes if they are not diploid
             if (length > k + 1) {
+                cerr << "skipping" << '\n';
                 initialize(steps.back(), length - k + 1);
             }
         }
@@ -135,10 +140,43 @@ void HaplotypePathKmer::for_each_haploid_kmer(const function<void(deque<char>& s
 }
 
 
+void HaplotypePathKmer::print(){
+    cerr << "start: " << start_index << '\n';
+    cerr << "stop: " << stop_index << '\n';
+
+    cerr << "L: ";
+    for (auto& l: lengths){
+        cerr << l << ',';
+    }
+    cerr << '\n';
+
+    cerr << "S: ";
+    for (auto& s: steps){
+        cerr << graph.get_id(graph.get_handle_of_step(s)) << ',';
+    }
+    cerr << '\n';
+
+    cerr << "D: ";
+    for (auto& d: is_diploid){
+        cerr << d << ',';
+    }
+    cerr << '\n';
+
+    cerr << "K: ";
+    for (auto& c: sequence){
+        cerr << string(1,c) << ',';
+    }
+    cerr << '\n';
+    cerr << '\n';
+
+}
+
+
 // TODO: switch to standard queue (only need to pop front and push back)
 bool HaplotypePathKmer::step(){
     bool has_next_step = true;
     bool found_empty_node = false;
+    bool moved = false;
 
     // If it is safe to increment this node
     if (stop_index + 1 < lengths.back()){
@@ -150,6 +188,7 @@ bool HaplotypePathKmer::step(){
         // Use the deque like a cyclic queue
         if (sequence.size() > k) {
             sequence.pop_front();
+            moved = true;
         }
     }
     // If the iterator is at the end of the node
@@ -176,6 +215,7 @@ bool HaplotypePathKmer::step(){
             // Use the deque like a cyclic queue
             if (sequence.size() > k) {
                 sequence.pop_front();
+                moved = true;
             }
 
             stop_index = 0;
@@ -189,8 +229,8 @@ bool HaplotypePathKmer::step(){
     }
 
     // Handle the trailing end of the kmer (queue front)
-    if (start_index < lengths.front()) {
-        if (sequence.size() == k) {
+    if (start_index < lengths.front() - 1) {
+        if (moved) {
             start_index++;
         }
     }
@@ -225,5 +265,16 @@ bool HaplotypePathKmer::update_has_diploid(){
     has_diploid = has_diploid_nodes;
     return has_diploid_nodes;
 }
+
+
+step_handle_t HaplotypePathKmer::get_step_of_kmer_start() const{
+    return steps.front();
+}
+
+
+size_t HaplotypePathKmer::get_index_of_kmer_start() const{
+    return start_index;
+}
+
 
 }
