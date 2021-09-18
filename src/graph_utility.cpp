@@ -371,6 +371,8 @@ pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph
 }
 
 
+/// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
+/// the Shasta convention that phased paths always end on a bubble
 void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& diploid_paths){
     graph.for_each_path_handle([&](const path_handle_t& p){
         auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));

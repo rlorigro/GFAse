@@ -55,6 +55,8 @@ template <class T> class KmerSets {
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
 		void increment_parental_kmer_count(string path_name, unordered_set <T> child_kmers);
         void increment_parental_kmer_count(string component_name, size_t component_haplotype, T child_kmer);
+        bool is_maternal(T kmer);
+        bool is_paternal(T kmer);
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix();
 };
@@ -185,6 +187,16 @@ template <class T> void KmerSets<T>::increment_parental_kmer_count(
     if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
         component_map[component_name][component_haplotype][parent_hap2_index]++;
     }
+}
+
+
+template <class T> bool KmerSets<T>::is_maternal(T kmer){
+    return hap1_kmer_set.find(kmer) != hap2_kmer_set.end();
+}
+
+
+template <class T> bool KmerSets<T>::is_paternal(T kmer){
+    return hap1_kmer_set.find(kmer) != hap1_kmer_set.end();
 }
 
 

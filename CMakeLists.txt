@@ -270,6 +270,7 @@ set(EXECUTABLES
         create_bandage_path_color_table
         extract_haplotype_kmers
         get_path_lengths
+        locate_kmer_matches
         phase_haplotype_paths
         remove_empty_nodes
         split_connected_components
