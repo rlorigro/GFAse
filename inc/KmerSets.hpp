@@ -191,7 +191,7 @@ template <class T> void KmerSets<T>::increment_parental_kmer_count(
 
 
 template <class T> bool KmerSets<T>::is_maternal(T kmer){
-    return hap1_kmer_set.find(kmer) != hap2_kmer_set.end();
+    return hap2_kmer_set.find(kmer) != hap2_kmer_set.end();
 }
 
 
