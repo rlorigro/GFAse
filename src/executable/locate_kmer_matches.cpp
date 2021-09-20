@@ -37,7 +37,7 @@ void construct_path_distance_map(const PathHandleGraph& graph, unordered_map<ste
 }
 
 
-void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter = '.') {
+void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, size_t min_path_length, char path_delimiter = '.') {
     HashGraph graph;
     IncrementalIdMap<string> id_map;
 
@@ -84,6 +84,19 @@ void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path mate
 
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
+        // Write out all the path lengths somewhere (for plotting convenience)
+        uint64_t path_length = 0;
+        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+            path_length += graph.get_length(graph.get_handle_of_step(s));
+        });
+
+        if (path_length < min_path_length){
+            // Skip to next path
+            continue;
+        }
+
+        path_length_csv << component_name << ',' << haplotype << ',' << path_length << '\n';
+
         path output_subdirectory = output_directory / component_name;
         create_directories(output_subdirectory);
 
@@ -107,14 +120,6 @@ void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path mate
             file << path_position << ',' << int(is_paternal) << ',' << int(is_maternal) << '\n';
 
         });
-
-        // Write out all the path lengths somewhere (for plotting convenience)
-        uint64_t path_length = 0;
-        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
-            path_length += graph.get_length(graph.get_handle_of_step(s));
-        });
-
-        path_length_csv << component_name << ',' << haplotype << ',' << path_length << '\n';
     }
 }
 
@@ -122,6 +127,7 @@ void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path mate
 int main (int argc, char* argv[]){
     path gfa_path;
     size_t k;
+    size_t min_path_length;
     path paternal_kmers;
     path maternal_kmers;
 
@@ -139,6 +145,13 @@ int main (int argc, char* argv[]){
             "Length of kmer (k) to use")
             ->required();
 
+
+    app.add_option(
+            "-l,--min_length",
+            min_path_length,
+            "Minimum length of path to print information for")
+            ->required();
+
     app.add_option(
             "-p,--paternal_kmers",
             paternal_kmers,
@@ -153,7 +166,7 @@ int main (int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
-    locate_kmer_matches(gfa_path, k, paternal_kmers, maternal_kmers);
+    locate_kmer_matches(gfa_path, k, paternal_kmers, maternal_kmers, min_path_length);
 
     return 0;
 }
