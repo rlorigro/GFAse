@@ -132,7 +132,6 @@ void HaplotypePathKmer::for_each_haploid_kmer(const function<void(deque<char>& s
 
             // Skip to the end of long nodes if they are not diploid
             if (length > k + 1) {
-                cerr << "skipping" << '\n';
                 initialize(steps.back(), length - k + 1);
             }
         }
