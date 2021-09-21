@@ -411,16 +411,9 @@ void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset,
 
         tie(graph_component, component_haplotype) = parse_path_string(name, path_delimiter);
 
-        cerr << "Searching for " << graph_component << "...";
-
         if (subset.find(graph_component) != subset.end()){
             paths.emplace_back(p);
-            cerr << " found" << '\n';
         }
-        else{
-            cerr << '\n';
-        }
-
     });
 
     for (const auto& p: paths){
