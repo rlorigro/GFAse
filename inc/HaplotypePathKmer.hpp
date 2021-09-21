@@ -27,9 +27,8 @@ bool is_haplotype_bubble(const PathHandleGraph& graph, step_handle_t s);
 
 
 class HaplotypePathKmer {
-public:
-    /// Attributes ///
 private:
+    /// Attributes ///
     const PathHandleGraph& graph;
     deque <step_handle_t> steps;
     deque <size_t> lengths;

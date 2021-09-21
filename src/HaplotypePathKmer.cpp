@@ -112,8 +112,6 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
         }
     }
 
-
-
 //    if (not sufficient_path_length){
 //        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
 //    }
@@ -132,7 +130,6 @@ void HaplotypePathKmer::for_each_haploid_kmer(const function<void(deque<char>& s
 
             // Skip to the end of long nodes if they are not diploid
             if (length > k + 1) {
-                cerr << "skipping" << '\n';
                 initialize(steps.back(), length - k + 1);
             }
         }
@@ -229,7 +226,7 @@ bool HaplotypePathKmer::step(){
     }
 
     // Handle the trailing end of the kmer (queue front)
-    if (start_index < lengths.front() - 1) {
+    if (start_index + 1 < lengths.front()) {
         if (moved) {
             start_index++;
         }
