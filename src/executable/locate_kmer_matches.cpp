@@ -37,7 +37,16 @@ void construct_path_distance_map(const PathHandleGraph& graph, unordered_map<ste
 }
 
 
-void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, size_t min_path_length, char path_delimiter = '.') {
+void locate_kmer_matches(
+        path gfa_path,
+        size_t k,
+        path paternal_kmers,
+        path maternal_kmers,
+        size_t min_path_length,
+        set<string>& components,
+        bool write_kmer_sequence,
+        char path_delimiter = '.') {
+
     HashGraph graph;
     IncrementalIdMap<string> id_map;
 
@@ -46,12 +55,18 @@ void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path mate
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
-    plot_graph(graph, "start_graph");
+//    plot_graph(graph, "start_graph");
 
     cerr << "Identifying diploid paths..." << '\n';
 
     vector<path_handle_t> diploid_paths;
-    find_diploid_paths(graph, diploid_paths);
+
+    if (not components.empty()){
+        find_diploid_paths(graph, components, diploid_paths, '.');
+    }
+    else {
+        find_diploid_paths(graph, diploid_paths);
+    }
 
     cerr << "Extending paths by 1..." << '\n';
 
@@ -117,8 +132,16 @@ void locate_kmer_matches(path gfa_path, size_t k, path paternal_kmers, path mate
             bool is_paternal = ks.is_paternal(s);
             bool is_maternal = ks.is_maternal(s);
 
-            file << path_position << ',' << int(is_paternal) << ',' << int(is_maternal) << '\n';
+            file << path_position << ',' << int(is_paternal) << ',' << int(is_maternal);
 
+            if (write_kmer_sequence){
+                file << ',';
+                for (const auto& c: sequence){
+                    file << c;
+                }
+            }
+
+            file << '\n';
         });
     }
 }
@@ -130,6 +153,9 @@ int main (int argc, char* argv[]){
     size_t min_path_length;
     path paternal_kmers;
     path maternal_kmers;
+    vector<string> c;
+    set<string> components;
+    bool write_kmer_sequence;
 
     CLI::App app{"App description"};
 
@@ -145,7 +171,6 @@ int main (int argc, char* argv[]){
             "Length of kmer (k) to use")
             ->required();
 
-
     app.add_option(
             "-l,--min_length",
             min_path_length,
@@ -155,18 +180,32 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-p,--paternal_kmers",
             paternal_kmers,
-            "paternal kmers in FASTA format")
+            "Paternal kmers in FASTA format")
             ->required();
 
     app.add_option(
             "-m,--maternal_kmers",
             maternal_kmers,
-            "maternal kmers in FASTA format")
+            "Maternal kmers in FASTA format")
             ->required();
+
+    app.add_option(
+            "-c,--components",
+            c,
+            "List of components to print (space separated)");
+
+    app.add_flag(
+            "-f,--full_kmer",
+            write_kmer_sequence,
+            "Boolean flag, add this option to write out the full kmer sequence for each kmer");
 
     CLI11_PARSE(app, argc, argv);
 
-    locate_kmer_matches(gfa_path, k, paternal_kmers, maternal_kmers, min_path_length);
+    for (const auto& item: c){
+        components.emplace(item);
+    }
+
+    locate_kmer_matches(gfa_path, k, paternal_kmers, maternal_kmers, min_path_length, components, write_kmer_sequence);
 
     return 0;
 }

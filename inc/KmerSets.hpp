@@ -1,6 +1,7 @@
 #ifndef GFASE_KMERSETS_HPP
 #define GFASE_KMERSETS_HPP
 
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "spp.h"
 
@@ -18,9 +19,6 @@ using ghc::filesystem::path;
 
 
 namespace gfase {
-
-
-pair<string, size_t> parse_path_string(string path_name, char delimiter);
 
 
 template <class T> class KmerSets {
