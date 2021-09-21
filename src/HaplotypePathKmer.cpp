@@ -112,8 +112,6 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
         }
     }
 
-
-
 //    if (not sufficient_path_length){
 //        throw runtime_error("ERROR: path " + graph.get_path_name(path) + " does not have sufficient length for kmer size: " + to_string(k));
 //    }
@@ -228,7 +226,7 @@ bool HaplotypePathKmer::step(){
     }
 
     // Handle the trailing end of the kmer (queue front)
-    if (start_index < lengths.front() - 1) {
+    if (start_index + 1 < lengths.front()) {
         if (moved) {
             start_index++;
         }
