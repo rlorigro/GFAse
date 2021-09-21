@@ -27,8 +27,8 @@ template <class T> class KmerSets {
 	/// Attributes ///
 	private:
 		// Sets for each member of the trio
-		sparse_hash_set <T> hap1_kmer_set ;
-		sparse_hash_set <T> hap2_kmer_set ;
+		sparse_hash_set <T> paternal_kmer_set ;
+		sparse_hash_set <T> maternal_kmer_set ;
 
         // < component,  [component_hap_path][parent_hap_index] >
         unordered_map<string, array <array <float,2>, 2> > component_map;
@@ -37,13 +37,13 @@ template <class T> class KmerSets {
         char path_delimiter;
 
         // Path to kmer parent files as input from command line
-		path hap1_kmer_fa_path;
-		path hap2_kmer_fa_path;
-		float num_hap1_kmers;
-		float num_hap2_kmers;
+		path paternal_kmer_fa_path;
+		path maternal_kmer_fa_path;
+		float num_paternal_kmers;
+		float num_maternal_kmers;
 
-		static const size_t parent_hap1_index = 0;
-		static const size_t parent_hap2_index = 1;
+		static const size_t paternal_index = 0;
+		static const size_t maternal_index = 1;
 
 	/// Methods ///
 	public:
@@ -59,41 +59,43 @@ template <class T> class KmerSets {
         bool is_paternal(T kmer);
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix();
+        void for_each_component_matrix(const function<void(const string& name, size_t hap, const size_t paternal_count, const size_t maternal_count, string end_delim)>& f);
+
 };
 
 
 template <class T> KmerSets<T>::KmerSets():
         path_delimiter('-'),
-        num_hap1_kmers(0),
-        num_hap2_kmers(0)
+        num_paternal_kmers(0),
+        num_maternal_kmers(0)
 {}
 
 
-template <class T> KmerSets<T>::KmerSets(path hap1_kmer_fa_path, path hap2_kmer_fa_path, char path_delimiter):
+template <class T> KmerSets<T>::KmerSets(path paternal_kmer_fa_path, path maternal_kmer_fa_path, char path_delimiter):
         path_delimiter(path_delimiter),
-        hap1_kmer_fa_path(hap1_kmer_fa_path),
-        hap2_kmer_fa_path(hap2_kmer_fa_path)
+        paternal_kmer_fa_path(paternal_kmer_fa_path),
+        maternal_kmer_fa_path(maternal_kmer_fa_path)
 {
     // Test files for hap1 and hap2 parents
-    ifstream h1_test_stream(this->hap1_kmer_fa_path);
+    ifstream h1_test_stream(this->paternal_kmer_fa_path);
     if (not h1_test_stream.is_open()){
-        throw runtime_error("ERROR: file could not be opened: " + this->hap1_kmer_fa_path.string());
+        throw runtime_error("ERROR: file could not be opened: " + this->paternal_kmer_fa_path.string());
     }
 
-    ifstream h2_test_stream(this->hap2_kmer_fa_path);
+    ifstream h2_test_stream(this->maternal_kmer_fa_path);
     if (not h2_test_stream.is_open()){
-        throw runtime_error("ERROR: file could not be opened: " + this->hap2_kmer_fa_path.string());
+        throw runtime_error("ERROR: file could not be opened: " + this->maternal_kmer_fa_path.string());
     }
 
     // Get the number of kmers for each parent
-    num_hap1_kmers=get_size_of_kmer_file(hap1_kmer_fa_path);
-    num_hap2_kmers=get_size_of_kmer_file(hap2_kmer_fa_path);
-    cerr << " hap1 kmer file path: " << hap1_kmer_fa_path << "\n # kmers: " << num_hap1_kmers << endl;
-    cerr << " hap2 kmer file path: " << hap2_kmer_fa_path << "\n # kmers: " << num_hap2_kmers << endl;
+    num_paternal_kmers=get_size_of_kmer_file(paternal_kmer_fa_path);
+    num_maternal_kmers=get_size_of_kmer_file(maternal_kmer_fa_path);
+    cerr << " hap1 kmer file path: " << paternal_kmer_fa_path << "\n # kmers: " << num_paternal_kmers << endl;
+    cerr << " hap2 kmer file path: " << maternal_kmer_fa_path << "\n # kmers: " << num_maternal_kmers << endl;
 
     // Fill the kmer sets
-    load_fasta_into_unordered_set(hap1_kmer_fa_path, hap1_kmer_set);
-    load_fasta_into_unordered_set(hap2_kmer_fa_path, hap2_kmer_set);
+    load_fasta_into_unordered_set(paternal_kmer_fa_path, paternal_kmer_set);
+    load_fasta_into_unordered_set(maternal_kmer_fa_path, maternal_kmer_set);
 }
 
 
@@ -150,8 +152,8 @@ template <class T> void KmerSets<T>::get_parent_kmer_sets(){
     path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
     path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
 
-    load_fasta_into_unordered_set(absolute_hap1_kmer_list_path,hap1_kmer_set);
-    load_fasta_into_unordered_set(absolute_hap2_kmer_list_path,hap2_kmer_set);
+    load_fasta_into_unordered_set(absolute_hap1_kmer_list_path,paternal_kmer_set);
+    load_fasta_into_unordered_set(absolute_hap2_kmer_list_path,maternal_kmer_set);
 }
 
 
@@ -180,23 +182,24 @@ template <class T> void KmerSets<T>::increment_parental_kmer_count(
     }
 
     // Find child_kmer in each parent kmer_set
-    if (hap1_kmer_set.find(child_kmer) != hap1_kmer_set.end()){
-        component_map[component_name][component_haplotype][parent_hap1_index]++;
+    if (paternal_kmer_set.find(child_kmer) != paternal_kmer_set.end()){
+        component_map[component_name][component_haplotype][paternal_index]++;
     }
 
-    if (hap2_kmer_set.find(child_kmer) != hap2_kmer_set.end()){
-        component_map[component_name][component_haplotype][parent_hap2_index]++;
+    if (maternal_kmer_set.find(child_kmer) != maternal_kmer_set.end()){
+        component_map[component_name][component_haplotype][maternal_index]++;
     }
+    
 }
 
 
 template <class T> bool KmerSets<T>::is_maternal(T kmer){
-    return hap2_kmer_set.find(kmer) != hap2_kmer_set.end();
+    return maternal_kmer_set.find(kmer) != maternal_kmer_set.end();
 }
 
 
 template <class T> bool KmerSets<T>::is_paternal(T kmer){
-    return hap1_kmer_set.find(kmer) != hap1_kmer_set.end();
+    return paternal_kmer_set.find(kmer) != paternal_kmer_set.end();
 }
 
 
@@ -213,8 +216,8 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
     cerr << "Normalize Component Map..\n";
     for (auto& [name, component]: component_map) {
         for (size_t j = 0; j < 2; j++) {
-            component[j][parent_hap1_index] /= num_hap1_kmers;
-            component[j][parent_hap2_index] /= num_hap2_kmers;
+            component[j][paternal_index] /= num_paternal_kmers;
+            component[j][maternal_index] /= num_maternal_kmers;
         }
     }
 }
@@ -228,12 +231,29 @@ template <class T> void KmerSets<T>::print_component_parent_conf_matrix() {
         cout << "component: " << name << "\n  |pat\t|mat" << endl;
 
         for (size_t j = 0; j < 2; j++) {
-            cout << j << " |" << component[j][parent_hap1_index] << "\t|" << component[j][parent_hap2_index] << "\t|" <<endl;
+            cout << j << " |" << component[j][paternal_index] << "\t|" << component[j][maternal_index] << "\t|" <<endl;
         }
         cout << endl;
     }
 }
+//, size_t hap, const size_t paternal_count, const size_t maternal_count, string end_delim
+template <class T> void KmerSets<T>::for_each_component_matrix(const function<void(const string& name, size_t hap, const size_t paternal_count, const size_t maternal_count, string end_delim)>& f){
 
+        for (const auto& [name, component]: component_map) {
+            string end_delim = ",";
+            // array of each component is hap0:[parent1,parent2], hap1:[parent1,parent2]
+            for (size_t j = 0; j < 2; j++) {
+                if (j >0){
+                    end_delim = "\n";
+                }
+                f(name,j,component[j][paternal_index],component[j][maternal_index],end_delim);
+            }
+
+        }
+}
+
+
+    
 
 }
 
