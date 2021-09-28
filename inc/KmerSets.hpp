@@ -1,6 +1,7 @@
 #ifndef GFASE_KMERSETS_HPP
 #define GFASE_KMERSETS_HPP
 
+#include "graph_utility.hpp"
 #include "Filesystem.hpp"
 #include "spp.h"
 
@@ -20,12 +21,15 @@ using ghc::filesystem::path;
 namespace gfase {
 
 
-pair<string, size_t> parse_path_string(string path_name, char delimiter);
+char get_reverse_complement(char c);
+
+
+void get_reverse_complement(const string& fc, string& rc, size_t length);
 
 
 template <class T> class KmerSets {
 	/// Attributes ///
-	private:
+	public:
 		// Sets for each member of the trio
 		sparse_hash_set <T> paternal_kmer_set ;
 		sparse_hash_set <T> maternal_kmer_set ;
@@ -45,6 +49,8 @@ template <class T> class KmerSets {
 		static const size_t paternal_index = 0;
 		static const size_t maternal_index = 1;
 
+		size_t k = 0;
+
 	/// Methods ///
 	public:
 		KmerSets();
@@ -55,8 +61,10 @@ template <class T> class KmerSets {
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
 		void increment_parental_kmer_count(string path_name, unordered_set <T> child_kmers);
         void increment_parental_kmer_count(string component_name, size_t component_haplotype, T child_kmer);
-        bool is_maternal(T kmer);
-        bool is_paternal(T kmer);
+        bool is_maternal(const T& kmer, const T& kmer_reverse_complement);
+        bool is_paternal(const T& kmer, const T& kmer_reverse_complement);
+        bool is_maternal(const T& kmer);
+        bool is_paternal(const T& kmer);
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix();
         void for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f);
@@ -132,10 +140,16 @@ template <class T> void KmerSets<T>::load_fasta_into_unordered_set(path file_pat
         if (line[0] == '>'){
             continue;
         }
+
+        if (k == 0){
+            k = line.size();
+        }
+        else if (line.size() != k){
+            throw runtime_error("ERROR: kmer with unequal size found: " + line);
+        }
+
         s.emplace(line);
     }
-    // Close the file
-    KmerFile.close();
 }
 
 
@@ -181,25 +195,50 @@ template <class T> void KmerSets<T>::increment_parental_kmer_count(
         component_map.insert({component_name, {{{0, 0}, {0, 0}}}});
     }
 
+    T child_kmer_rc;
+    get_reverse_complement(child_kmer, child_kmer_rc, k);
+
     // Find child_kmer in each parent kmer_set
-    if (paternal_kmer_set.find(child_kmer) != paternal_kmer_set.end()){
-        component_map[component_name][component_haplotype][paternal_index]++;
-    }
-
-    if (maternal_kmer_set.find(child_kmer) != maternal_kmer_set.end()){
-        component_map[component_name][component_haplotype][maternal_index]++;
-    }
-    
+    component_map[component_name][component_haplotype][paternal_index] += is_paternal(child_kmer, child_kmer_rc);
+    component_map[component_name][component_haplotype][maternal_index] += is_maternal(child_kmer, child_kmer_rc);
 }
 
 
-template <class T> bool KmerSets<T>::is_maternal(T kmer){
-    return maternal_kmer_set.find(kmer) != maternal_kmer_set.end();
+template <class T> bool KmerSets<T>::is_maternal(const T& kmer){
+    T rc_kmer;
+    get_reverse_complement(kmer, rc_kmer, k);
+
+    bool found_forward = maternal_kmer_set.find(kmer) != maternal_kmer_set.end();
+    bool found_reverse = maternal_kmer_set.find(rc_kmer) != maternal_kmer_set.end();
+
+    return (found_forward or found_reverse);
 }
 
 
-template <class T> bool KmerSets<T>::is_paternal(T kmer){
-    return paternal_kmer_set.find(kmer) != paternal_kmer_set.end();
+template <class T> bool KmerSets<T>::is_paternal(const T& kmer){
+    T rc_kmer;
+    get_reverse_complement(kmer, rc_kmer, k);
+
+    bool found_forward = paternal_kmer_set.find(kmer) != paternal_kmer_set.end();
+    bool found_reverse = paternal_kmer_set.find(rc_kmer) != paternal_kmer_set.end();
+
+    return (found_forward or found_reverse);
+}
+
+
+template <class T> bool KmerSets<T>::is_maternal(const T& kmer, const T& kmer_reverse_complement){
+    bool found_forward = maternal_kmer_set.find(kmer) != maternal_kmer_set.end();
+    bool found_reverse = maternal_kmer_set.find(kmer_reverse_complement) != maternal_kmer_set.end();
+
+    return (found_forward or found_reverse);
+}
+
+
+template <class T> bool KmerSets<T>::is_paternal(const T& kmer, const T& kmer_reverse_complement){
+    bool found_forward = paternal_kmer_set.find(kmer) != paternal_kmer_set.end();
+    bool found_reverse = paternal_kmer_set.find(kmer_reverse_complement) != paternal_kmer_set.end();
+
+    return (found_forward or found_reverse);
 }
 
 

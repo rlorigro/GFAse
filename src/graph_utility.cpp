@@ -2,6 +2,16 @@
 
 namespace gfase {
 
+
+pair<string, size_t> parse_path_string(string path_name, char delimiter){
+    size_t index = path_name.find(delimiter);
+    string component_name = path_name.substr(0,index);
+    size_t component_haplotype = stoi(path_name.substr(index+1,path_name.length()));
+
+    return {component_name, component_haplotype};
+}
+
+
 void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
     unordered_set<nid_t> visited;
     queue<nid_t> q;
@@ -385,6 +395,38 @@ void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& dip
             diploid_paths.emplace_back(p);
         }
     });
+}
+
+
+/// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
+/// the Shasta convention that phased paths always end on a bubble
+void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset, vector<path_handle_t>& diploid_paths, char path_delimiter){
+    vector<path_handle_t> paths;
+
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        string name = graph.get_path_name(p);
+
+        string graph_component;
+        size_t component_haplotype;
+
+        tie(graph_component, component_haplotype) = parse_path_string(name, path_delimiter);
+
+        if (subset.find(graph_component) != subset.end()){
+            paths.emplace_back(p);
+        }
+    });
+
+    for (const auto& p: paths){
+        auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
+        auto end_handle = graph.get_handle_of_step(graph.path_back(p));
+
+        bool begin_is_bubble = find_singleton_adjacent_handle(graph, begin_handle, true).second;
+        bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
+
+        if (begin_is_bubble and end_is_bubble){
+            diploid_paths.emplace_back(p);
+        }
+    }
 }
 
 

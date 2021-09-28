@@ -33,6 +33,8 @@ using std::cerr;
 
 namespace gfase{
 
+pair<string, size_t> parse_path_string(string path_name, char delimiter);
+
 void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f);
 
 void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f);
@@ -61,6 +63,12 @@ void print_graph_paths(const PathHandleGraph& graph, const IncrementalIdMap<stri
 pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph, const handle_t& h, bool left);
 
 void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& diploid_paths);
+
+void find_diploid_paths(
+        const PathHandleGraph& graph,
+        const set<string>& subset,
+        vector<path_handle_t>& diploid_paths,
+        char path_delimiter);
 
 void extend_paths(MutablePathMutableHandleGraph& graph);
 

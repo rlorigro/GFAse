@@ -10,12 +10,32 @@ using ghc::filesystem::path;
 
 namespace gfase {
 
-pair<string, size_t> parse_path_string(string path_name, char delimiter){
-    size_t index = path_name.find(delimiter);
-    string component_name = path_name.substr(0,index);
-    size_t component_haplotype = stoi(path_name.substr(index+1,path_name.length()));
 
-    return {component_name, component_haplotype};
+char get_reverse_complement(char c){
+    if (c == 'A'){
+        return 'T';
+    }
+    else if (c == 'C'){
+        return 'G';
+    }
+    else if (c == 'G'){
+        return 'C';
+    }
+    else if (c == 'T'){
+        return 'A';
+    }
+    else {
+        throw runtime_error("ERROR: uncomplementable character in sequence " + string(1,c));
+    }
+}
+
+
+void get_reverse_complement(const string& fc, string& rc, size_t length){
+    auto l = int64_t(length);
+
+    for (int64_t i=l-1; i > 0; i--){
+        rc.append(1, get_reverse_complement(fc[i]));
+    }
 }
 
 }

@@ -279,6 +279,26 @@ int main(){
         print_bucket_info(set_int);
     }
 
+    string fc_sequence = "GATTACA";
+    string rc_sequence = "TGTAATC";
+
+    {
+        FixedBinarySequence<uint64_t,1> fc(fc_sequence);
+        FixedBinarySequence<uint64_t,1> rc;
+
+        fc.get_reverse_complement(rc, fc_sequence.size());
+
+        string output;
+        rc.to_string(output, fc_sequence.size());
+
+        cerr << output << '\n';
+
+        if (output != rc_sequence){
+            throw runtime_error("ERROR: reverse complement sequence does not match expected sequence: " + output + " != " + rc_sequence);
+        }
+    }
+
+
     return 0;
 }
 

@@ -5,6 +5,7 @@
 #include "MurmurHash2.hpp"
 
 #include <type_traits>
+#include <ostream>
 #include <vector>
 #include <bitset>
 #include <string>
@@ -15,6 +16,7 @@
 using std::runtime_error;
 using std::is_integral;
 using std::to_string;
+using std::ostream;
 using std::vector;
 using std::bitset;
 using std::string;
@@ -38,7 +40,8 @@ public:
     FixedBinarySequence();
     FixedBinarySequence(const FixedBinarySequence& s);
     template <class T3> FixedBinarySequence(const T3& s);
-    void to_string(string& s, size_t length);
+    void get_reverse_complement(FixedBinarySequence<T,T2>& rc, size_t length) const;
+    void to_string(string& s, size_t length) const;
     void print_as_bits() const;
 };
 
@@ -75,7 +78,8 @@ template <class T, size_t T2> const array<uint16_t,128> FixedBinarySequence<T,T2
 };
 
 
-template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence()
+template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence():
+        sequence({})
 {}
 
 
@@ -116,7 +120,46 @@ template<class T, size_t T2> template <class T3> FixedBinarySequence<T,T2>::Fixe
 }
 
 
-template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s, size_t length){
+/// Make a new binary sequence with the reverse complement of this one
+template <class T, size_t T2> void FixedBinarySequence<T,T2>::get_reverse_complement(FixedBinarySequence<T,T2>& rc, size_t length) const{
+    if (sequence.empty()){
+        return;
+    }
+
+    T mask = 3;
+    size_t bp_per_word = (sizeof(T)*8)/2;
+    T word;
+
+    for (size_t i=0; i<length; i++){
+        if (i % bp_per_word == 0) {
+            word = sequence[i/bp_per_word];
+        }
+
+        // Get the last 2 bits
+        auto bits = word & mask;
+
+        // Shift the RC bits over and add the complement of the forward bits
+        rc.sequence[i/bp_per_word] <<= 2;
+        rc.sequence[i/bp_per_word] |= 3 - bits;
+
+        // Advance the bits of the forward complement
+        word >>= 2;
+    }
+
+    string f;
+    string r;
+
+    this->to_string(f, length);
+    rc.to_string(r, length);
+
+    cerr << "F " << f << '\n';
+    cerr << "R " << r << '\n';
+    cerr << '\n';
+
+}
+
+
+template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s, size_t length) const{
     if (sequence.empty()){
         return;
     }
@@ -138,6 +181,11 @@ template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s
         s += index_to_base.at(index);
         word >>= 2;
     }
+}
+
+
+template<class T, size_t T2> void get_reverse_complement(const FixedBinarySequence<T,T2>& fc, FixedBinarySequence<T,T2>& rc, size_t length) {
+    fc.get_reverse_complement(rc, length);
 }
 
 
