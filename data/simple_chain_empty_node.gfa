@@ -28,7 +28,7 @@ L	b	+	j	+	0M
 L	b	-	i	-	0M
 L	c	+	k	+	0M
 L	c	-	j	-	0M
-P	0-0	a+,j+,c+	0M,0M
-P	1-1	f+,l+,h+	0M,0M
-P	0-1	b+,j+,d+	0M,0M
-P	1-0	e+,l+,g+	0M,0M
+P	0.0	a+,j+,c+	0M,0M
+P	1.1	f+,l+,h+	0M,0M
+P	0.1	b+,j+,d+	0M,0M
+P	1.0	e+,l+,g+	0M,0M

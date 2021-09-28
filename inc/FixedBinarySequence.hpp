@@ -145,17 +145,6 @@ template <class T, size_t T2> void FixedBinarySequence<T,T2>::get_reverse_comple
         // Advance the bits of the forward complement
         word >>= 2;
     }
-
-    string f;
-    string r;
-
-    this->to_string(f, length);
-    rc.to_string(r, length);
-
-    cerr << "F " << f << '\n';
-    cerr << "R " << r << '\n';
-    cerr << '\n';
-
 }
 
 
