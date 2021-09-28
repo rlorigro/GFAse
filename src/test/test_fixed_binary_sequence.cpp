@@ -1,11 +1,14 @@
 #include "FixedBinarySequence.hpp"
+#include "KmerSets.hpp"
 #include <unordered_set>
 #include <string>
 #include <deque>
 #include <list>
 #include <map>
 
+using gfase::get_reverse_complement;
 using gfase::FixedBinarySequence;
+using gfase::KmerSets;
 using std::unordered_set;
 using std::list;
 using std::map;
@@ -279,10 +282,10 @@ int main(){
         print_bucket_info(set_int);
     }
 
-    string fc_sequence = "GATTACA";
-    string rc_sequence = "TGTAATC";
-
     {
+        string fc_sequence = "GATTACA";
+        string rc_sequence = "TGTAATC";
+
         FixedBinarySequence<uint64_t,1> fc(fc_sequence);
         FixedBinarySequence<uint64_t,1> rc;
 
@@ -298,6 +301,160 @@ int main(){
         }
     }
 
+
+    {
+        string forward_sequence = "GATTACA";
+        string reverse_sequence = "TGTAATC";
+
+        unordered_set <FixedBinarySequence<uint64_t,2> > kmers;
+
+        FixedBinarySequence<uint64_t,2> forward_binary_seq(forward_sequence);
+        FixedBinarySequence<uint64_t,2> reverse_binary_seq_derived;
+        FixedBinarySequence<uint64_t,2> forward_binary_seq_derived;
+
+        forward_binary_seq.get_reverse_complement(reverse_binary_seq_derived, forward_sequence.size());
+        reverse_binary_seq_derived.get_reverse_complement(forward_binary_seq_derived, reverse_sequence.size());
+
+        kmers.insert(forward_binary_seq);
+
+        if (kmers.find(forward_binary_seq_derived) == kmers.end()){
+            throw runtime_error("ERROR: doubly complemented sequence not found");
+        }
+    }
+
+    {
+        path script_path = __FILE__;
+        path project_directory = script_path.parent_path().parent_path().parent_path();
+
+        // Get test VCF path
+        path paternal_kmers_path = project_directory / "data/test_paternal_kmers.fasta";
+        path maternal_kmers_path = project_directory / "data/test_maternal_kmers.fasta";
+
+        KmerSets <FixedBinarySequence <uint64_t,2> > ks(paternal_kmers_path, maternal_kmers_path);
+
+        vector<string> maternal_kmers = {
+                "CGTACGA",
+                "TTCCGAC",
+                "GGGGGCC"
+        };
+
+        vector<string> paternal_kmers = {
+                "GATTACA",
+                "ACGTTTG",
+                "CCTAATC"
+        };
+
+        for (const auto& k: maternal_kmers){
+            string k_rc;
+            get_reverse_complement(k, k_rc, k.size());
+
+            cerr << k << '\n';
+            cerr << k_rc << '\n';
+
+            FixedBinarySequence<uint64_t,2> bs(k);
+            FixedBinarySequence<uint64_t,2> bs_rc(k_rc);
+
+            cerr << bitset<64>(bs.sequence[0]) << " " << bitset<64>(bs.sequence[1]) << '\n';
+            cerr << bitset<64>(bs_rc.sequence[0]) << " " << bitset<64>(bs_rc.sequence[1]) << '\n';
+
+            if (not ks.is_maternal(bs)){
+                throw runtime_error("ERROR: maternal kmer not found in maternal set: " + k + " expected to match " + k);
+            }
+
+            if (not ks.is_maternal(bs_rc)){
+                throw runtime_error("ERROR: maternal reverse complement kmer not found in maternal set: " + k_rc + " expected to match " + k);
+            }
+        }
+
+        for (const auto& k: paternal_kmers){
+            string k_rc;
+            get_reverse_complement(k, k_rc, k.size());
+
+            cerr << k << '\n';
+            cerr << k_rc << '\n';
+
+            FixedBinarySequence<uint64_t,2> bs(k);
+            FixedBinarySequence<uint64_t,2> bs_rc(k_rc);
+
+            cerr << bitset<64>(bs.sequence[0]) << " " << bitset<64>(bs.sequence[1]) << '\n';
+            cerr << bitset<64>(bs_rc.sequence[0]) << " " << bitset<64>(bs_rc.sequence[1]) << '\n';
+
+            if (not ks.is_paternal(bs)){
+                throw runtime_error("ERROR: paternal kmer not found in maternal set: " + k + " expected to match " + k);
+            }
+
+            if (not ks.is_paternal(bs_rc)){
+                throw runtime_error("ERROR: paternal reverse complement kmer not found in maternal set: " + k_rc + " expected to match " + k);
+            }
+        }
+    }
+
+    {
+        path script_path = __FILE__;
+        path project_directory = script_path.parent_path().parent_path().parent_path();
+
+        // Get test VCF path
+        path paternal_kmers_path = project_directory / "data/test_paternal_kmers_55bp.fasta";
+        path maternal_kmers_path = project_directory / "data/test_maternal_kmers_55bp.fasta";
+
+        KmerSets <FixedBinarySequence <uint64_t,2> > ks(paternal_kmers_path, maternal_kmers_path);
+
+        vector<string> maternal_kmers = {
+                "CGTACGACGTACGACGTACGACGTACGACGTACGACGTACGACGTACGACGTACG",
+                "TTCCGACTTCCGACTTCCGACTTCCGACTTCCGACTTCCGACTTCCGACTTCCGA",
+                "GGGGGCCGGGGGCCGGGGGCCGGGGGCCGGGGGCCGGGGGCCGGGGGCCGGGGGC"
+        };
+
+        vector<string> paternal_kmers = {
+                "GATTACAGATTACAGATTACAGATTACAGATTACAGATTACAGATTACAGATTAC",
+                "ACGTTTGACGTTTGACGTTTGACGTTTGACGTTTGACGTTTGACGTTTGACGTTT",
+                "CCTAATCCCTAATCCCTAATCCCTAATCCCTAATCCCTAATCCCTAATCCCTAAT"
+        };
+
+        for (const auto& k: maternal_kmers){
+            string k_rc;
+            get_reverse_complement(k, k_rc, k.size());
+
+            cerr << k << '\n';
+            cerr << k_rc << '\n';
+
+            FixedBinarySequence<uint64_t,2> bs(k);
+            FixedBinarySequence<uint64_t,2> bs_rc(k_rc);
+
+            cerr << bitset<64>(bs.sequence[0]) << " " << bitset<64>(bs.sequence[1]) << '\n';
+            cerr << bitset<64>(bs_rc.sequence[0]) << " " << bitset<64>(bs_rc.sequence[1]) << '\n';
+
+            if (not ks.is_maternal(bs)){
+                throw runtime_error("ERROR: maternal kmer not found in maternal set: " + k + " expected to match " + k);
+            }
+
+            if (not ks.is_maternal(bs_rc)){
+                throw runtime_error("ERROR: maternal reverse complement kmer not found in maternal set: " + k_rc + " expected to match " + k);
+            }
+        }
+
+        for (const auto& k: paternal_kmers){
+            string k_rc;
+            get_reverse_complement(k, k_rc, k.size());
+
+            cerr << k << '\n';
+            cerr << k_rc << '\n';
+
+            FixedBinarySequence<uint64_t,2> bs(k);
+            FixedBinarySequence<uint64_t,2> bs_rc(k_rc);
+
+            cerr << bitset<64>(bs.sequence[0]) << " " << bitset<64>(bs.sequence[1]) << '\n';
+            cerr << bitset<64>(bs_rc.sequence[0]) << " " << bitset<64>(bs_rc.sequence[1]) << '\n';
+
+            if (not ks.is_paternal(bs)){
+                throw runtime_error("ERROR: paternal kmer not found in maternal set: " + k + " expected to match " + k);
+            }
+
+            if (not ks.is_paternal(bs_rc)){
+                throw runtime_error("ERROR: paternal reverse complement kmer not found in maternal set: " + k_rc + " expected to match " + k);
+            }
+        }
+    }
 
     return 0;
 }

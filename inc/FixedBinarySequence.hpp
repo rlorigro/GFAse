@@ -139,8 +139,8 @@ template <class T, size_t T2> void FixedBinarySequence<T,T2>::get_reverse_comple
         auto bits = word & mask;
 
         // Shift the RC bits over and add the complement of the forward bits
-        rc.sequence[i/bp_per_word] <<= 2;
-        rc.sequence[i/bp_per_word] |= 3 - bits;
+        rc.sequence[(length - i - 1)/bp_per_word] <<= 2;
+        rc.sequence[(length - i - 1)/bp_per_word] |= 3 - bits;
 
         // Advance the bits of the forward complement
         word >>= 2;

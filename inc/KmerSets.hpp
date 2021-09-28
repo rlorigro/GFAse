@@ -54,7 +54,7 @@ template <class T> class KmerSets {
 	/// Methods ///
 	public:
 		KmerSets();
-		KmerSets(path hap1_kmer_fa_path_arg, path hap2_kmer_fa_path_args, char path_delimiter='c');
+		KmerSets(path paternal_kmer_fa_path_arg, path maternal_kmer_fa_path_args, char path_delimiter='c');
 		float get_size_of_kmer_file(path file_path);
 		void load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s);
 		void get_parent_kmer_sets();

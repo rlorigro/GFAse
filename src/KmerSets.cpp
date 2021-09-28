@@ -33,7 +33,7 @@ char get_reverse_complement(char c){
 void get_reverse_complement(const string& fc, string& rc, size_t length){
     auto l = int64_t(length);
 
-    for (int64_t i=l-1; i > 0; i--){
+    for (int64_t i=l-1; i >= 0; i--){
         rc.append(1, get_reverse_complement(fc[i]));
     }
 }
