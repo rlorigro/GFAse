@@ -12,7 +12,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
-    plot_graph(graph, "start_graph");
+    // plot_graph(graph, "start_graph");
 
     cerr << "Identifying diploid paths..." << '\n';
 
@@ -44,6 +44,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
             // Compare kmer to parental kmers
             ks.increment_parental_kmer_count(component_name, haplotype, s);
+
 //            for (const auto& c: sequence){
 //                cerr << c;
 //            }
@@ -51,8 +52,32 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         });
     }
 
-//    ks.normalize_kmer_counts();
-    ks.print_component_parent_conf_matrix();
+    // ks.normalize_kmer_counts();
+    // ks.print_component_parent_conf_matrix();
+
+
+    // open file and print header
+    ofstream component_matrix_outfile;
+    component_matrix_outfile.open("component_matrix_outfile.csv");
+    component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n"; 
+    
+    ks.for_each_component_matrix([&](const string& name, const array <array <float,2>, 2> component){
+            string end_delim = ",";
+            for (size_t j = 0; j < 2; j++) {
+                if (j==0){
+                    component_matrix_outfile << name << ",";
+                }
+                else{
+                    end_delim = "\n";
+                }
+                component_matrix_outfile << component[j][0] << "," << component[j][1] << end_delim;
+
+            }
+
+        });
+
+    component_matrix_outfile.close();
+
 }
 
 }

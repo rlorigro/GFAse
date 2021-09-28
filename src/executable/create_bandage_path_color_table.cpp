@@ -9,6 +9,7 @@
 #include "bdsg/hash_graph.hpp"
 
 #include <string>
+#include <array>
 
 using gfase::IncrementalIdMap;
 using gfase::for_each_connected_component;
