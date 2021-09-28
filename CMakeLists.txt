@@ -213,7 +213,6 @@ message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 ExternalProject_Add(project_sparsepp
         GIT_REPOSITORY https://github.com/greg7mdp/sparsepp.git
         TIMEOUT 5
-        CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
         PREFIX "${CMAKE_CURRENT_BINARY_DIR}"
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
@@ -225,6 +224,72 @@ add_dependencies(GFAse project_sparsepp)
 # Specify include dir
 ExternalProject_Get_Property(project_sparsepp SOURCE_DIR)
 include_directories(${SOURCE_DIR}/sparsepp)
+
+
+##############################################
+# ------------------------------------------ #
+# -------- LINKING EXTERNAL LIBRARY -------- #
+# ----------------- snarls ----------------- #
+# ------------------------------------------ #
+##############################################
+
+# Need to explicitly enable ExternalProject functionality
+include(ExternalProject)
+
+message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+
+
+# Download or update library as an external project
+ExternalProject_Add(project_snarls
+        GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+        GIT_TAG main
+#        DOWNLOAD_COMMAND ""
+#        UPDATE_COMMAND ""
+        PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+        BUILD_IN_SOURCE True
+        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+        INSTALL_COMMAND make install
+        )
+
+# Define INSTALL_DIR as the install directory for external library
+ExternalProject_Get_Property(project_snarls INSTALL_DIR)
+
+# Create new library for external project (so it can be linked with main library)
+add_library(snarls SHARED IMPORTED)
+set_property(TARGET snarls
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsnarls.${LIB_SUFFIX})
+
+#add_library(libsdsl SHARED IMPORTED)
+#set_property(TARGET libsdsl
+#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.${LIB_SUFFIX})
+
+# Define library as dependent on the downloaded project
+add_dependencies(
+        snarls
+        project_snarls
+)
+
+# Define main library as dependent on the downloaded project (transitively)
+add_dependencies(GFAse snarls)
+
+# Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+include_directories(
+        external/snarls/include/
+        external/snarls/include/libvgio/
+        external/snarls/include/structures/
+        external/snarls/include/dynamic/
+        external/snarls/include/gtest/
+        external/snarls/include/mio/
+        external/snarls/include/tsl/
+        external/snarls/include/vg/
+        )
+
+message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+
 
 ############################################
 # ---------------------------------------- #
@@ -246,6 +311,7 @@ set(TESTS
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
+        test_libsnarls
         test_phase_haplotype_paths
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
@@ -256,6 +322,7 @@ foreach(FILENAME_PREFIX ${TESTS})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
+            snarls
             bdsg
             divsufsort
             libhandlegraph
