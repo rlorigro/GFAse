@@ -70,7 +70,10 @@ void locate_kmer_matches(
 
     cerr << "Extending paths by 1..." << '\n';
 
-    extend_paths(graph);
+    vector<pair<path_handle_t, handle_t> > to_be_prepended;
+    vector<pair<path_handle_t, handle_t> > to_be_appended;
+
+    extend_paths(graph, to_be_prepended, to_be_appended);
 
     cerr << "Constructing path distance map..." << '\n';
 

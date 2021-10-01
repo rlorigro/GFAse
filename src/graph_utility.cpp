@@ -430,9 +430,10 @@ void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset,
 }
 
 
-void extend_paths(MutablePathMutableHandleGraph& graph) {
-    vector<pair<path_handle_t, handle_t> > to_be_prepended;
-    vector<pair<path_handle_t, handle_t> > to_be_appended;
+void extend_paths(
+        MutablePathMutableHandleGraph& graph,
+        vector<pair<path_handle_t, handle_t> >& to_be_prepended,
+        vector<pair<path_handle_t, handle_t> >& to_be_appended) {
 
     graph.for_each_path_handle([&](const path_handle_t& p) {
         auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
@@ -460,6 +461,115 @@ void extend_paths(MutablePathMutableHandleGraph& graph) {
         graph.append_step(item.first, item.second);
     }
 }
+
+
+void un_extend_paths(
+        MutablePathMutableHandleGraph& graph,
+        const vector <pair<path_handle_t, handle_t> >& to_be_prepended,
+        const vector <pair<path_handle_t, handle_t> >& to_be_appended) {
+
+    for (auto& item: to_be_prepended) {
+        // un-PREpend (pop) the LEFT side node
+        auto begin = graph.path_begin(item.first);
+        auto next = graph.get_next_step(begin);
+        graph.rewrite_segment(begin, next, vector<handle_t>());
+    }
+
+    for (auto& item: to_be_appended) {
+        // un-apppend (pop) the RIGHT side node
+        auto end = graph.path_end(item.first);
+        auto prev = graph.get_previous_step(end);
+        graph.rewrite_segment(prev, end, vector<handle_t>());
+    }
+}
+
+
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map){
+    unordered_set<nid_t> nodes_to_be_destroyed;
+
+    cout << graph.get_path_count() << '\n';
+    vector<string> path_names;
+
+    vector<path_handle_t> paths;
+
+    graph.for_each_path_handle([&](const path_handle_t& p) {
+        paths.emplace_back(p);
+    });
+
+    for (auto& p: paths){
+        string path_sequence;
+        cerr << "Path " << graph.get_path_name(p) << '\n';
+
+        graph.for_each_step_in_path(p, [&](const step_handle_t s){
+            handle_t h = graph.get_handle_of_step(s);
+            nid_t n = graph.get_id(h);
+
+            string sequence = graph.get_sequence(h);
+            path_sequence += sequence;
+
+            string name = id_map.get_name(n);
+            cerr << '\t' << name << " " << (sequence.size() < 100 ? sequence : "--") << '\n';
+
+            nodes_to_be_destroyed.emplace(n);
+        });
+
+        string haplotype_path_name = graph.get_path_name(p) + "_hap";
+        auto new_id = id_map.insert(haplotype_path_name);
+        handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);
+
+        auto path_start_handle = graph.get_handle_of_step(graph.path_begin(p));
+        auto path_stop_handle = graph.get_handle_of_step(graph.path_back(p));
+
+        // Find neighboring nodes for the path and create edges to the new haplotype node (LEFT)
+        graph.follow_edges(path_start_handle, true, [&](const handle_t& other){
+            graph.create_edge(other, haplotype_handle);
+        });
+
+        // Find neighboring nodes for the path and create edges to the new haplotype node (RIGHT)
+        graph.follow_edges(path_stop_handle, false, [&](const handle_t& other){
+            graph.create_edge(haplotype_handle, other);
+        });
+
+        // Label the new haplotype node using a path_name to indicate which path it is derived from
+        // TODO: track provenance, update id_map?
+        auto haplotype_path_handle = graph.create_path_handle(haplotype_path_name);
+        graph.append_step(haplotype_path_handle, haplotype_handle);
+    }
+
+    // Destroy the nodes that have had their sequences duplicated into haplotypes
+    for (auto& n: nodes_to_be_destroyed){
+        cerr << "Destroying: " << id_map.get_name(n) << '\n';
+        graph.destroy_handle(graph.get_handle(n));
+    }
+
+    // TODO: when creating haplotypes, maintain error bubbles?
+    // Search for islands that were created by unphased nodes when the haplotype paths were deleted,
+    // and delete the islands (assuming they were errors, and downstream applications won't want bubbles)
+    for_each_connected_component(graph, [&](unordered_set<nid_t>& component){
+        bool has_path = false;
+
+        // Iterate the connected component and check if it has any haplotype info (if not, it was a unlabeled bubble)
+        for (auto& id: component){
+            auto h = graph.get_handle(id);
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
+                has_path = true;
+                return false;
+            });
+
+//            cerr << id_map.get_name(graph.get_id(h)) << " has_path: " << has_path << '\n';
+        }
+
+        // Delete any component that has no path label
+        if (not has_path) {
+            for (auto& id: component) {
+                auto h = graph.get_handle(id);
+                graph.destroy_handle(h);
+            }
+        }
+    });
+}
+
 
 
 }

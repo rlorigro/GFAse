@@ -8,7 +8,7 @@ namespace gfase{
 void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    KmerSets<FixedBinarySequence<uint64_t, 2> > ks(paternal_kmers, maternal_kmers);
+    KmerSets <FixedBinarySequence <uint64_t, 2> > ks(paternal_kmers, maternal_kmers);
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
@@ -21,7 +21,9 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Extending paths by 1..." << '\n';
 
-    extend_paths(graph);
+    vector<pair<path_handle_t, handle_t> > to_be_prepended;
+    vector<pair<path_handle_t, handle_t> > to_be_appended;
+    extend_paths(graph, to_be_prepended, to_be_appended);
 
     cerr << "Iterating path kmers..." << '\n';
 
@@ -44,39 +46,52 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
             // Compare kmer to parental kmers
             ks.increment_parental_kmer_count(component_name, haplotype, s);
-
-//            for (const auto& c: sequence){
-//                cerr << c;
-//            }
-//            cerr << '\n';
         });
     }
+
+    cerr << "Un-extending paths..." << '\n';
+
+    un_extend_paths(graph, to_be_prepended, to_be_appended);
+    to_be_prepended.clear();
+    to_be_appended.clear();
 
     // ks.normalize_kmer_counts();
     // ks.print_component_parent_conf_matrix();
 
-
     // open file and print header
-    ofstream component_matrix_outfile;
-    component_matrix_outfile.open("component_matrix_outfile.csv");
+    ofstream component_matrix_outfile("component_matrix_outfile.csv");
     component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n"; 
     
     ks.for_each_component_matrix([&](const string& name, const array <array <float,2>, 2> component){
-            string end_delim = ",";
-            for (size_t j = 0; j < 2; j++) {
-                if (j==0){
-                    component_matrix_outfile << name << ",";
-                }
-                else{
-                    end_delim = "\n";
-                }
-                component_matrix_outfile << component[j][0] << "," << component[j][1] << end_delim;
-
+        string end_delim = ",";
+        for (size_t j = 0; j < 2; j++) {
+            if (j==0){
+                component_matrix_outfile << name << ",";
             }
+            else{
+                end_delim = "\n";
+            }
+            component_matrix_outfile << component[j][0] << "," << component[j][1] << end_delim;
+        }
+    });
 
-        });
+    cerr << "Unzipping..." << '\n';
+    vector<HashGraph> connected_components;
+    vector <IncrementalIdMap<string> > connected_component_ids;
 
-    component_matrix_outfile.close();
+    split_connected_components(graph, id_map, connected_components, connected_component_ids);
+
+    for (size_t i=0; i<connected_components.size(); i++){
+        cerr << "Component " << to_string(i) << '\n';
+        print_graph_paths(connected_components[i], connected_component_ids[i]);
+
+        unzip(connected_components[i], connected_component_ids[i]);
+
+        string filename_prefix = "component_" + to_string(i) + "_unzipped";
+        ofstream file(filename_prefix + ".gfa");
+        handle_graph_to_gfa(connected_components[i], connected_component_ids[i], file);
+    }
+
 
 }
 

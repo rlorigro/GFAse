@@ -70,7 +70,18 @@ void find_diploid_paths(
         vector<path_handle_t>& diploid_paths,
         char path_delimiter);
 
-void extend_paths(MutablePathMutableHandleGraph& graph);
+void extend_paths(
+        MutablePathMutableHandleGraph& graph,
+        vector<pair<path_handle_t, handle_t> >& to_be_prepended,
+        vector<pair<path_handle_t, handle_t> >& to_be_appended);
+
+void un_extend_paths(
+        MutablePathMutableHandleGraph& graph,
+        const vector <pair<path_handle_t, handle_t> >& to_be_prepended,
+        const vector <pair<path_handle_t, handle_t> >& to_be_appended);
+
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map);
+
 
 }
 

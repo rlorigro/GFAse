@@ -50,7 +50,10 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
     cerr << "Extending paths into haploid regions..." << '\n';
 
-    extend_paths(graph);
+    vector<pair<path_handle_t, handle_t> > to_be_prepended;
+    vector<pair<path_handle_t, handle_t> > to_be_appended;
+
+    extend_paths(graph, to_be_prepended, to_be_appended);
 
     cerr << "Iterating path kmers..." << '\n';
 
