@@ -62,12 +62,12 @@ void print_graph_paths(const PathHandleGraph& graph, const IncrementalIdMap<stri
 // Find any nodes that are adjacent to the beginning and end of a path, as long as they are the only adjacent node
 pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph, const handle_t& h, bool left);
 
-void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& diploid_paths);
+void find_diploid_paths(const PathHandleGraph& graph, vector<string>& diploid_path_names);
 
 void find_diploid_paths(
         const PathHandleGraph& graph,
         const set<string>& subset,
-        vector<path_handle_t>& diploid_paths,
+        vector<string>& diploid_path_names,
         char path_delimiter);
 
 void extend_paths(

@@ -12,12 +12,12 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
-    // plot_graph(graph, "start_graph");
+    plot_graph(graph, "start_graph");
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<path_handle_t> diploid_paths;
-    find_diploid_paths(graph, diploid_paths);
+    vector<string> diploid_path_names;
+    find_diploid_paths(graph, diploid_path_names);
 
     cerr << "Extending paths by 1..." << '\n';
 
@@ -27,11 +27,11 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Iterating path kmers..." << '\n';
 
-    cerr << "Number of components in graph: " << graph.get_path_count() << '\n';
+    cerr << "\tNumber of components in graph: " << graph.get_path_count() << '\n';
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
-    for (auto& p: diploid_paths) {
-        string path_name = graph.get_path_name(p);
+    for (auto& path_name: diploid_path_names) {
+        auto p = graph.get_path_handle(path_name);
         cerr << ">" << path_name << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
@@ -56,22 +56,22 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     to_be_appended.clear();
 
     // ks.normalize_kmer_counts();
-    // ks.print_component_parent_conf_matrix();
 
-    // open file and print header
+    // Open file and print header
     ofstream component_matrix_outfile("component_matrix_outfile.csv");
     component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n"; 
     
     ks.for_each_component_matrix([&](const string& name, const array <array <float,2>, 2> component){
         string end_delim = ",";
-        for (size_t j = 0; j < 2; j++) {
-            if (j==0){
+        for (size_t haplotype_index = 0; haplotype_index < 2; haplotype_index++) {
+            if (haplotype_index == 0){
                 component_matrix_outfile << name << ",";
             }
             else{
                 end_delim = "\n";
             }
-            component_matrix_outfile << component[j][0] << "," << component[j][1] << end_delim;
+            component_matrix_outfile << component[haplotype_index][KmerSets<string>::paternal_index]
+                                     << "," << component[haplotype_index][KmerSets<string>::maternal_index] << end_delim;
         }
     });
 
@@ -90,7 +90,18 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         string filename_prefix = "component_" + to_string(i) + "_unzipped";
         ofstream file(filename_prefix + ".gfa");
         handle_graph_to_gfa(connected_components[i], connected_component_ids[i], file);
+
+        plot_graph(connected_components[i], filename_prefix);
     }
+
+    ks.print_component_parent_conf_matrix();
+
+    // TODO: for each path name in diploid paths, find the unzipped path name, and do bounded BFS on adjacent nodes
+    // - Make no assumptions about what lies between diploid paths
+    //    - Need to use DFS or DAG aligner with some scoring system for choosing path between components
+    // - Filter out complex regions.. still need to decide on criteria for that
+    //    - Depth of deepest snarl
+    //    - Number of components touched by each unphased region must be < 3
 
 
 }

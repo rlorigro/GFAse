@@ -29,7 +29,7 @@ void get_reverse_complement(const string& fc, string& rc, size_t length);
 
 template <class T> class KmerSets {
 	/// Attributes ///
-	public:
+	private:
 		// Sets for each member of the trio
 		sparse_hash_set <T> paternal_kmer_set ;
 		sparse_hash_set <T> maternal_kmer_set ;
@@ -46,13 +46,13 @@ template <class T> class KmerSets {
 		float num_paternal_kmers;
 		float num_maternal_kmers;
 
-		static const size_t paternal_index = 0;
+        size_t k = 0;
+
+    public:
+        static const size_t paternal_index = 0;
 		static const size_t maternal_index = 1;
 
-		size_t k = 0;
-
 	/// Methods ///
-	public:
 		KmerSets();
 		KmerSets(path paternal_kmer_fa_path_arg, path maternal_kmer_fa_path_args, char path_delimiter='c');
 		float get_size_of_kmer_file(path file_path);

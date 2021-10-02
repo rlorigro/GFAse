@@ -383,7 +383,7 @@ pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph
 
 /// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
 /// the Shasta convention that phased paths always end on a bubble
-void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& diploid_paths){
+void find_diploid_paths(const PathHandleGraph& graph, vector<string>& diploid_path_names){
     graph.for_each_path_handle([&](const path_handle_t& p){
         auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
         auto end_handle = graph.get_handle_of_step(graph.path_back(p));
@@ -392,7 +392,7 @@ void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& dip
         bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
 
         if (begin_is_bubble and end_is_bubble){
-            diploid_paths.emplace_back(p);
+            diploid_path_names.emplace_back(graph.get_path_name(p));
         }
     });
 }
@@ -400,7 +400,7 @@ void find_diploid_paths(const PathHandleGraph& graph, vector<path_handle_t>& dip
 
 /// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
 /// the Shasta convention that phased paths always end on a bubble
-void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset, vector<path_handle_t>& diploid_paths, char path_delimiter){
+void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset, vector<string>& diploid_path_names, char path_delimiter){
     vector<path_handle_t> paths;
 
     graph.for_each_path_handle([&](const path_handle_t& p){
@@ -424,7 +424,7 @@ void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset,
         bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
 
         if (begin_is_bubble and end_is_bubble){
-            diploid_paths.emplace_back(p);
+            diploid_path_names.emplace_back(graph.get_path_name(p));
         }
     }
 }

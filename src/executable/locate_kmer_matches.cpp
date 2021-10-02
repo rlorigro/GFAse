@@ -59,13 +59,13 @@ void locate_kmer_matches(
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<path_handle_t> diploid_paths;
+    vector<string> diploid_path_names;
 
     if (not components.empty()){
-        find_diploid_paths(graph, components, diploid_paths, '.');
+        find_diploid_paths(graph, components, diploid_path_names, '.');
     }
     else {
-        find_diploid_paths(graph, diploid_paths);
+        find_diploid_paths(graph, diploid_path_names);
     }
 
     cerr << "Extending paths by 1..." << '\n';
@@ -92,8 +92,8 @@ void locate_kmer_matches(
     path_length_csv << "component_name" << ',' << "haplotype" << ',' << "length" << '\n';
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
-    for (auto& p: diploid_paths) {
-        string path_name = graph.get_path_name(p);
+    for (auto& path_name: diploid_path_names) {
+        auto p = graph.get_path_handle(path_name);
 
         HaplotypePathKmer kmer(graph, p, k);
 

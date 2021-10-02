@@ -45,8 +45,8 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<path_handle_t> diploid_paths;
-    find_diploid_paths(graph, diploid_paths);
+    vector<string> diploid_path_names;
+    find_diploid_paths(graph, diploid_path_names);
 
     cerr << "Extending paths into haploid regions..." << '\n';
 
@@ -58,8 +58,10 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
     cerr << "Iterating path kmers..." << '\n';
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
-    for (auto& p: diploid_paths){
-        cerr << ">" << graph.get_path_name(p) << '\n';
+    for (auto& path_name: diploid_path_names) {
+        auto p = graph.get_path_handle(path_name);
+
+        cerr << ">" << path_name << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
 
