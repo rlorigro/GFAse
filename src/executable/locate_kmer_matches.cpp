@@ -59,7 +59,7 @@ void locate_kmer_matches(
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<string> diploid_path_names;
+    unordered_set<string> diploid_path_names;
 
     if (not components.empty()){
         find_diploid_paths(graph, components, diploid_path_names, '.');

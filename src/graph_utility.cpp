@@ -383,7 +383,7 @@ pair<handle_t, bool> find_singleton_adjacent_handle(const PathHandleGraph& graph
 
 /// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
 /// the Shasta convention that phased paths always end on a bubble
-void find_diploid_paths(const PathHandleGraph& graph, vector<string>& diploid_path_names){
+void find_diploid_paths(const PathHandleGraph& graph, unordered_set<string>& diploid_path_names){
     graph.for_each_path_handle([&](const path_handle_t& p){
         auto begin_handle = graph.get_handle_of_step(graph.path_begin(p));
         auto end_handle = graph.get_handle_of_step(graph.path_back(p));
@@ -392,15 +392,61 @@ void find_diploid_paths(const PathHandleGraph& graph, vector<string>& diploid_pa
         bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
 
         if (begin_is_bubble and end_is_bubble){
-            diploid_path_names.emplace_back(graph.get_path_name(p));
+            diploid_path_names.emplace(graph.get_path_name(p));
         }
+    });
+}
+
+
+/// Exhaustive check for overlapping paths, building a bidirectional mapping of diploid paths to one another
+void find_diploid_paths(
+        const PathHandleGraph& graph,
+        unordered_map<string, string>& diploid_path_names,
+        unordered_set<string>& haploid_path_names){
+
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        auto path_name = graph.get_path_name(p);
+
+        unordered_set <path_handle_t> overlapping_paths;
+        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+            auto h = graph.get_handle_of_step(s);
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t& s_other){
+                if (graph.get_path_handle_of_step(s_other) != p) {
+                    overlapping_paths.emplace(graph.get_path_handle_of_step(s_other));
+                }
+            });
+        });
+
+        if (overlapping_paths.empty()){
+            cerr << "haploid path: " << path_name << '\n';
+            haploid_path_names.emplace(path_name);
+        }
+        else if (overlapping_paths.size() == 1){
+            cerr << "diploid path: " << path_name << '\n';
+            string other_path_name = graph.get_path_name(*overlapping_paths.begin());
+
+            // Build mapping in both directions
+            diploid_path_names[other_path_name] = path_name;
+            diploid_path_names[path_name] = other_path_name;
+        }
+        else{
+            cerr << "Found more than 1 overlapping path\n\t";
+            for (auto& p_other: overlapping_paths){
+                cerr << graph.get_path_name(p_other) << ' ';
+            }
+            cerr << '\n';
+
+            throw runtime_error("ERROR: path overlaps with more than one other (is not diploid): " + path_name);
+        }
+
     });
 }
 
 
 /// Cheap way to check if path is part of a diploid phased pair of paths. It actually just relies on
 /// the Shasta convention that phased paths always end on a bubble
-void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset, vector<string>& diploid_path_names, char path_delimiter){
+void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset, unordered_set<string>& diploid_path_names, char path_delimiter){
     vector<path_handle_t> paths;
 
     graph.for_each_path_handle([&](const path_handle_t& p){
@@ -424,7 +470,7 @@ void find_diploid_paths(const PathHandleGraph& graph, const set<string>& subset,
         bool end_is_bubble = find_singleton_adjacent_handle(graph, end_handle, false).second;
 
         if (begin_is_bubble and end_is_bubble){
-            diploid_path_names.emplace_back(graph.get_path_name(p));
+            diploid_path_names.emplace(graph.get_path_name(p));
         }
     }
 }

@@ -16,13 +16,14 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<string> diploid_path_names;
-    find_diploid_paths(graph, diploid_path_names);
+    unordered_map<string, string> diploid_path_names;
+    unordered_set<string> haploid_path_names;
+    find_diploid_paths(graph, diploid_path_names, haploid_path_names);
 
     cerr << "Extending paths by 1..." << '\n';
 
-    vector<pair<path_handle_t, handle_t> > to_be_prepended;
-    vector<pair<path_handle_t, handle_t> > to_be_appended;
+    vector <pair<path_handle_t, handle_t> > to_be_prepended;
+    vector <pair<path_handle_t, handle_t> > to_be_appended;
     extend_paths(graph, to_be_prepended, to_be_appended);
 
     cerr << "Iterating path kmers..." << '\n';
@@ -30,7 +31,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     cerr << "\tNumber of components in graph: " << graph.get_path_count() << '\n';
 
     // Iterate paths and for each node, collect kmers if node is only covered by one path
-    for (auto& path_name: diploid_path_names) {
+    for (auto& [path_name, other_path_name]: diploid_path_names) {
         auto p = graph.get_path_handle(path_name);
         cerr << ">" << path_name << '\n';
 
@@ -62,18 +63,15 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n"; 
     
     ks.for_each_component_matrix([&](const string& name, const array <array <float,2>, 2> component){
-        string end_delim = ",";
-        for (size_t haplotype_index = 0; haplotype_index < 2; haplotype_index++) {
-            if (haplotype_index == 0){
-                component_matrix_outfile << name << ",";
-            }
-            else{
-                end_delim = "\n";
-            }
-            component_matrix_outfile << component[haplotype_index][KmerSets<string>::paternal_index]
-                                     << "," << component[haplotype_index][KmerSets<string>::maternal_index] << end_delim;
-        }
+            component_matrix_outfile
+                << component[0][KmerSets<string>::paternal_index] << ','
+                << component[0][KmerSets<string>::maternal_index] << ','
+                << component[1][KmerSets<string>::paternal_index] << ','
+                << component[1][KmerSets<string>::maternal_index] << '\n';
     });
+
+    // Debug
+    ks.print_component_parent_conf_matrix();
 
     cerr << "Unzipping..." << '\n';
     vector<HashGraph> connected_components;
@@ -85,6 +83,9 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         cerr << "Component " << to_string(i) << '\n';
         print_graph_paths(connected_components[i], connected_component_ids[i]);
 
+        // TODO: Stop renaming paths !!
+        // TODO: Stop renaming paths !!
+        // TODO: Stop renaming paths !!
         unzip(connected_components[i], connected_component_ids[i]);
 
         string filename_prefix = "component_" + to_string(i) + "_unzipped";
@@ -94,8 +95,6 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         plot_graph(connected_components[i], filename_prefix);
     }
 
-    ks.print_component_parent_conf_matrix();
-
     // TODO: for each path name in diploid paths, find the unzipped path name, and do bounded BFS on adjacent nodes
     // - Make no assumptions about what lies between diploid paths
     //    - Need to use DFS or DAG aligner with some scoring system for choosing path between components
@@ -103,7 +102,12 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     //    - Depth of deepest snarl
     //    - Number of components touched by each unphased region must be < 3
 
-
+//    auto to_be_evaluated = haploid_path_names;
+//    vector<> unphased_components;
+//    while (not to_be_evaluated.empty()){
+//
+//
+//    }
 }
 
 }

@@ -45,7 +45,7 @@ void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
 
     cerr << "Identifying diploid paths..." << '\n';
 
-    vector<string> diploid_path_names;
+    unordered_set<string> diploid_path_names;
     find_diploid_paths(graph, diploid_path_names);
 
     cerr << "Extending paths into haploid regions..." << '\n';
