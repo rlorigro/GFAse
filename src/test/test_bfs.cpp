@@ -103,6 +103,61 @@ int main(){
         cerr << "Iterating edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
     });
 
+    cerr << '\n' << "Exclusionary BFS for edges" << '\n';
+    unordered_set<nid_t> do_not_visit = {id_map.get_id("k")};
+
+    for_edge_in_bfs(graph, 1, do_not_visit,
+        [&](const handle_t& h1, const handle_t& h2){
+            auto n1 = graph.get_id(h1);
+            auto name1 = id_map.get_name(n1);
+
+            auto n2 = graph.get_id(h2);
+            auto name2 = id_map.get_name(n2);
+
+            cerr << "Iterating edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
+        },
+        [&](const handle_t& h1, const handle_t& h2){
+            auto n1 = graph.get_id(h1);
+            auto name1 = id_map.get_name(n1);
+
+            auto n2 = graph.get_id(h2);
+            auto name2 = id_map.get_name(n2);
+
+            cerr << "Iterating BAD edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
+        });
+
+    cerr << '\n' << "Exclusionary BFS for edges (2)" << '\n';
+    unordered_set<nid_t> do_not_visit_2 = {id_map.get_id("b")};
+
+    for_edge_in_bfs(graph, 1, do_not_visit_2,
+                    [&](const handle_t& h1, const handle_t& h2){
+                        auto n1 = graph.get_id(h1);
+                        auto name1 = id_map.get_name(n1);
+
+                        auto n2 = graph.get_id(h2);
+                        auto name2 = id_map.get_name(n2);
+
+                        cerr << "Iterating edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
+                    },
+                    [&](const handle_t& h1, const handle_t& h2){
+                        auto n1 = graph.get_id(h1);
+                        auto name1 = id_map.get_name(n1);
+
+                        auto n2 = graph.get_id(h2);
+                        auto name2 = id_map.get_name(n2);
+
+                        cerr << "Iterating BAD edge: " << name1 << (graph.get_is_reverse(h1) ? '-' : '+') << ' ' << name2 << (graph.get_is_reverse(h2) ? '-' : '+') << '\n';
+                    });
+
+    cerr << '\n' << "Exclusionary BFS for nodes (2)" << '\n';
+
+    for_node_in_bfs(graph, 1, do_not_visit_2, [&](const handle_t& h){
+        auto n = graph.get_id(h);
+        auto name = id_map.get_name(n);
+
+        bfs_node_names.emplace(name);
+        cerr << "Iterating node: " << name << '\n';
+    });
 
     return 0;
 }

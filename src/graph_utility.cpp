@@ -12,7 +12,11 @@ pair<string, size_t> parse_path_string(string path_name, char delimiter){
 }
 
 
-void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
+void for_node_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const unordered_set<nid_t>& do_not_visit,
+        const function<void(const handle_t&)>& f) {
     unordered_set<nid_t> visited;
     queue<nid_t> q;
 
@@ -30,10 +34,13 @@ void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
             auto other_node = graph.get_id(other_handle);
 
             // Attempt to add this to the set of visited nodes
-            auto result = visited.emplace(other_node);
+            auto pass_a = visited.emplace(other_node).second;
+
+            // Check if this node is excluded by choice of the user
+            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
 
             // Check that this has NOT been visited before queuing it
-            if (result.second) {
+            if (pass_a and pass_b) {
                 q.emplace(other_node);
             }
         });
@@ -42,10 +49,13 @@ void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
             auto other_node = graph.get_id(other_handle);
 
             // Attempt to add this to the set of visited nodes
-            auto result = visited.emplace(other_node);
+            auto pass_a = visited.emplace(other_node).second;
+
+            // Check if this node is excluded by choice of the user
+            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
 
             // Check that this has NOT been visited before queuing it
-            if (result.second) {
+            if (pass_a and pass_b) {
                 q.emplace(other_node);
             }
         });
@@ -53,7 +63,19 @@ void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
 }
 
 
-void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f) {
+void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
+    unordered_set<nid_t> do_not_visit;
+    for_node_in_bfs(graph, start_node, do_not_visit, f);
+}
+
+
+void for_edge_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const unordered_set<nid_t>& do_not_visit,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f_pass,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f_fail) {
+
     unordered_set<nid_t> visited_nodes;
     unordered_map <handle_t, unordered_set<handle_t> > visited_edges;
 
@@ -71,17 +93,25 @@ void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
             auto other_node = graph.get_id(other_handle);
 
             // Attempt to add this to the set of visited nodes
-            auto node_result = visited_nodes.emplace(other_node);
+            auto pass_a = visited_nodes.emplace(other_node).second;
+
+            // Check if this node has been blacklisted
+            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
 
             // Check that this has NOT been visited before queuing it
-            if (node_result.second) {
+            if (pass_a and pass_b) {
                 q.emplace(other_handle);
             }
 
             auto edge_result = visited_edges[h].insert(other_handle);
 
             if (edge_result.second){
-                f(h, other_handle);
+                if (pass_b) {
+                    f_pass(h, other_handle);
+                }
+                else {
+                    f_fail(h, other_handle);
+                }
             }
         });
 
@@ -89,17 +119,25 @@ void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
             auto other_node = graph.get_id(other_handle);
 
             // Attempt to add this to the set of visited nodes
-            auto node_result = visited_nodes.emplace(other_node);
+            auto pass_a = visited_nodes.emplace(other_node).second;
+
+            // Check if this node has been blacklisted
+            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
 
             // Check that this has NOT been visited before queuing it
-            if (node_result.second) {
+            if (pass_a and pass_b) {
                 q.emplace(other_handle);
             }
 
             auto edge_result = visited_edges[other_handle].emplace(h);
 
             if (edge_result.second){
-                f(other_handle, h);
+                if (pass_b) {
+                    f_pass(other_handle, h);
+                }
+                else {
+                    f_fail(other_handle, h);
+                }
             }
         });
 
@@ -107,6 +145,17 @@ void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<
             begin = false;
         }
     }
+}
+
+
+// Simplifying wrapper for the "for_edge_in_bfs" method, which has some extra criteria which is not always necessary
+void for_edge_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f) {
+
+    unordered_set<nid_t> do_not_visit;
+    for_edge_in_bfs(graph, start_node, do_not_visit, f, [&](const handle_t& handle_a, const handle_t& handle_b){});
 }
 
 
@@ -157,6 +206,170 @@ pair<nid_t,nid_t> translate_id(const HandleGraph& source_graph,
 }
 
 
+tuple<nid_t,nid_t,bool> try_translate_id(const HandleGraph& source_graph,
+                               const IncrementalIdMap<string>& source_id_map,
+                               HandleGraph& destination_graph,
+                               IncrementalIdMap<string>& destination_id_map,
+                               handle_t source_handle){
+
+    auto id = source_graph.get_id(source_handle);
+    auto name = source_id_map.get_name(id);
+    bool success = destination_id_map.exists(name);
+
+    nid_t translated_id;
+    if (success){
+        translated_id = destination_id_map.get_id(name);
+    }
+
+    return {id, translated_id, success};
+}
+
+
+void split_connected_components(
+        MutablePathDeletableHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        vector<IncrementalIdMap<string> >& id_maps,
+        vector <vector <pair <string, string> > >& in_edges,
+        vector <vector <pair <string, string> > >& out_edges,
+        const unordered_set<nid_t>& do_not_visit,
+        bool delete_visited_components) {
+
+    unordered_set<nid_t> all_nodes;
+
+    graph.for_each_handle([&](const handle_t& h) {
+        auto n = graph.get_id(h);
+        all_nodes.emplace(n);
+    });
+
+    while (not all_nodes.empty()) {
+        auto start_node = *all_nodes.begin();
+
+//        cerr << "Trying: " << id_map.get_name(start_node) << '\n';
+
+        // Skip the node if it is blacklisted
+        if (do_not_visit.find(start_node) != do_not_visit.end()){
+            all_nodes.erase(start_node);
+            continue;
+        }
+
+        // Allocate new elements in the vectors for this component
+        graphs.emplace_back();
+        id_maps.emplace_back();
+        in_edges.emplace_back();
+        out_edges.emplace_back();
+
+        unordered_set<string> paths_to_be_copied;
+        unordered_set<nid_t> to_be_deleted;
+
+        // Duplicate all the nodes
+        for_node_in_bfs(graph, start_node, do_not_visit, [&](const handle_t& h) {
+            auto s = graph.get_sequence(h);
+            nid_t id;
+            nid_t other_id;
+            tie(id, other_id) = translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
+
+//            cerr << "Iterating: " << id_map.get_name(id) << '\n';
+
+            assert(not graphs.back().has_node(other_id));
+            graphs.back().create_handle(s, other_id);
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
+                paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
+            });
+
+            if (delete_visited_components) {
+                to_be_deleted.emplace(id);
+            }
+
+            if (id != start_node) {
+                all_nodes.erase(id);
+            }
+        });
+
+        // Duplicate all the edges
+        for_edge_in_bfs(graph, start_node, do_not_visit, [&](const handle_t& handle_a, const handle_t& handle_b) {
+            nid_t id_a;
+            nid_t other_id_a;
+            tie(id_a, other_id_a) = translate_id(graph, id_map, graphs.back(), id_maps.back(), handle_a);
+
+            nid_t id_b;
+            nid_t other_id_b;
+            tie(id_b, other_id_b) = translate_id(graph, id_map, graphs.back(), id_maps.back(), handle_b);
+
+            bool reversal_a = graph.get_is_reverse(handle_a);
+            bool reversal_b = graph.get_is_reverse(handle_b);
+
+            auto other_handle_a = graphs.back().get_handle(other_id_a, reversal_a);
+            auto other_handle_b = graphs.back().get_handle(other_id_b, reversal_b);
+
+            assert(not graphs.back().has_edge(other_handle_a, other_handle_b));
+            graphs.back().create_edge(other_handle_a, other_handle_b);
+        },
+        [&](const handle_t& handle_a, const handle_t& handle_b){
+            auto id_a = graph.get_id(handle_a);
+            auto id_b = graph.get_id(handle_b);
+            auto name_a = id_map.get_name(id_a);
+            auto name_b = id_map.get_name(id_b);
+
+            if (do_not_visit.find(id_a) != do_not_visit.end()){
+                in_edges.back().emplace_back(name_a, name_b);
+            }
+            else if (do_not_visit.find(id_b) != do_not_visit.end()){
+                out_edges.back().emplace_back(name_a, name_b);
+            }
+            else{
+                throw runtime_error("ERROR: unexpected membership in do_not_visit for edge: " + name_a + " -> " + name_b);
+            }
+        });
+
+        // Duplicate all the paths
+        for (auto& path_name: paths_to_be_copied){
+            auto p = graph.get_path_handle(path_name);
+
+            assert(not graphs.back().has_path(path_name));
+            path_handle_t other_p;
+            bool prev_success = false;
+            size_t n_breaks = 0;
+
+            graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+                auto h = graph.get_handle_of_step(s);
+
+                // Check if this node exists in the new subgraph, and if so, find its ID
+                nid_t id;
+                nid_t other_id;
+                bool success;
+                tie(id, other_id, success) = try_translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
+
+                // It is possible that the path has been broken during BFS, if a node has been (optionally) excluded
+                // by the user. In that case, make a new path for every time there is a break in path continuity.
+                if (success) {
+                    if (not prev_success) {
+                        string new_path_name = path_name + (n_breaks > 0 ? to_string(n_breaks) : "");
+                        other_p = graphs.back().create_path_handle(path_name);
+                        n_breaks++;
+                    }
+
+                    auto other_h = graph.get_handle(other_id, graph.get_is_reverse(h));
+                    graphs.back().append_step(other_p, other_h);
+                }
+
+                prev_success = success;
+            });
+        }
+
+        all_nodes.erase(start_node);
+
+        if (delete_visited_components) {
+            for (auto& n: to_be_deleted) {
+                auto h = graph.get_handle(n);
+                graph.destroy_handle(h);
+            }
+        }
+    }
+}
+
+
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
@@ -172,7 +385,6 @@ void split_connected_components(
     });
 
     while (not all_nodes.empty()) {
-        cerr << "NEW CONNECTED COMPONENT" << '\n';
         graphs.emplace_back();
         id_maps.emplace_back();
 
@@ -188,8 +400,6 @@ void split_connected_components(
             nid_t other_id;
             tie(id, other_id) = translate_id(graph, id_map, graphs.back(), id_maps.back(), h);
 
-            cerr << "iterating " << id << '\n';
-
             assert(not graphs.back().has_node(other_id));
             graphs.back().create_handle(s, other_id);
 
@@ -203,7 +413,6 @@ void split_connected_components(
 
             if (id != start_node) {
                 all_nodes.erase(id);
-                cerr << "erasing " << id << '\n';
             }
         });
 
@@ -248,11 +457,9 @@ void split_connected_components(
         }
 
         all_nodes.erase(start_node);
-        cerr << "erasing " << start_node << '\n';
 
         if (delete_visited_components) {
             for (auto& n: to_be_deleted) {
-                cerr << "deleting " << n << '\n';
                 auto h = graph.get_handle(n);
                 graph.destroy_handle(h);
             }
@@ -522,7 +729,7 @@ void un_extend_paths(
     }
 
     for (auto& item: to_be_appended) {
-        // un-apppend (pop) the RIGHT side node
+        // un-append (pop) the RIGHT side node
         auto end = graph.path_end(item.first);
         auto prev = graph.get_previous_step(end);
         graph.rewrite_segment(prev, end, vector<handle_t>());
@@ -532,19 +739,18 @@ void un_extend_paths(
 
 void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map){
     unordered_set<nid_t> nodes_to_be_destroyed;
-
-    cout << graph.get_path_count() << '\n';
     vector<string> path_names;
+    string temporary_suffix = "_hap";
 
     vector<path_handle_t> paths;
 
     graph.for_each_path_handle([&](const path_handle_t& p) {
         paths.emplace_back(p);
+        path_names.emplace_back(graph.get_path_name(p));
     });
 
     for (auto& p: paths){
         string path_sequence;
-        cerr << "Path " << graph.get_path_name(p) << '\n';
 
         graph.for_each_step_in_path(p, [&](const step_handle_t s){
             handle_t h = graph.get_handle_of_step(s);
@@ -554,13 +760,13 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             path_sequence += sequence;
 
             string name = id_map.get_name(n);
-            cerr << '\t' << name << " " << (sequence.size() < 100 ? sequence : "--") << '\n';
 
             nodes_to_be_destroyed.emplace(n);
         });
 
-        string haplotype_path_name = graph.get_path_name(p) + "_hap";
-        auto new_id = id_map.insert(haplotype_path_name);
+        auto name = graph.get_path_name(p);
+        string haplotype_path_name = name + temporary_suffix;
+        auto new_id = id_map.insert(name);
         handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);
 
         auto path_start_handle = graph.get_handle_of_step(graph.path_begin(p));
@@ -584,7 +790,6 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
     // Destroy the nodes that have had their sequences duplicated into haplotypes
     for (auto& n: nodes_to_be_destroyed){
-        cerr << "Destroying: " << id_map.get_name(n) << '\n';
         graph.destroy_handle(graph.get_handle(n));
     }
 
@@ -603,7 +808,6 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
                 return false;
             });
 
-//            cerr << id_map.get_name(graph.get_id(h)) << " has_path: " << has_path << '\n';
         }
 
         // Delete any component that has no path label
@@ -614,6 +818,21 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             }
         }
     });
+
+    // Go back and rename all the paths so they don't have the unnecessary added suffix
+    for (const auto& name: path_names){
+        // Find the path that was renamed with a suffix, and find its only node (all unzipped paths are singletons)
+        auto path_name_with_suffix = name + temporary_suffix;
+        auto p_suffix = graph.get_path_handle(path_name_with_suffix);
+        auto h = graph.get_handle_of_step(graph.path_begin(p_suffix));
+
+        // Make a copy without the suffix
+        auto p = graph.create_path_handle(name);
+        graph.append_step(p, h);
+
+        // Destroy the one with the suffix
+        graph.destroy_path(p_suffix);
+    }
 }
 
 

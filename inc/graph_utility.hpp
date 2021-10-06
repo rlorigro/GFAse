@@ -35,9 +35,39 @@ namespace gfase{
 
 pair<string, size_t> parse_path_string(string path_name, char delimiter);
 
+pair<nid_t,nid_t> translate_id(
+        const HandleGraph& source_graph,
+        const IncrementalIdMap<string>& source_id_map,
+        HandleGraph& destination_graph,
+        IncrementalIdMap<string>& destination_id_map,
+        handle_t source_handle);
+
+tuple<nid_t,nid_t,bool> try_translate_id(
+        const HandleGraph& source_graph,
+        const IncrementalIdMap<string>& source_id_map,
+        HandleGraph& destination_graph,
+        IncrementalIdMap<string>& destination_id_map,
+        handle_t source_handle);
+
+void for_node_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const unordered_set<nid_t>& do_not_visit,
+        const function<void(const handle_t&)>& f);
+
 void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f);
 
-void for_edge_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f);
+void for_edge_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const unordered_set<nid_t>& do_not_visit,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f_pass,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f_fail);
+
+void for_edge_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f);
 
 void for_each_connected_component(HandleGraph& graph, const function<void(unordered_set<nid_t>& connected_component)>& f);
 
@@ -47,6 +77,16 @@ void split_connected_components(
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
         bool delete_visited_components = false);
+
+void split_connected_components(
+        MutablePathDeletableHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        vector<IncrementalIdMap<string> >& id_maps,
+        vector <vector <pair <string, string> > >& in_edges,
+        vector <vector <pair <string, string> > >& out_edges,
+        const unordered_set<nid_t>& do_not_visit,
+        bool delete_visited_components);
 
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,

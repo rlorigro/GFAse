@@ -15,6 +15,7 @@ using gfase::IncrementalIdMap;
 using gfase::handle_graph_to_gfa;
 using gfase::for_node_in_bfs;
 using gfase::for_edge_in_bfs;
+using gfase::plot_graph;
 
 using ghc::filesystem::path;
 using bdsg::HashGraph;
@@ -43,6 +44,8 @@ int main(){
     IncrementalIdMap<string> id_map;
 
     gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+
+    plot_graph(graph, "start_graph");
 
     IntegratedSnarlFinder snarl_finder(graph);
     vector <pair<nid_t, bool> > stack;
