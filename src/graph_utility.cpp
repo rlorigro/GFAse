@@ -4,7 +4,7 @@ namespace gfase {
 
 
 pair<string, size_t> parse_path_string(string path_name, char delimiter){
-    size_t index = path_name.find(delimiter);
+    size_t index = path_name.rfind(delimiter);
     string component_name = path_name.substr(0,index);
     size_t component_haplotype = stoi(path_name.substr(index+1,path_name.length()));
 
@@ -626,11 +626,9 @@ void find_diploid_paths(
         });
 
         if (overlapping_paths.empty()){
-            cerr << "haploid path: " << path_name << '\n';
             haploid_path_names.emplace(path_name);
         }
         else if (overlapping_paths.size() == 1){
-            cerr << "diploid path: " << path_name << '\n';
             string other_path_name = graph.get_path_name(*overlapping_paths.begin());
 
             // Build mapping in both directions

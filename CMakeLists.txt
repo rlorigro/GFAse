@@ -334,6 +334,7 @@ endforeach()
 # -------- EXECUTABLES --------
 
 set(EXECUTABLES
+        count_kmers
         create_bandage_path_color_table
         extract_haplotype_kmers
         get_path_lengths
@@ -349,6 +350,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
+            snarls
             bdsg
             divsufsort
             libhandlegraph
