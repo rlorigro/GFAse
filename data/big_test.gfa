@@ -1,0 +1,67 @@
+H	VN:Z:1.0
+S	a	ATGGTTT
+S	b	T
+S	c	A
+S	d	TCACGAA
+S	e	T
+S	f	A
+S	g	CAGTACT
+S	h	T
+S	i	A
+S	j	CGTATGA
+S	k	T
+S	l	A
+S	m	AATGCTG
+L	a	+	b	+	0M
+L	a	+	c	+	0M
+L	b	+	d	+	0M
+L	c	+	d	+	0M
+L	d	+	e	+	0M
+L	d	+	f	+	0M
+L	e	+	g	+	0M
+L	f	+	g	+	0M
+L	g	+	h	+	0M
+L	g	+	i	+	0M
+L	h	+	j	+	0M
+L	i	+	j	+	0M
+L	j	+	k	+	0M
+L	j	+	l	+	0M
+L	k	+	m	+	0M
+L	l	+	m	+	0M
+P	0.0	b+,d+,e+	0M,0M
+P	0.1	c+,d+,f+	0M,0M
+P	1.0	h+,j+,k+	0M,0M
+P	1.1	i+,j+,l+	0M,0M
+S	a2	ATGGTTT
+S	b2	T
+S	c2	A
+S	d2	TCACGAA
+S	e2	T
+S	f2	A
+S	g2	CAGTACT
+S	h2	T
+S	i2	A
+S	j2	CGTATGA
+S	k2	T
+S	l2	A
+S	m2	AATGCTG
+L	a2	+	b2	+	0M
+L	a2	+	c2	+	0M
+L	b2	+	d2	+	0M
+L	c2	+	d2	+	0M
+L	d2	+	e2	+	0M
+L	d2	+	f2	+	0M
+L	e2	+	g2	+	0M
+L	f2	+	g2	+	0M
+L	g2	+	h2	+	0M
+L	g2	+	i2	+	0M
+L	h2	+	j2	+	0M
+L	i2	+	j2	+	0M
+L	j2	+	k2	+	0M
+L	j2	+	l2	+	0M
+L	k2	+	m2	+	0M
+L	l2	+	m2	+	0M
+P	2.0	b2+,d2+,e2+	0M,0M
+P	2.1	c2+,d2+,f2+	0M,0M
+P	3.0	h2+,j2+,k2+	0M,0M
+P	3.1	i2+,j2+,l2+	0M,0M

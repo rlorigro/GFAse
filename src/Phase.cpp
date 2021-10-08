@@ -114,7 +114,6 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
             // Node names for haplotypes should match the paths that they were created from
             auto id = cc_id_map.get_id(path_name);
 
-            cerr << "Exclude: " << path_name << '\n';
             do_not_visit.emplace(id);
 
             return true;
@@ -152,8 +151,13 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
                 cerr << '\t' << subgraph_id_maps[subgraph_index].get_name(id) << '\n';
             });
         }
-    }
 
+//        // Build set of all the subgraph indexes
+//        unordered_set<size_t> unphased_component_indexes;
+//        for (size_t i=0; i<subgraphs.size(); i++){
+//            unphased_component_indexes.emplace(i);
+//        }
+    }
 }
 
 }

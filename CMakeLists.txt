@@ -45,6 +45,7 @@ include_directories(
 set(SOURCES
         src/BinaryIO.cpp
         src/BinarySequence.cpp
+        src/Bipartition.cpp
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
