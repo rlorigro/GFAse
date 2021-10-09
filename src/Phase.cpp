@@ -1,6 +1,10 @@
 #include "FixedBinarySequence.hpp"
+#include "Bipartition.hpp"
 #include "Phase.hpp"
 
+#include "bdsg/overlays/packed_subgraph_overlay.hpp"
+
+using bdsg::PackedSubgraphOverlay;
 
 namespace gfase{
 
@@ -100,7 +104,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     //    - Number of components touched by each unphased region must be < 3
 
     for (size_t component_index=0; component_index < connected_components.size(); component_index++){
-        unordered_set<nid_t> do_not_visit;
+        unordered_set<nid_t> diploid_nodes;
         auto& cc_graph = connected_components[component_index];
         auto& cc_id_map = connected_component_ids[component_index];
 
@@ -114,49 +118,23 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
             // Node names for haplotypes should match the paths that they were created from
             auto id = cc_id_map.get_id(path_name);
 
-            do_not_visit.emplace(id);
+            diploid_nodes.emplace(id);
 
             return true;
         });
 
-        vector<HashGraph> subgraphs;
-        vector<IncrementalIdMap<string> > subgraph_id_maps;
-        vector <vector <pair <string, string> > > subgraph_in_edges;
-        vector <vector <pair <string, string> > > subgraph_out_edges;
+        Bipartition bipartition(cc_graph, cc_id_map, diploid_nodes);
+        bipartition.partition();
 
-        split_connected_components(
-                cc_graph,
-                cc_id_map,
-                subgraphs,
-                subgraph_id_maps,
-                subgraph_in_edges,
-                subgraph_out_edges,
-                do_not_visit,
-                true);
-
-        for (size_t subgraph_index=0; subgraph_index < subgraphs.size(); subgraph_index++) {
-            cerr << "In edges:" << '\n';
-            for (const auto& e: subgraph_in_edges[subgraph_index]) {
-                cerr << '\t' << e.first << " -> " << e.second << '\n';
-            }
-
-            cerr << "Out edges:" << '\n';
-            for (const auto& e: subgraph_out_edges[subgraph_index]) {
-                cerr << '\t' << e.first << " -> " << e.second << '\n';
-            }
-
-            cerr << "Nodes in subgraph:" << '\n';
-            subgraphs[subgraph_index].for_each_handle([&](const handle_t& h){
-                auto id = subgraphs[subgraph_index].get_id(h);
-                cerr << '\t' << subgraph_id_maps[subgraph_index].get_name(id) << '\n';
+        bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+            subgraph.for_each_handle([&](const handle_t& h){
+                auto id = subgraph.get_id(h);
+                auto name = cc_id_map.get_name(id);
             });
-        }
+        });
 
-//        // Build set of all the subgraph indexes
-//        unordered_set<size_t> unphased_component_indexes;
-//        for (size_t i=0; i<subgraphs.size(); i++){
-//            unphased_component_indexes.emplace(i);
-//        }
+
+
     }
 }
 

@@ -5,7 +5,14 @@ S	c	A
 S	d	TCACGAA
 S	e	T
 S	f	A
-S	g	CAGTACT
+S	g_a	CAGTACT
+S	g_b	CAGTACT
+S	tip_a	TAGCAGCTA
+S	tip_b	T
+S	tip_c	A
+S	tip_d	TTTGCATGGC
+S	tip_e	T
+S	tip_f	A
 S	h	T
 S	i	A
 S	j	CGTATGA
@@ -18,20 +25,30 @@ L	b	+	d	+	0M
 L	c	+	d	+	0M
 L	d	+	e	+	0M
 L	d	+	f	+	0M
-L	e	+	g	+	0M
-L	f	+	g	+	0M
-L	g	+	h	+	0M
-L	g	+	i	+	0M
+L	e	+	g_a	+	0M
+L	f	+	g_a	+	0M
+L	g_a	+	g_b	+	0M
+L	g_b	+	h	+	0M
+L	g_b	+	i	+	0M
 L	h	+	j	+	0M
 L	i	+	j	+	0M
 L	j	+	k	+	0M
 L	j	+	l	+	0M
 L	k	+	m	+	0M
 L	l	+	m	+	0M
+L	g_a	+	tip_a	+	0M
+L	tip_a	+	tip_b	+	0M
+L	tip_a	+	tip_c	+	0M
+L	tip_b	+	tip_d	+	0M
+L	tip_c	+	tip_d	+	0M
+L	tip_d	+	tip_e	+	0M
+L	tip_d	+	tip_f	+	0M
 P	0.0	b+,d+,e+	0M,0M
 P	0.1	c+,d+,f+	0M,0M
 P	1.0	h+,j+,k+	0M,0M
 P	1.1	i+,j+,l+	0M,0M
+P	tip.0	tip_b+,tip_d+,tip_e+	0M,0M
+P	tip.1	tip_c+,tip_d+,tip_f+	0M,0M
 S	a2	ATGGTTT
 S	b2	T
 S	c2	A

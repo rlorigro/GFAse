@@ -15,8 +15,14 @@ pair<string, size_t> parse_path_string(string path_name, char delimiter){
 void for_node_in_bfs(
         const HandleGraph& graph,
         nid_t start_node,
-        const unordered_set<nid_t>& do_not_visit,
-        const function<void(const handle_t&)>& f) {
+        const function<bool(const nid_t& id)>& pass_criteria,
+        const function<void(const handle_t& h)>& f){
+
+    // Do nothing if the start node was blacklisted
+    if (not pass_criteria(start_node)){
+        return;
+    }
+
     unordered_set<nid_t> visited;
     queue<nid_t> q;
 
@@ -37,7 +43,7 @@ void for_node_in_bfs(
             auto pass_a = visited.emplace(other_node).second;
 
             // Check if this node is excluded by choice of the user
-            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
+            auto pass_b = pass_criteria(other_node);
 
             // Check that this has NOT been visited before queuing it
             if (pass_a and pass_b) {
@@ -52,7 +58,7 @@ void for_node_in_bfs(
             auto pass_a = visited.emplace(other_node).second;
 
             // Check if this node is excluded by choice of the user
-            auto pass_b = do_not_visit.find(other_node) == do_not_visit.end();
+            auto pass_b = pass_criteria(other_node);
 
             // Check that this has NOT been visited before queuing it
             if (pass_a and pass_b) {
@@ -62,6 +68,19 @@ void for_node_in_bfs(
     }
 }
 
+
+void for_node_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
+        const unordered_set<nid_t>& do_not_visit,
+        const function<void(const handle_t&)>& f){
+
+    for_node_in_bfs(
+            graph,
+            start_node,
+            [&](const nid_t& id){return (do_not_visit.find(id) == do_not_visit.end());},
+            f);
+}
 
 void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
     unordered_set<nid_t> do_not_visit;

@@ -52,6 +52,12 @@ tuple<nid_t,nid_t,bool> try_translate_id(
 void for_node_in_bfs(
         const HandleGraph& graph,
         nid_t start_node,
+        const function<bool(const nid_t& id)>& pass_criteria,
+        const function<void(const handle_t& h)>& f);
+
+void for_node_in_bfs(
+        const HandleGraph& graph,
+        nid_t start_node,
         const unordered_set<nid_t>& do_not_visit,
         const function<void(const handle_t&)>& f);
 
