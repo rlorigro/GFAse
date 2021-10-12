@@ -10,16 +10,19 @@
 
 #include <unordered_set>
 #include <functional>
+#include <fstream>
 #include <array>
 
 using handlegraph::PathHandleGraph;
 using handlegraph::HandleGraph;
+using handlegraph::handle_t;
 using handlegraph::edge_t;
 using bdsg::PackedSubgraphOverlay;
 using bdsg::HashGraph;
 
 using std::unordered_set;
 using std::function;
+using std::ostream;
 using std::array;
 
 
@@ -41,9 +44,13 @@ public:
 
     /// Methods ///
     Bipartition(PathHandleGraph& graph, IncrementalIdMap<string>& id_map, unordered_set<nid_t>& node_subset);
-    bool get_partition_of_node(nid_t id);
-    void for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f);
+    bool get_partition_of_node(const nid_t& id) const;
+    void for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f) const;
     void partition();
+    size_t get_subgraph_size(const nid_t& meta_node) const;
+    void write_parent_graph_csv(ostream& file) const;
+    void write_meta_graph_csv(ostream& file) const;
+    void print() const;
 };
 
 }

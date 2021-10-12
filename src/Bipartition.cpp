@@ -11,7 +11,7 @@ Bipartition::Bipartition(PathHandleGraph& graph, IncrementalIdMap<string>& id_ma
 {}
 
 
-bool Bipartition::get_partition_of_node(nid_t id){
+bool Bipartition::get_partition_of_node(const nid_t& id) const{
     return node_subset.find(id) == node_subset.end();
 }
 
@@ -31,8 +31,6 @@ void Bipartition::partition(){
 
         size_t subgraph_index = subgraphs.size();
 
-        cerr << "New subgraph: " << subgraph_index << '\n';
-
         // Allocate new elements in the vectors for this component
         subgraph_partitions.emplace_back(partition);
         subgraphs.emplace_back(&graph);
@@ -48,8 +46,6 @@ void Bipartition::partition(){
 
                     auto id = graph.get_id(h);
                     node_to_subgraph.emplace(id, subgraph_index);
-
-                    cerr << '\t' << id_map.get_name(id) << '\n';
 
                     all_nodes.erase(id);
                 });
@@ -83,10 +79,57 @@ void Bipartition::partition(){
 }
 
 
-void Bipartition::for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f){
+void Bipartition::for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f) const{
     for (size_t i=0; i<subgraphs.size(); i++){
         f(subgraphs[i], i, subgraph_partitions[i]);
     }
+}
+
+
+size_t Bipartition::get_subgraph_size(const nid_t& meta_node) const{
+    auto subgraph_index = node_to_subgraph.at(meta_node);
+
+    return subgraphs.at(subgraph_index).get_node_count();
+}
+
+
+void Bipartition::print() const{
+    for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        cerr << "Subgraph: " << subgraph_index << '\n';
+        cerr << "\tPartition: " << int(partition) << '\n';
+        cerr << "\tNodes: " << subgraph.get_node_count() << '\n';
+
+        subgraph.for_each_handle([&](const handle_t& h){
+            // Debug printing
+            auto id = subgraph.get_id(h);
+            string name = id_map.get_name(id);
+
+            cerr << '\t' << '\t' << name << '\n';
+        });
+    });
+}
+
+
+void Bipartition::write_parent_graph_csv(ostream& file) const{
+    file << "name" << ',' << "color" << ',' << "subgraph_index" << ',' << '\n';
+
+    for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        subgraph.for_each_handle([&](const handle_t& h){
+            auto id = subgraph.get_id(h);
+            string name = id_map.get_name(id);
+
+            file << name << ',' << (partition ? "#A2AFBE" : "#0D60BC") << ',' << subgraph_index << ',' << '\n';
+        });
+    });
+}
+
+
+void Bipartition::write_meta_graph_csv(ostream& file) const{
+    file << "name" << ',' << "color" << ',' << "node_count" << ',' << '\n';
+
+    for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        file << subgraph_index << ',' << (partition ? "#A2AFBE" : "#0D60BC") << ',' << subgraph.get_node_count() << ',' << '\n';
+    });
 }
 
 

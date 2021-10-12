@@ -84,16 +84,10 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
 
     for (size_t i=0; i<connected_components.size(); i++){
-        cerr << "Component " << to_string(i) << '\n';
-        print_graph_paths(connected_components[i], connected_component_ids[i]);
+//        cerr << "Component " << to_string(i) << '\n';
+//        print_graph_paths(connected_components[i], connected_component_ids[i]);
 
         unzip(connected_components[i], connected_component_ids[i]);
-
-        string filename_prefix = "component_" + to_string(i) + "_unzipped";
-        ofstream file(filename_prefix + ".gfa");
-        handle_graph_to_gfa(connected_components[i], connected_component_ids[i], file);
-
-        plot_graph(connected_components[i], filename_prefix);
     }
 
     // TODO: for each path name in diploid paths, find the unzipped path name, and do bounded BFS on adjacent nodes
@@ -123,17 +117,48 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
             return true;
         });
 
-        Bipartition bipartition(cc_graph, cc_id_map, diploid_nodes);
-        bipartition.partition();
+        Bipartition ploidy_bipartition(cc_graph, cc_id_map, diploid_nodes);
+        ploidy_bipartition.partition();
 
-        bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-            subgraph.for_each_handle([&](const handle_t& h){
-                auto id = subgraph.get_id(h);
-                auto name = cc_id_map.get_name(id);
-            });
+        cerr << "PLOIDY subgraphs: " << '\n';
+        ploidy_bipartition.print();
+
+        // TODO: check that subgraph ends belong to only one diploid region each
+        unordered_set<nid_t> chain_nodes;
+
+        ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+            // Find singletons
+            if (subgraph.get_node_count() == 1){
+                subgraph.for_each_handle([&](const handle_t& h){
+                    chain_nodes.emplace(subgraph.get_id(h));
+                });
+            }
+            else if(subgraph.get_node_count() == 0){
+                throw runtime_error("ERROR: subgraph in metagraph contains no nodes: " + to_string(subgraph_index));
+            }
         });
 
+        Bipartition chain_bipartition(cc_graph, cc_id_map, chain_nodes);
+        chain_bipartition.partition();
 
+        cerr << "CHAIN subgraphs: " << '\n';
+        chain_bipartition.print();
+
+        string filename_prefix = "component_" + to_string(component_index) + "_";
+        ofstream file(filename_prefix + ".gfa");
+        handle_graph_to_gfa(connected_components[component_index], connected_component_ids[component_index], file);
+
+        ofstream test_gfa_meta(filename_prefix + "ploidy_metagraph.gfa");
+        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
+
+        ofstream test_gfa_chain(filename_prefix + "chain_metagraph.gfa");
+        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
+
+        ofstream test_csv_meta(filename_prefix + "chain_metagraph.csv");
+        chain_bipartition.write_meta_graph_csv(test_csv_meta);
+
+        ofstream test_csv_parent(filename_prefix + "chain_parent_graph.csv");
+        chain_bipartition.write_parent_graph_csv(test_csv_parent);
 
     }
 }
