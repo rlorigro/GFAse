@@ -475,6 +475,10 @@ void split_connected_components(
             });
         }
 
+        if (graphs.back().get_node_count() == 0){
+            throw runtime_error("connected component with start name " + id_map.get_name(start_node) + " creates empty graph");
+        }
+
         all_nodes.erase(start_node);
 
         if (delete_visited_components) {
@@ -761,9 +765,11 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
     vector<path_handle_t> paths;
 
+    cerr << "Paths in component:" << '\n';
     graph.for_each_path_handle([&](const path_handle_t& p) {
         paths.emplace_back(p);
         path_names.emplace_back(graph.get_path_name(p));
+        cerr << graph.get_path_name(p) << '\n';
     });
 
     for (auto& p: paths){
@@ -808,6 +814,11 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
     // Destroy the nodes that have had their sequences duplicated into haplotypes
     for (auto& n: nodes_to_be_destroyed){
         graph.destroy_handle(graph.get_handle(n));
+    }
+
+    // If there were no paths in this entire component, dont delete anything, just leave it as is
+    if (paths.empty()){
+        return;
     }
 
     // TODO: when creating haplotypes, maintain error bubbles?

@@ -89,6 +89,8 @@ void handle_graph_to_gfa(const HandleGraph& graph, ostream& output_gfa){
     graph.for_each_edge([&](const edge_t& edge){
         write_edge_to_gfa(graph, edge, output_gfa);
     });
+
+    output_gfa.flush();
 }
 
 

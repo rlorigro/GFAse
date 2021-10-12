@@ -99,7 +99,7 @@ template<class T, size_t T2> template <class T3> FixedBinarySequence<T,T2>::Fixe
         T bits = base_to_index.at(c);
 
         if (bits == 4){
-            throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(c,1));
+            throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(1,c) + " (ord=" + std::to_string(int(c)) + ")");
         }
 
         uint8_t shift_size = (2*length) % (sizeof(T)*8);

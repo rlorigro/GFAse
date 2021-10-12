@@ -5,12 +5,12 @@ import sys
 
 
 def main(file_path):
-    length = 26
+    length = 30
 
     with open(file_path) as file:
         for l,line in enumerate(file):
             if line[0] == "S":
-                line_type, name, sequence = line.split()[0:3]
+                line_type, name, sequence = line.split('\t')[0:3]
 
                 if len(sequence) > length*2:
                     sequence = sequence[0:length] + "GGGGGGGG" + sequence[-length:]

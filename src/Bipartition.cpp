@@ -68,7 +68,7 @@ void Bipartition::partition(){
             metagraph.create_edge(h_a, h_b);
 
             // The metagraph edge can be used to find all individual edges that linked subgraphs in the parent graph
-            edge_t meta_edge(h_a, h_b);
+            edge_t meta_edge = metagraph.edge_handle(h_a, h_b);
             meta_edge_to_edges[meta_edge].emplace_back(e);
 
             if (partition_a == partition_b){
@@ -86,10 +86,52 @@ void Bipartition::for_each_subgraph(const function<void(const HandleGraph& subgr
 }
 
 
-size_t Bipartition::get_subgraph_size(const nid_t& meta_node) const{
+size_t Bipartition::get_subgraph_size(nid_t meta_node) const{
     auto subgraph_index = node_to_subgraph.at(meta_node);
 
     return subgraphs.at(subgraph_index).get_node_count();
+}
+
+
+size_t Bipartition::get_subgraph_index(nid_t meta_node) const{
+    return node_to_subgraph.at(meta_node);
+}
+
+
+nid_t Bipartition::get_id(handle_t meta_handle) const{
+    return metagraph.get_id(meta_handle);
+}
+
+
+void Bipartition::follow_subgraph_edges(size_t subgraph_index, bool go_left, const function<void(const handle_t& h)>& f){
+    auto n = nid_t(subgraph_index);
+    auto h = metagraph.get_handle(n);
+
+    metagraph.follow_edges(h, go_left, [&](const handle_t& h_other){
+        edge_t e;
+        if (go_left) {
+            e = metagraph.edge_handle(h_other, h);
+        }
+        else{
+            e = metagraph.edge_handle(h, h_other);
+        }
+
+        for (auto& parent_edge: meta_edge_to_edges.at(e)){
+            auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
+            auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
+
+            if (first_index == subgraph_index and second_index != subgraph_index){
+                f(parent_edge.second);
+            }
+            else if (first_index != subgraph_index and second_index == subgraph_index){
+                f(parent_edge.first);
+            }
+            else{
+                throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+            }
+        }
+    });
+
 }
 
 

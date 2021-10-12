@@ -269,6 +269,11 @@ step_handle_t HaplotypePathKmer::get_step_of_kmer_start() const{
 }
 
 
+step_handle_t HaplotypePathKmer::get_step_of_kmer_end() const{
+    return steps.back();
+}
+
+
 size_t HaplotypePathKmer::get_index_of_kmer_start() const{
     return start_index;
 }

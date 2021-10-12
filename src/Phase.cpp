@@ -47,10 +47,17 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
         kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
-            FixedBinarySequence<uint64_t,2> s(sequence);
+            try {
+                FixedBinarySequence<uint64_t, 2> s(sequence);
 
-            // Compare kmer to parental kmers
-            ks.increment_parental_kmer_count(component_name, haplotype, s);
+                // Compare kmer to parental kmers
+                ks.increment_parental_kmer_count(component_name, haplotype, s);
+            }
+            catch(exception& e){
+                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.get_step_of_kmer_end())));
+                cerr << e.what() << '\n';
+                throw runtime_error("Error parsing sequence for node: " + node_name);
+            }
         });
     }
 
@@ -77,18 +84,12 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     // Debug
     ks.print_component_parent_conf_matrix();
 
-    cerr << "Unzipping..." << '\n';
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
 
+    cerr << "Finding connected components..." << '\n';
+
     split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
-
-    for (size_t i=0; i<connected_components.size(); i++){
-//        cerr << "Component " << to_string(i) << '\n';
-//        print_graph_paths(connected_components[i], connected_component_ids[i]);
-
-        unzip(connected_components[i], connected_component_ids[i]);
-    }
 
     // TODO: for each path name in diploid paths, find the unzipped path name, and do bounded BFS on adjacent nodes
     // - Make no assumptions about what lies between diploid paths
@@ -97,10 +98,14 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     //    - Depth of deepest snarl
     //    - Number of components touched by each unphased region must be < 3
 
-    for (size_t component_index=0; component_index < connected_components.size(); component_index++){
+    cerr << "Unzipping..." << '\n';
+
+    for (size_t c=0; c<connected_components.size(); c++){
+        unzip(connected_components[c], connected_component_ids[c]);
+
         unordered_set<nid_t> diploid_nodes;
-        auto& cc_graph = connected_components[component_index];
-        auto& cc_id_map = connected_component_ids[component_index];
+        auto& cc_graph = connected_components[c];
+        auto& cc_id_map = connected_component_ids[c];
 
         cc_graph.for_each_path_handle([&](const path_handle_t& p){
             auto path_name = cc_graph.get_path_name(p);
@@ -126,12 +131,52 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         // TODO: check that subgraph ends belong to only one diploid region each
         unordered_set<nid_t> chain_nodes;
 
+        ofstream debug_gfa("ploidy_metagraph.gfa");
+        handle_graph_to_gfa(ploidy_bipartition.metagraph, debug_gfa);
+
         ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
             // Find singletons
             if (subgraph.get_node_count() == 1){
-                subgraph.for_each_handle([&](const handle_t& h){
-                    chain_nodes.emplace(subgraph.get_id(h));
-                });
+
+                // If this is a diploid subgraph collect left and right edges from this subgraph, and verify that
+                // there are not more than 2 adjacent subgraphs for each side.
+                if (partition == 0){
+                    unordered_set<size_t> left_subgraph_indexes;
+                    unordered_set<size_t> right_subgraph_indexes;
+
+                    ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
+                        auto id = ploidy_bipartition.get_id(h);
+                        auto other_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+                        left_subgraph_indexes.emplace(other_subgraph_index);
+                    });
+
+                    ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
+                        auto id = ploidy_bipartition.get_id(h);
+                        auto other_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+                        right_subgraph_indexes.emplace(other_subgraph_index);
+                    });
+
+                    cerr << "LEFT adjacent subgraphs for: " << subgraph_index << '\n';
+                    for (auto& item: left_subgraph_indexes){
+                        cerr << '\t' << item << '\n';
+                    }
+
+                    cerr << "RIGHT adjacent subgraphs for: " << subgraph_index << '\n';
+                    for (auto& item: right_subgraph_indexes){
+                        cerr << '\t' << item << '\n';
+                    }
+
+                    if (left_subgraph_indexes.size() < 2 and right_subgraph_indexes.size() < 2){
+                        subgraph.for_each_handle([&](const handle_t& h){
+                            chain_nodes.emplace(subgraph.get_id(h));
+                        });
+                    }
+                }
+                else{
+                    subgraph.for_each_handle([&](const handle_t& h){
+                        chain_nodes.emplace(subgraph.get_id(h));
+                    });
+                }
             }
             else if(subgraph.get_node_count() == 0){
                 throw runtime_error("ERROR: subgraph in metagraph contains no nodes: " + to_string(subgraph_index));
@@ -144,9 +189,9 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         cerr << "CHAIN subgraphs: " << '\n';
         chain_bipartition.print();
 
-        string filename_prefix = "component_" + to_string(component_index) + "_";
+        string filename_prefix = "component_" + to_string(c) + "_";
         ofstream file(filename_prefix + ".gfa");
-        handle_graph_to_gfa(connected_components[component_index], connected_component_ids[component_index], file);
+        handle_graph_to_gfa(connected_components[c], connected_component_ids[c], file);
 
         ofstream test_gfa_meta(filename_prefix + "ploidy_metagraph.gfa");
         handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);

@@ -61,6 +61,7 @@ public:
     bool update_has_diploid();
 
     step_handle_t get_step_of_kmer_start() const;
+    step_handle_t get_step_of_kmer_end() const;
     size_t get_index_of_kmer_start() const;
     void print();
 };
