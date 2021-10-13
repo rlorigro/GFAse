@@ -100,12 +100,33 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Unzipping..." << '\n';
 
+
+    size_t rounding_unit = 2;
+    map<size_t, size_t> raw_diploid_sizes;
+    map<size_t, size_t> chained_diploid_sizes;
+
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c]);
 
         unordered_set<nid_t> diploid_nodes;
         auto& cc_graph = connected_components[c];
         auto& cc_id_map = connected_component_ids[c];
+
+        // Collect some stats about the diploid nodes' lengths
+        cc_graph.for_each_handle([&](const handle_t& h){
+            auto id = cc_graph.get_id(h);
+            auto name = cc_id_map.get_name(id);
+            size_t l = cc_graph.get_length(h);
+
+            // Average the lengths of the sides of each diploid bubble
+            if (diploid_path_names.find(name) != diploid_path_names.end()){
+                l /= 2;
+            }
+
+            size_t s = l/rounding_unit;
+            raw_diploid_sizes[s] += 1;
+        });
+
 
         cc_graph.for_each_path_handle([&](const path_handle_t& p){
             auto path_name = cc_graph.get_path_name(p);
@@ -128,12 +149,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         cerr << "PLOIDY subgraphs: " << '\n';
         ploidy_bipartition.print();
 
-        // TODO: check that subgraph ends belong to only one diploid region each
         unordered_set<nid_t> chain_nodes;
-
-        ofstream debug_gfa("ploidy_metagraph.gfa");
-        handle_graph_to_gfa(ploidy_bipartition.metagraph, debug_gfa);
-
         ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
             // Find singletons
             if (subgraph.get_node_count() == 1){
@@ -199,13 +215,58 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ofstream test_gfa_chain(filename_prefix + "chain_metagraph.gfa");
         handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
 
-        ofstream test_csv_meta(filename_prefix + "chain_metagraph.csv");
-        chain_bipartition.write_meta_graph_csv(test_csv_meta);
+        ofstream test_csv_meta_chain(filename_prefix + "chain_metagraph.csv");
+        chain_bipartition.write_meta_graph_csv(test_csv_meta_chain);
+
+        ofstream test_csv_meta_ploidy(filename_prefix + "ploidy_metagraph.csv");
+        ploidy_bipartition.write_meta_graph_csv(test_csv_meta_ploidy);
 
         ofstream test_csv_parent(filename_prefix + "chain_parent_graph.csv");
         chain_bipartition.write_parent_graph_csv(test_csv_parent);
 
+        ofstream test_csv_parent_ploidy(filename_prefix + "ploidy_parent_graph.csv");
+        ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
+
+        ofstream test_csv_parent_chain(filename_prefix + "chain_parent_graph.csv");
+        chain_bipartition.write_parent_graph_csv(test_csv_parent_chain);
+
+        // Collect some stats about the chains
+        chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+            if (partition == 1){
+                return;
+            }
+
+            size_t l_sum = 0;
+
+            subgraph.for_each_handle([&](const handle_t& h){
+                auto id = cc_graph.get_id(h);
+                auto name = cc_id_map.get_name(id);
+                size_t l = cc_graph.get_length(h);
+
+                // Average the lengths of the sides of each diploid bubble
+                if (diploid_path_names.find(name) != diploid_path_names.end() and subgraph.get_node_count() > 1){
+                    l /= 2;
+                }
+
+                l_sum += l;
+            });
+
+            size_t s = l_sum/rounding_unit;
+            chained_diploid_sizes[s] += 1;
+        });
     }
+
+    cerr << "raw_diploid_sizes:" << '\n';
+    for (auto& [size, count]: raw_diploid_sizes){
+        cerr << size*rounding_unit << ',' << count << '\n';
+    }
+
+    cerr << "chained_diploid_sizes:" << '\n';
+    for (auto& [size, count]: chained_diploid_sizes){
+        cerr << size*rounding_unit << ',' << count << '\n';
+    }
+
+
 }
 
 }
