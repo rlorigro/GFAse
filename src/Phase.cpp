@@ -268,6 +268,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
                 next_nodes.back().emplace(h);
             });
 
+            array <array <double, 2>, 2> matrix;
+
             while(not next_nodes.empty()){
                 auto& nodes = next_nodes.front();
 
@@ -307,7 +309,17 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
                     tie(component_name, haplotype_a) = parse_path_string(name_a, path_delimiter);
                     tie(component_name, haplotype_b) = parse_path_string(name_b, path_delimiter);
 
-//                    auto diagonal_score = ;
+                    // Fetch the kmer counts
+                    ks.get_matrix(component_name, matrix);
+
+                    // Forward score is the number of kmers supporting the orientation s.t. a == 0 and b == 1
+                    // Flipped score is the number of kmers supporting the orientation s.t. a == 1 and b == 0
+                    auto forward_score = matrix[haplotype_a][0] + matrix[haplotype_b][1];
+                    auto flipped_score = matrix[haplotype_b][0] + matrix[haplotype_a][1];
+
+                    if (forward_score > flipped_score){
+
+                    }
                 }
                 else{
                     throw runtime_error("ERROR: diploid chain does not have 1 or 2 nodes in single position in chain");

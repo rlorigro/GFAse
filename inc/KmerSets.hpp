@@ -68,6 +68,7 @@ template <class T> class KmerSets {
 		void print_component_parent_conf_matrix() const;
         void for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f);
         double get_count(const string& component, size_t haplotype_index, size_t parental_index);
+        void get_matrix(const string& component, array <array <double, 2>, 2>& matrix);
 };
 
 
@@ -244,9 +245,27 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
 
 
 template <class T> double KmerSets<T>::get_count(const string& component, size_t haplotype_index, size_t parental_index){
-    auto result = component_map.at(component);
+    auto result = component_map.find(component);
 
-    return result[haplotype_index][KmerSets<string>::paternal_index];
+    if (result == component_map.end()){
+        throw runtime_error("ERROR: component" + component + " not found in kmer counts");
+    }
+
+    return result->second[haplotype_index][paternal_index];
+}
+
+
+template <class T> void KmerSets<T>::get_matrix(const string& component, array <array <double, 2>, 2>& matrix){
+    auto result = component_map.find(component);
+
+    if (result == component_map.end()){
+        throw runtime_error("ERROR: component" + component + " not found in kmer counts");
+    }
+
+    matrix[0][0] = result->second[0][0];
+    matrix[0][1] = result->second[0][1];
+    matrix[1][0] = result->second[1][0];
+    matrix[1][1] = result->second[1][1];
 }
 
 
