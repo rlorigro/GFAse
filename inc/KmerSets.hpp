@@ -35,7 +35,7 @@ template <class T> class KmerSets {
 		sparse_hash_set <T> maternal_kmer_set ;
 
         // < component,  [component_hap_path][parent_hap_index] >
-        unordered_map<string, array <array <float,2>, 2> > component_map;
+        unordered_map<string, array <array <double,2>, 2> > component_map;
 
         // Character to use to split the path names into {component_name, haplotype}
         char path_delimiter;
@@ -43,8 +43,8 @@ template <class T> class KmerSets {
         // Path to kmer parent files as input from command line
 		path paternal_kmer_fa_path;
 		path maternal_kmer_fa_path;
-		float num_paternal_kmers;
-		float num_maternal_kmers;
+		double num_paternal_kmers;
+		double num_maternal_kmers;
 
         size_t k = 0;
 
@@ -57,18 +57,17 @@ template <class T> class KmerSets {
 		KmerSets(path paternal_kmer_fa_path_arg, path maternal_kmer_fa_path_args, char path_delimiter='c');
 		float get_size_of_kmer_file(path file_path);
 		void load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s);
-		void get_parent_kmer_sets();
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
 		void increment_parental_kmer_count(string path_name, unordered_set <T> child_kmers);
         void increment_parental_kmer_count(string component_name, size_t component_haplotype, T child_kmer);
-        bool is_maternal(const T& kmer, const T& kmer_reverse_complement);
-        bool is_paternal(const T& kmer, const T& kmer_reverse_complement);
-        bool is_maternal(const T& kmer);
-        bool is_paternal(const T& kmer);
+        bool is_maternal(const T& kmer, const T& kmer_reverse_complement) const;
+        bool is_paternal(const T& kmer, const T& kmer_reverse_complement) const;
+        bool is_maternal(const T& kmer) const;
+        bool is_paternal(const T& kmer) const;
 		void normalize_kmer_counts();
-		void print_component_parent_conf_matrix();
+		void print_component_parent_conf_matrix() const;
         void for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f);
-
+        double get_count(const string& component, size_t haplotype_index, size_t parental_index);
 };
 
 
@@ -153,24 +152,6 @@ template <class T> void KmerSets<T>::load_fasta_into_unordered_set(path file_pat
 }
 
 
-template <class T> void KmerSets<T>::get_parent_kmer_sets(){
-    // Set up this file path for getting the file from the data folder
-    path script_path = __FILE__;
-    path project_directory = script_path.parent_path().parent_path(); // this path is different than the one ryan uses in GfaReader and I'm not sure why
-
-    // Get test parent1 kmers
-    path relative_hap1_kmer_list_path = "data/hg03.all.homo.unique.kmer.1000.fa";
-    path absolute_hap1_kmer_list_path = project_directory / relative_hap1_kmer_list_path;
-
-    // Get test parent2 kmers
-    path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
-    path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
-
-    load_fasta_into_unordered_set(absolute_hap1_kmer_list_path,paternal_kmer_set);
-    load_fasta_into_unordered_set(absolute_hap2_kmer_list_path,maternal_kmer_set);
-}
-
-
 // Single kmer find
 template <class T> void KmerSets<T>::increment_parental_kmer_count(string path_name, T child_kmer) {
     string graph_component;
@@ -204,7 +185,7 @@ template <class T> void KmerSets<T>::increment_parental_kmer_count(
 }
 
 
-template <class T> bool KmerSets<T>::is_maternal(const T& kmer){
+template <class T> bool KmerSets<T>::is_maternal(const T& kmer) const{
     T rc_kmer;
     get_reverse_complement(kmer, rc_kmer, k);
 
@@ -215,7 +196,7 @@ template <class T> bool KmerSets<T>::is_maternal(const T& kmer){
 }
 
 
-template <class T> bool KmerSets<T>::is_paternal(const T& kmer){
+template <class T> bool KmerSets<T>::is_paternal(const T& kmer) const{
     T rc_kmer;
     get_reverse_complement(kmer, rc_kmer, k);
 
@@ -226,7 +207,7 @@ template <class T> bool KmerSets<T>::is_paternal(const T& kmer){
 }
 
 
-template <class T> bool KmerSets<T>::is_maternal(const T& kmer, const T& kmer_reverse_complement){
+template <class T> bool KmerSets<T>::is_maternal(const T& kmer, const T& kmer_reverse_complement) const{
     bool found_forward = maternal_kmer_set.find(kmer) != maternal_kmer_set.end();
     bool found_reverse = maternal_kmer_set.find(kmer_reverse_complement) != maternal_kmer_set.end();
 
@@ -234,7 +215,7 @@ template <class T> bool KmerSets<T>::is_maternal(const T& kmer, const T& kmer_re
 }
 
 
-template <class T> bool KmerSets<T>::is_paternal(const T& kmer, const T& kmer_reverse_complement){
+template <class T> bool KmerSets<T>::is_paternal(const T& kmer, const T& kmer_reverse_complement) const{
     bool found_forward = paternal_kmer_set.find(kmer) != paternal_kmer_set.end();
     bool found_reverse = paternal_kmer_set.find(kmer_reverse_complement) != paternal_kmer_set.end();
 
@@ -262,7 +243,14 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
 }
 
 
-template <class T> void KmerSets<T>::print_component_parent_conf_matrix() {
+template <class T> double KmerSets<T>::get_count(const string& component, size_t haplotype_index, size_t parental_index){
+    auto result = component_map.at(component);
+
+    return result[haplotype_index][KmerSets<string>::paternal_index];
+}
+
+
+template <class T> void KmerSets<T>::print_component_parent_conf_matrix() const{
     cout << "Number of graph components: " << component_map.size() << endl;
 
     for (const auto& [name, component]: component_map) {
@@ -275,21 +263,21 @@ template <class T> void KmerSets<T>::print_component_parent_conf_matrix() {
         cout << endl;
     }
 }
+
 //, size_t hap, const size_t paternal_count, const size_t maternal_count, string end_delim
 template <class T> void KmerSets<T>::for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f){
-
-        for (const auto& [name, component]: component_map) {
-            // string end_delim = ",";
-            // array of each component is hap0:[parent1,parent2], hap1:[parent1,parent2]
-            // for (size_t j = 0; j < 2; j++) {
-            //     if (j >0){
-            //         end_delim = "\n";
-            //     }
-            f(name,component);
-                //j,component[j][paternal_index],component[j][maternal_index],end_delim);
-            }
-
+    for (const auto& [name, component]: component_map) {
+        // string end_delim = ",";
+        // array of each component is hap0:[parent1,parent2], hap1:[parent1,parent2]
+        // for (size_t j = 0; j < 2; j++) {
+        //     if (j >0){
+        //         end_delim = "\n";
+        //     }
+        f(name,component);
+            //j,component[j][paternal_index],component[j][maternal_index],end_delim);
         }
+
+}
 
 
 

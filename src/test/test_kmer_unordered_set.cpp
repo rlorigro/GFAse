@@ -10,9 +10,19 @@ using namespace gfase;
 using bdsg::HashGraph;
 
 int main() {
-	
-	KmerSets<string> ks;
-	ks.get_parent_kmer_sets();
+    // Set up this file path for getting the file from the data folder
+    path script_path = __FILE__;
+    path project_directory = script_path.parent_path().parent_path(); // this path is different than the one ryan uses in GfaReader and I'm not sure why
+
+    // Get test parent1 kmers
+    path relative_hap1_kmer_list_path = "data/hg03.all.homo.unique.kmer.1000.fa";
+    path absolute_hap1_kmer_list_path = project_directory / relative_hap1_kmer_list_path;
+
+    // Get test parent2 kmers
+    path relative_hap2_kmer_list_path = "data/hg04.all.homo.unique.kmer.1000.fa";
+    path absolute_hap2_kmer_list_path = project_directory / relative_hap2_kmer_list_path;
+
+    KmerSets<string> ks(absolute_hap1_kmer_list_path, absolute_hap2_kmer_list_path);
 
 	string path_string = "0-1";
 
@@ -36,10 +46,6 @@ int main() {
 	ks.increment_parental_kmer_count(path_string, child_kmer_set);
 
 	ks.print_component_parent_conf_matrix();
-
-	// --- Use test data files to simulate running -- //
-    path script_path = __FILE__;
-    path project_directory = script_path.parent_path().parent_path().parent_path();
 
     // Get test VCF path
     path relative_gfa_path = "data/simple_chain.gfa";

@@ -131,7 +131,7 @@ void un_extend_paths(
         const vector <pair<path_handle_t, handle_t> >& to_be_prepended,
         const vector <pair<path_handle_t, handle_t> >& to_be_appended);
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map);
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths=false);
 
 
 }

@@ -25,6 +25,7 @@ S	p	GTTCCAG
 S	q	T
 S	r	A
 S	s	TCAAGTT
+S	t	TTGTGAC
 L	a	+	b	+	0M
 L	a	+	c	+	0M
 L	b	+	d	+	0M
@@ -50,6 +51,8 @@ L	p	+	q	+	0M
 L	p	+	r	+	0M
 L	q	+	s	+	0M
 L	r	+	s	+	0M
+L	q	+	t	+	0M
+L	r	+	t	+	0M
 L	g_a	+	tip_a	+	0M
 L	tip_a	+	tip_b	+	0M
 L	tip_a	+	tip_c	+	0M

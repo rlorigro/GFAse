@@ -86,9 +86,7 @@ void Bipartition::for_each_subgraph(const function<void(const HandleGraph& subgr
 }
 
 
-size_t Bipartition::get_subgraph_size(nid_t meta_node) const{
-    auto subgraph_index = node_to_subgraph.at(meta_node);
-
+size_t Bipartition::get_subgraph_size(size_t subgraph_index) const{
     return subgraphs.at(subgraph_index).get_node_count();
 }
 
@@ -132,6 +130,43 @@ void Bipartition::follow_subgraph_edges(size_t subgraph_index, bool go_left, con
         }
     });
 
+}
+
+
+void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f){
+    auto n = nid_t(subgraph_index);
+    auto h = metagraph.get_handle(n);
+
+    metagraph.follow_edges(h, left, [&](const handle_t& h_other){
+        edge_t e;
+        if (left) {
+            e = metagraph.edge_handle(h_other, h);
+        }
+        else{
+            e = metagraph.edge_handle(h, h_other);
+        }
+
+        for (auto& parent_edge: meta_edge_to_edges.at(e)){
+            auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
+            auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
+
+            if (first_index == subgraph_index and second_index != subgraph_index){
+                f(parent_edge.first);
+            }
+            else if (first_index != subgraph_index and second_index == subgraph_index){
+                f(parent_edge.second);
+            }
+            else{
+                throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+            }
+        }
+    });
+
+}
+
+
+void Bipartition::for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f){
+    subgraphs.at(subgraph_index).for_each_handle(f);
 }
 
 

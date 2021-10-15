@@ -758,7 +758,7 @@ void un_extend_paths(
 }
 
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map){
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths){
     unordered_set<nid_t> nodes_to_be_destroyed;
     vector<string> path_names;
     string temporary_suffix = "_hap";
@@ -852,13 +852,16 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         // Find the path that was renamed with a suffix, and find its only node (all unzipped paths are singletons)
         auto path_name_with_suffix = name + temporary_suffix;
         auto p_suffix = graph.get_path_handle(path_name_with_suffix);
-        auto h = graph.get_handle_of_step(graph.path_begin(p_suffix));
 
-        // Make a copy without the suffix
-        auto p = graph.create_path_handle(name);
-        graph.append_step(p, h);
+        if (keep_paths) {
+            auto h = graph.get_handle_of_step(graph.path_begin(p_suffix));
 
-        // Destroy the one with the suffix
+            // Make a copy without the suffix
+            auto p = graph.create_path_handle(name);
+            graph.append_step(p, h);
+        }
+
+        // Destroy the path with the suffix
         graph.destroy_path(p_suffix);
     }
 }

@@ -47,8 +47,10 @@ public:
     bool get_partition_of_node(const nid_t& id) const;
     void for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f) const;
     void follow_subgraph_edges(size_t subgraph_index, bool go_left, const function<void(const handle_t& h)>& f);
+    void for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f);
+    void for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f);
     void partition();
-    size_t get_subgraph_size(nid_t meta_node) const;
+    size_t get_subgraph_size(size_t subgraph_index) const;
     size_t get_subgraph_index(nid_t meta_node) const;
     nid_t get_id(handle_t meta_handle) const;
     void write_parent_graph_csv(ostream& file) const;

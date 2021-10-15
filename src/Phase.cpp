@@ -9,6 +9,41 @@ using bdsg::PackedSubgraphOverlay;
 namespace gfase{
 
 
+void get_chain_lengths(
+        Bipartition& partition,
+        IncrementalIdMap<string>& id_map,
+        unordered_map<string, string>& diploid_path_names,
+        map<size_t, size_t> chained_diploid_sizes,
+        size_t rounding_unit
+        ){
+
+    // Collect some stats about the chains
+    partition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        if (partition == 1){
+            return;
+        }
+
+        size_t l_sum = 0;
+
+        subgraph.for_each_handle([&](const handle_t& h){
+            auto id = subgraph.get_id(h);
+            auto name = id_map.get_name(id);
+            size_t l = subgraph.get_length(h);
+
+            // Average the lengths of the sides of each diploid bubble
+            if (diploid_path_names.find(name) != diploid_path_names.end() and subgraph.get_node_count() > 1){
+                l /= 2;
+            }
+
+            l_sum += l;
+        });
+
+        size_t s = l_sum/rounding_unit;
+        chained_diploid_sizes[s] += 1;
+    });
+}
+
+
 void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
     HashGraph graph;
     IncrementalIdMap<string> id_map;
@@ -44,6 +79,9 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         string component_name;
         size_t haplotype;
 
+        // TODO: stop using names entirely!!
+        // TODO: stop using names entirely!!
+        // TODO: stop using names entirely!!
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
         kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
@@ -91,17 +129,9 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
 
-    // TODO: for each path name in diploid paths, find the unzipped path name, and do bounded BFS on adjacent nodes
-    // - Make no assumptions about what lies between diploid paths
-    //    - Need to use DFS or DAG aligner with some scoring system for choosing path between components
-    // - Filter out complex regions.. still need to decide on criteria for that
-    //    - Depth of deepest snarl
-    //    - Number of components touched by each unphased region must be < 3
-
     cerr << "Unzipping..." << '\n';
 
-
-    size_t rounding_unit = 2;
+    size_t rounding_unit = 10000;
     map<size_t, size_t> raw_diploid_sizes;
     map<size_t, size_t> chained_diploid_sizes;
 
@@ -113,21 +143,21 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         auto& cc_id_map = connected_component_ids[c];
 
         // Collect some stats about the diploid nodes' lengths
-        cc_graph.for_each_handle([&](const handle_t& h){
-            auto id = cc_graph.get_id(h);
-            auto name = cc_id_map.get_name(id);
-            size_t l = cc_graph.get_length(h);
+//        cc_graph.for_each_handle([&](const handle_t& h){
+//            auto id = cc_graph.get_id(h);
+//            auto name = cc_id_map.get_name(id);
+//            size_t l = cc_graph.get_length(h);
+//
+//            // Average the lengths of the sides of each diploid bubble
+//            if (diploid_path_names.find(name) != diploid_path_names.end()){
+//                l /= 2;
+//            }
+//
+//            size_t s = l/rounding_unit;
+//            raw_diploid_sizes[s] += 1;
+//        });
 
-            // Average the lengths of the sides of each diploid bubble
-            if (diploid_path_names.find(name) != diploid_path_names.end()){
-                l /= 2;
-            }
-
-            size_t s = l/rounding_unit;
-            raw_diploid_sizes[s] += 1;
-        });
-
-
+        // Generate criteria for diploid node BFS
         cc_graph.for_each_path_handle([&](const path_handle_t& p){
             auto path_name = cc_graph.get_path_name(p);
 
@@ -138,6 +168,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
             // Node names for haplotypes should match the paths that they were created from
             auto id = cc_id_map.get_id(path_name);
 
+            // Add diploid nodes to the set
             diploid_nodes.emplace(id);
 
             return true;
@@ -153,45 +184,44 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
             // Find singletons
             if (subgraph.get_node_count() == 1){
-
-                // If this is a diploid subgraph collect left and right edges from this subgraph, and verify that
-                // there are not more than 2 adjacent subgraphs for each side.
                 if (partition == 0){
-                    unordered_set<size_t> left_subgraph_indexes;
-                    unordered_set<size_t> right_subgraph_indexes;
+                    subgraph.for_each_handle([&](const handle_t& h){
+                        chain_nodes.emplace(subgraph.get_id(h));
+                    });
+                }
+                else{
+                    // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
+                    // subgraphs, by doing a two-edge walk right/left and left/right
+                    unordered_set<size_t> second_degree_neighbors;
 
                     ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
                         auto id = ploidy_bipartition.get_id(h);
-                        auto other_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
-                        left_subgraph_indexes.emplace(other_subgraph_index);
+                        auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+
+                        ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
+                            auto id2 = ploidy_bipartition.get_id(h2);
+                            auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index(id2);
+                            second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                        });
                     });
 
                     ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
                         auto id = ploidy_bipartition.get_id(h);
-                        auto other_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
-                        right_subgraph_indexes.emplace(other_subgraph_index);
+                        auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+
+                        ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
+                            auto id2 = ploidy_bipartition.get_id(h2);
+                            auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index(id2);
+                            second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                        });
                     });
 
-                    cerr << "LEFT adjacent subgraphs for: " << subgraph_index << '\n';
-                    for (auto& item: left_subgraph_indexes){
-                        cerr << '\t' << item << '\n';
-                    }
-
-                    cerr << "RIGHT adjacent subgraphs for: " << subgraph_index << '\n';
-                    for (auto& item: right_subgraph_indexes){
-                        cerr << '\t' << item << '\n';
-                    }
-
-                    if (left_subgraph_indexes.size() < 2 and right_subgraph_indexes.size() < 2){
-                        subgraph.for_each_handle([&](const handle_t& h){
+                    // If there are no second degree neighbors, this unphased subgraph passes
+                    if (second_degree_neighbors.size() == 1){
+                        ploidy_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h) {
                             chain_nodes.emplace(subgraph.get_id(h));
                         });
                     }
-                }
-                else{
-                    subgraph.for_each_handle([&](const handle_t& h){
-                        chain_nodes.emplace(subgraph.get_id(h));
-                    });
                 }
             }
             else if(subgraph.get_node_count() == 0){
@@ -230,29 +260,61 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ofstream test_csv_parent_chain(filename_prefix + "chain_parent_graph.csv");
         chain_bipartition.write_parent_graph_csv(test_csv_parent_chain);
 
-        // Collect some stats about the chains
         chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-            if (partition == 1){
-                return;
-            }
+            queue <set <handle_t> > next_nodes;
+            next_nodes.emplace();
 
-            size_t l_sum = 0;
-
-            subgraph.for_each_handle([&](const handle_t& h){
-                auto id = cc_graph.get_id(h);
-                auto name = cc_id_map.get_name(id);
-                size_t l = cc_graph.get_length(h);
-
-                // Average the lengths of the sides of each diploid bubble
-                if (diploid_path_names.find(name) != diploid_path_names.end() and subgraph.get_node_count() > 1){
-                    l /= 2;
-                }
-
-                l_sum += l;
+            chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
+                next_nodes.back().emplace(h);
             });
 
-            size_t s = l_sum/rounding_unit;
-            chained_diploid_sizes[s] += 1;
+            while(not next_nodes.empty()){
+                auto& nodes = next_nodes.front();
+
+                if (nodes.size() == 1){
+                    // Verify not diploid by name
+                    auto name = cc_id_map.get_name(subgraph.get_id(*nodes.begin()));
+
+                    if (diploid_path_names.count(name) > 0){
+                        throw runtime_error("ERROR: singleton in chain is diploid: " + name);
+                    }
+                }
+                else if (nodes.size() == 2){
+                    // Verify nodes are diploid counterparts to one another
+                    auto& node_a = *nodes.begin();
+                    auto& node_b = *nodes.begin()++;
+
+                    auto name_a = cc_id_map.get_name(subgraph.get_id(node_a));
+                    auto name_b = cc_id_map.get_name(subgraph.get_id(node_b));
+
+                    auto result = diploid_path_names.find(name_a);
+
+                    if (result == diploid_path_names.end()){
+                        throw runtime_error("ERROR: non diploid node in bubble of bubble chain: " + name_a);
+                    }
+
+                    if (result->second != name_b){
+                        throw runtime_error("ERROR: nodes in bubble are not labeled as diploid counterparts: " + name_a + "," + name_b);
+                    }
+
+                    string component_name;
+                    size_t haplotype_a;
+                    size_t haplotype_b;
+
+                    // TODO: stop using names entirely!!
+                    // TODO: stop using names entirely!!
+                    // TODO: stop using names entirely!!
+                    tie(component_name, haplotype_a) = parse_path_string(name_a, path_delimiter);
+                    tie(component_name, haplotype_b) = parse_path_string(name_b, path_delimiter);
+
+//                    auto diagonal_score = ;
+                }
+                else{
+                    throw runtime_error("ERROR: diploid chain does not have 1 or 2 nodes in single position in chain");
+                }
+
+                next_nodes.pop();
+            }
         });
     }
 
