@@ -89,13 +89,13 @@ void count_kmers(
     ofstream component_matrix_outfile("kmer_counts.csv");
     component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n";
 
-    ks.for_each_component_matrix([&](const string& name, const array <array <float,2>, 2> component){
+    ks.for_each_component_matrix([&](const string& name, const array <array <double,2>, 2> matrix){
         component_matrix_outfile
                 << name << ','
-                << component[0][KmerSets<string>::paternal_index] << ','
-                << component[0][KmerSets<string>::maternal_index] << ','
-                << component[1][KmerSets<string>::paternal_index] << ','
-                << component[1][KmerSets<string>::maternal_index] << '\n';
+                << matrix[0][KmerSets<string>::paternal_index] << ','
+                << matrix[0][KmerSets<string>::maternal_index] << ','
+                << matrix[1][KmerSets<string>::paternal_index] << ','
+                << matrix[1][KmerSets<string>::maternal_index] << '\n';
     });
 }
 

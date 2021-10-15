@@ -66,7 +66,7 @@ template <class T> class KmerSets {
         bool is_paternal(const T& kmer) const;
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix() const;
-        void for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f);
+        void for_each_component_matrix(const function<void(const string& name, const array <array <double,2>, 2> component)>& f);
         double get_count(const string& component, size_t haplotype_index, size_t parental_index);
         void get_matrix(const string& component, array <array <double, 2>, 2>& matrix);
 };
@@ -284,15 +284,15 @@ template <class T> void KmerSets<T>::print_component_parent_conf_matrix() const{
 }
 
 //, size_t hap, const size_t paternal_count, const size_t maternal_count, string end_delim
-template <class T> void KmerSets<T>::for_each_component_matrix(const function<void(const string& name, const array <array <float,2>, 2> component)>& f){
-    for (const auto& [name, component]: component_map) {
+template <class T> void KmerSets<T>::for_each_component_matrix(const function<void(const string& name, const array <array <double,2>, 2> matrix)>& f){
+    for (const auto& [name, matrix]: component_map) {
         // string end_delim = ",";
         // array of each component is hap0:[parent1,parent2], hap1:[parent1,parent2]
         // for (size_t j = 0; j < 2; j++) {
         //     if (j >0){
         //         end_delim = "\n";
         //     }
-        f(name,component);
+        f(name,matrix);
             //j,component[j][paternal_index],component[j][maternal_index],end_delim);
         }
 
