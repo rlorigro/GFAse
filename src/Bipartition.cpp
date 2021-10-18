@@ -198,6 +198,8 @@ void Bipartition::write_parent_graph_csv(ostream& file) const{
             file << name << ',' << (partition ? "#A2AFBE" : "#0D60BC") << ',' << subgraph_index << ',' << '\n';
         });
     });
+
+    file << std::flush;
 }
 
 
@@ -207,6 +209,8 @@ void Bipartition::write_meta_graph_csv(ostream& file) const{
     for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
         file << subgraph_index << ',' << (partition ? "#A2AFBE" : "#0D60BC") << ',' << subgraph.get_node_count() << ',' << '\n';
     });
+
+    file << std::flush;
 }
 
 

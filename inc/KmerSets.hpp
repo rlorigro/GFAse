@@ -67,8 +67,8 @@ template <class T> class KmerSets {
 		void normalize_kmer_counts();
 		void print_component_parent_conf_matrix() const;
         void for_each_component_matrix(const function<void(const string& name, const array <array <double,2>, 2> component)>& f);
-        double get_count(const string& component, size_t haplotype_index, size_t parental_index);
-        void get_matrix(const string& component, array <array <double, 2>, 2>& matrix);
+        double get_count(const string& component, size_t haplotype_index, size_t parental_index) const;
+        void get_matrix(const string& component, array <array <double, 2>, 2>& matrix) const;
 };
 
 
@@ -244,7 +244,7 @@ template <class T> void KmerSets<T>::normalize_kmer_counts(){
 }
 
 
-template <class T> double KmerSets<T>::get_count(const string& component, size_t haplotype_index, size_t parental_index){
+template <class T> double KmerSets<T>::get_count(const string& component, size_t haplotype_index, size_t parental_index) const{
     auto result = component_map.find(component);
 
     if (result == component_map.end()){
@@ -255,7 +255,7 @@ template <class T> double KmerSets<T>::get_count(const string& component, size_t
 }
 
 
-template <class T> void KmerSets<T>::get_matrix(const string& component, array <array <double, 2>, 2>& matrix){
+template <class T> void KmerSets<T>::get_matrix(const string& component, array <array <double, 2>, 2>& matrix) const{
     auto result = component_map.find(component);
 
     if (result == component_map.end()){

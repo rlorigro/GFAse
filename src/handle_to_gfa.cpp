@@ -110,6 +110,8 @@ void handle_graph_to_gfa(const PathHandleGraph& graph, const IncrementalIdMap<st
     graph.for_each_path_handle([&](const path_handle_t& path) {
         write_path_to_gfa(graph, id_map, path, output_gfa);
     });
+
+    output_gfa << std::flush;
 }
 
 }
