@@ -133,6 +133,7 @@ void un_extend_paths(
 
 void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths=false);
 
+void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& h, bool is_left, bool is_right)>& f);
 
 }
 

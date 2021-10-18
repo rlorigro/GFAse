@@ -188,17 +188,38 @@ void phase_chains(
         queue <set <handle_t> > q;
         set<handle_t> next_nodes;
 
-        // TODO: rerun this in reverse if no boundary is found on left side :(
-        chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
-            next_nodes.emplace(h);
+        // Chain might terminate in an edge to another subgraph or in a dead end ("tip") so both need to be searched for
+        set<handle_t> left_tips;
+        set<handle_t> left_edge_nodes;
+
+        // Find tips
+        subgraph.for_each_handle([&](const handle_t& h){
+            // Check the parent graph for edges
+            if (graph.get_degree(h,true) == 0){
+                left_tips.emplace(h);
+            }
         });
+
+        // Find edges to other subgraphs
+        chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
+            left_edge_nodes.emplace(h);
+        });
+
+        // Make sure there are not both tips and edges
+        if (left_tips.empty() and not left_edge_nodes.empty()){
+            next_nodes = left_edge_nodes;
+        }
+        else if (not left_tips.empty() and left_edge_nodes.empty()){
+            next_nodes = left_tips;
+        }
+        else if (not left_tips.empty() and not left_edge_nodes.empty()){
+            throw runtime_error("ERROR: chain has left tips and left edge nodes (edges to other subgraph): " + to_string(subgraph_index));
+        }
 
         path_handle_t maternal_path;
         path_handle_t paternal_path;
 
-
-        // TODO: Join singleton paths (stop adding additional conditionals here!)
-        if (not next_nodes.empty()){
+        if (not next_nodes.empty() and subgraph.get_node_count() > 1){
             q.emplace(next_nodes);
 
             string path_prefix = "C" + to_string(subgraph_index);
@@ -222,33 +243,7 @@ void phase_chains(
 
                 // Handle case where singletons need phase assignment
                 if (diploid_path_names.count(name) > 0){
-                    if (subgraph.get_node_count() > 1) {
-                        throw runtime_error("ERROR: haploid node in non-singleton chain is flagged as diploid: " + name);
-                    }
-                    else{
-                        string component_name;
-                        size_t haplotype;
-
-                        tie(component_name, haplotype) = parse_path_string(name, path_delimiter);
-
-                        // Fetch the kmer counts
-                        ks.get_matrix(component_name, matrix);
-
-                        // Forward score is the number of kmers supporting the orientation s.t. a == 0 and b == 1
-                        // Flipped score is the number of kmers supporting the orientation s.t. a == 1 and b == 0
-                        auto forward_score = matrix[haplotype][KmerSets<string>::paternal_index] + matrix[1-haplotype][KmerSets<string>::maternal_index];
-                        auto flipped_score = matrix[1-haplotype][KmerSets<string>::paternal_index] + matrix[haplotype][KmerSets<string>::maternal_index];
-
-                        // Choose the more supported orientation, defaulting to "forward" if equal
-                        if (forward_score >= flipped_score){
-                            cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node)) << '\n';
-                            graph.append_step(paternal_path, node);
-                        }
-                        else{
-                            cerr << "\t\tappending: " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node)) << '\n';
-                            graph.append_step(maternal_path, node);
-                        }
-                    }
+                    throw runtime_error("ERROR: haploid node in non-singleton chain is flagged as diploid: " + name);
                 }
                 else {
                     // If it's a normal singleton just append it to both haplotype paths
@@ -295,7 +290,7 @@ void phase_chains(
                 auto forward_score = matrix[haplotype_a][KmerSets<string>::paternal_index] + matrix[haplotype_b][KmerSets<string>::maternal_index];
                 auto flipped_score = matrix[haplotype_b][KmerSets<string>::paternal_index] + matrix[haplotype_a][KmerSets<string>::maternal_index];
 
-                // Choose the more supported orientation, defaulting to "forward" if equal
+                // Choose the more supported orientation, defaulting to "forward orientation" if equal
                 if (forward_score >= flipped_score){
                     cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node_a)) << " and " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node_b)) << '\n';
                     graph.append_step(paternal_path, node_a);

@@ -867,6 +867,14 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 }
 
 
+void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& h, bool is_left, bool is_right)>& f){
+    graph.for_each_handle([&](const handle_t& h_i){
+        bool is_left = graph.get_degree(h_i,true);
+        bool is_right = graph.get_degree(h_i,false);
+
+        f(h_i, is_left, is_right);
+    });
+}
 
 }
 
