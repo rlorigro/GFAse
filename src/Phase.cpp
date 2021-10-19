@@ -9,41 +9,6 @@ using bdsg::PackedSubgraphOverlay;
 namespace gfase{
 
 
-void get_chain_lengths(
-        const Bipartition& partition,
-        const IncrementalIdMap<string>& id_map,
-        const unordered_map<string, string>& diploid_path_names,
-        map<size_t, size_t> chained_diploid_sizes,
-        size_t rounding_unit
-        ){
-
-    // Collect some stats about the chains
-    partition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-        if (partition == 1){
-            return;
-        }
-
-        size_t l_sum = 0;
-
-        subgraph.for_each_handle([&](const handle_t& h){
-            auto id = subgraph.get_id(h);
-            auto name = id_map.get_name(id);
-            size_t l = subgraph.get_length(h);
-
-            // Average the lengths of the sides of each diploid bubble
-            if (diploid_path_names.find(name) != diploid_path_names.end() and subgraph.get_node_count() > 1){
-                l /= 2;
-            }
-
-            l_sum += l;
-        });
-
-        size_t s = l_sum/rounding_unit;
-        chained_diploid_sizes[s] += 1;
-    });
-}
-
-
 void count_kmers(
         const PathHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
@@ -171,6 +136,8 @@ void phase_chains(
         IncrementalIdMap<string>& id_map,
         const unordered_map<string,string>& diploid_path_names,
         const KmerSets <FixedBinarySequence <uint64_t,2> >& ks,
+        unordered_set<string>& paternal_node_names,
+        unordered_set<string>& maternal_node_names,
         char path_delimiter
 ){
 
@@ -222,9 +189,16 @@ void phase_chains(
         if (not next_nodes.empty() and subgraph.get_node_count() > 1){
             q.emplace(next_nodes);
 
-            string path_prefix = "C" + to_string(subgraph_index);
-            maternal_path = graph.create_path_handle(path_prefix + ".m");
-            paternal_path = graph.create_path_handle(path_prefix + ".p");
+            string path_prefix = to_string(subgraph_index);
+
+            string maternal_path_name = path_prefix + ".m";
+            string paternal_path_name = path_prefix + ".p";
+
+            maternal_path = graph.create_path_handle(maternal_path_name);
+            paternal_path = graph.create_path_handle(paternal_path_name);
+
+            paternal_node_names.emplace(paternal_path_name);
+            maternal_node_names.emplace(maternal_path_name);
         }
 
         cerr << "New chain:" << '\n';
@@ -390,20 +364,15 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     map<size_t, size_t> raw_diploid_sizes;
     map<size_t, size_t> chained_diploid_sizes;
 
+    ofstream maternal_fasta("maternal.fasta");
+    ofstream paternal_fasta("paternal.fasta");
+    ofstream unphased_fasta("unphased.fasta");
+
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
 
         auto& cc_graph = connected_components[c];
         auto& cc_id_map = connected_component_ids[c];
-
-        // Collect some stats about the diploid nodes' lengths
-//        cc_graph.for_each_handle([&](const handle_t& h){
-//            auto id = cc_graph.get_id(h);
-//            auto name = cc_id_map.get_name(id);
-//            size_t l = cc_graph.get_length(h);
-//            size_t s = l/rounding_unit;
-//            raw_diploid_sizes[s] += 1;
-//        });
 
         // Generate criteria for diploid node BFS
         unordered_set<nid_t> diploid_nodes;
@@ -447,29 +416,44 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ofstream test_csv_parent_chain(filename_prefix + "chain_parent_graph.csv");
         chain_bipartition.write_parent_graph_csv(test_csv_parent_chain);
 
+        unordered_set<string> paternal_node_names;
+        unordered_set<string> maternal_node_names;
+
         phase_chains(
                 chain_bipartition,
                 cc_graph,
                 cc_id_map,
                 diploid_path_names,
                 ks,
+                paternal_node_names,
+                maternal_node_names,
                 path_delimiter);
 
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");
         handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
+
+        cerr << "Writing to FASTA" << '\n';
+
+        cc_graph.for_each_handle([&](const handle_t& h){
+            auto id = cc_graph.get_id(h);
+            auto name = cc_id_map.get_name(id);
+
+            cerr << name << '\n';
+
+            if (maternal_node_names.count(name) > 0){
+                maternal_fasta << '>' << c << '.' << name << '\n';
+                maternal_fasta << cc_graph.get_sequence(h) << '\n';
+            }
+            else if (paternal_node_names.count(name) > 0){
+                paternal_fasta << '>' << c << '.' << name << '\n';
+                paternal_fasta << cc_graph.get_sequence(h) << '\n';
+            }
+            else {
+                unphased_fasta << '>' << c << '.' << name << '\n';
+                unphased_fasta << cc_graph.get_sequence(h) << '\n';
+            }
+        });
     }
-
-//    cerr << "raw_diploid_sizes:" << '\n';
-//    for (auto& [size, count]: raw_diploid_sizes){
-//        cerr << size*rounding_unit << ',' << count << '\n';
-//    }
-//
-//    cerr << "chained_diploid_sizes:" << '\n';
-//    for (auto& [size, count]: chained_diploid_sizes){
-//        cerr << size*rounding_unit << ',' << count << '\n';
-//    }
-
-
 }
 
 }
