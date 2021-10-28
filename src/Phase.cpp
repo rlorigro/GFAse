@@ -252,7 +252,7 @@ void phase_chains(
                 // Verify not diploid by name
                 auto name = id_map.get_name(subgraph.get_id(node));
 
-                cerr << '\t' << name << '\n' << std::flush;
+//                cerr << '\t' << name << '\n' << std::flush;
 
                 // Handle case where singletons need phase assignment
                 if (diploid_path_names.count(name) > 0){
