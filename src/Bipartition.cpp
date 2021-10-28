@@ -29,11 +29,15 @@ void Bipartition::partition(){
         auto start_node = *all_nodes.begin();
         bool partition = get_partition_of_node(start_node);
 
-        size_t subgraph_index = subgraphs.size();
+        // Skip 0 and start at 1 because the world is already on fire anyway
+        max_id++;
 
-        // Allocate new elements in the vectors for this component
-        subgraph_partitions.emplace_back(partition);
-        subgraphs.emplace_back(&graph);
+        size_t subgraph_index = max_id;
+
+        // Allocate new elements in the hashmap for this component
+        subgraph_partitions.emplace(subgraph_index, partition);
+        subgraphs.emplace(subgraph_index, &graph);
+
         metagraph.create_handle("", nid_t(subgraph_index));
 
         // Enter all the nodes into a subgraph
@@ -42,7 +46,7 @@ void Bipartition::partition(){
                     return get_partition_of_node(id) == partition;
                 },
                 [&](const handle_t& h) {
-                    subgraphs.back().add_node(h);
+                    subgraphs[subgraph_index].add_node(h);
 
                     auto id = graph.get_id(h);
                     node_to_subgraph.emplace(id, subgraph_index);
@@ -79,9 +83,61 @@ void Bipartition::partition(){
 }
 
 
+void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index_b){
+
+    if (subgraph_partitions.at(subgraph_index_b) != subgraph_partitions.at(subgraph_index_a)){
+        throw runtime_error("ERROR: cannot merge subgraphs of differing partitions");
+    }
+
+    subgraphs.at(subgraph_index_b).for_each_handle([&](const handle_t& h){
+        // Add all the b nodes to a
+        subgraphs.at(subgraph_index_a).add_node(h);
+
+        // Overwrite mappings from parent to subgraph
+        node_to_subgraph[graph.get_id(h)] = subgraph_index_a;
+    });
+
+    auto metagraph_handle_b = metagraph.get_handle(nid_t(subgraph_index_b));
+    auto metagraph_handle_a = metagraph.get_handle(nid_t(subgraph_index_a));
+
+    vector<edge_t> to_be_deleted;
+
+    // Duplicate the metagraph boundary edges to a and remove the existing ones from b (LEFT)
+    metagraph.follow_edges(metagraph_handle_b, true, [&](const handle_t & h){
+        edge_t e_a = {h, metagraph_handle_a};
+        edge_t e_b = {h, metagraph_handle_b};
+
+        for (auto& parent_edge: meta_edge_to_edges.at(e_b)){
+            meta_edge_to_edges[e_a].emplace_back(parent_edge);
+        }
+
+        to_be_deleted.emplace_back(e_b);
+    });
+
+    // Duplicate the metagraph boundary edges to a and remove the existing ones from b (RIGHT)
+    metagraph.follow_edges(metagraph_handle_b, false, [&](const handle_t & h){
+        edge_t e_a = {metagraph_handle_a, h};
+        edge_t e_b = {metagraph_handle_b, h};
+
+        for (auto& parent_edge: meta_edge_to_edges.at(e_b)){
+            meta_edge_to_edges[e_a].emplace_back(parent_edge);
+        }
+
+        to_be_deleted.emplace_back(e_b);
+    });
+
+    for (auto& e: to_be_deleted){
+        meta_edge_to_edges.erase(e);
+    }
+
+    subgraphs.erase(subgraph_index_b);
+    subgraph_partitions.erase(subgraph_index_b);
+}
+
+
 void Bipartition::for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f) const{
-    for (size_t i=0; i<subgraphs.size(); i++){
-        f(subgraphs[i], i, subgraph_partitions[i]);
+    for (auto& [sugraph_index, subgraph]: subgraphs){
+        f(subgraph, sugraph_index, subgraph_partitions.at(sugraph_index));
     }
 }
 
@@ -91,7 +147,7 @@ size_t Bipartition::get_subgraph_size(size_t subgraph_index) const{
 }
 
 
-size_t Bipartition::get_subgraph_index(nid_t meta_node) const{
+size_t Bipartition::get_subgraph_index_of_parent_node(nid_t meta_node) const{
     return node_to_subgraph.at(meta_node);
 }
 
@@ -167,6 +223,31 @@ void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool
 
 void Bipartition::for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f){
     subgraphs.at(subgraph_index).for_each_handle(f);
+}
+
+
+nid_t Bipartition::get_id_of_parent_handle(const handle_t& h){
+    return graph.get_id(h);
+}
+
+
+nid_t Bipartition::get_id_of_parent_handle(const string& name){
+    return id_map.get_id(name);
+}
+
+
+string Bipartition::get_name_of_parent_node(nid_t id){
+    return id_map.get_name(id);
+}
+
+
+size_t Bipartition::size() const{
+    return subgraphs.size();
+}
+
+
+bool Bipartition::get_partition_of_subgraph(const size_t subgraph_index) const{
+    return subgraph_partitions.at(subgraph_index);
 }
 
 

@@ -765,12 +765,12 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
     vector<path_handle_t> paths;
 
-    cerr << "Paths in component:" << '\n';
-    graph.for_each_path_handle([&](const path_handle_t& p) {
-        paths.emplace_back(p);
-        path_names.emplace_back(graph.get_path_name(p));
-        cerr << graph.get_path_name(p) << '\n';
-    });
+//    cerr << "Paths in component:" << '\n';
+//    graph.for_each_path_handle([&](const path_handle_t& p) {
+//        paths.emplace_back(p);
+//        path_names.emplace_back(graph.get_path_name(p));
+//        cerr << graph.get_path_name(p) << '\n';
+//    });
 
     for (auto& p: paths){
         string path_sequence;

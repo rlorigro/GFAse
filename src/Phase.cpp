@@ -20,7 +20,7 @@ void count_kmers(
     // Iterate paths and for each node, collect kmers if node is only covered by one path
     for (auto& [path_name, other_path_name]: diploid_path_names) {
         auto p = graph.get_path_handle(path_name);
-        cerr << ">" << path_name << '\n';
+//        cerr << ">" << path_name << '\n';
 
         HaplotypePathKmer kmer(graph, p, k);
 
@@ -95,22 +95,22 @@ void generate_chain_critera(
 
                 ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
                     auto id = ploidy_bipartition.get_id(h);
-                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
 
                     ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
                         auto id2 = ploidy_bipartition.get_id(h2);
-                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index(id2);
+                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
                         second_degree_neighbors.emplace(adjacent_subgraph_index2);
                     });
                 });
 
                 ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
                     auto id = ploidy_bipartition.get_id(h);
-                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index(id);
+                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
 
                     ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
                         auto id2 = ploidy_bipartition.get_id(h2);
-                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index(id2);
+                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
                         second_degree_neighbors.emplace(adjacent_subgraph_index2);
                     });
                 });
@@ -125,6 +125,46 @@ void generate_chain_critera(
         }
         else if(subgraph.get_node_count() == 0){
             throw runtime_error("ERROR: subgraph in metagraph contains no nodes: " + to_string(subgraph_index));
+        }
+    });
+}
+
+
+void merge_diploid_singletons(const unordered_map<string,string>& diploid_path_names, Bipartition& chain_bipartition){
+    unordered_set<size_t> visited;
+
+    chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        if (visited.count(subgraph_index) != 0){
+            return;
+        }
+
+        // Look for phaseable subgraphs only (they contain at least one diploid node) and size == 1 (singleton)
+        if (chain_bipartition.get_partition_of_subgraph(subgraph_index) == 0 and chain_bipartition.get_subgraph_size(subgraph_index) == 1){
+            nid_t singleton_id;
+            string singleton_name;
+
+            chain_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h){
+                singleton_id = chain_bipartition.get_id_of_parent_handle(h);
+                singleton_name = chain_bipartition.get_name_of_parent_node(singleton_id);
+            });
+
+            // Find other diploid node and verify is also singleton
+            auto result = diploid_path_names.find(singleton_name);
+
+            if (result == diploid_path_names.end()){
+                throw runtime_error("ERROR: diploid singleton has no counterpart in diploid names");
+            }
+
+            auto& other_name = result->second;
+            auto other_id = chain_bipartition.get_id_of_parent_handle(other_name);
+
+            auto other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
+
+//            cerr << "Merging subgraphs: " << subgraph_index << " + " << other_subgraph_index << '\n';
+            chain_bipartition.merge_subgraphs(other_subgraph_index, subgraph_index);
+
+            visited.emplace(other_subgraph_index);
+            visited.emplace(subgraph_index);
         }
     });
 }
@@ -146,7 +186,6 @@ void phase_chains(
 
         // Skip unphased regions for now
         if (partition == 1){
-            cerr << "skipping " << '\n';
             return;
         }
 
@@ -201,7 +240,7 @@ void phase_chains(
             maternal_node_names.emplace(maternal_path_name);
         }
 
-        cerr << "New chain:" << '\n';
+//        cerr << "New chain:" << '\n';
 
         // Iterate each bubble or bridge and update the queue with the next nodes
         while(not q.empty()){
@@ -221,7 +260,7 @@ void phase_chains(
                 }
                 else {
                     // If it's a normal singleton just append it to both haplotype paths
-                    cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node)) << " and " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node)) << '\n';
+//                    cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node)) << " and " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node)) << '\n';
                     graph.append_step(maternal_path, node);
                     graph.append_step(paternal_path, node);
                 }
@@ -234,7 +273,7 @@ void phase_chains(
                 auto name_a = id_map.get_name(subgraph.get_id(node_a));
                 auto name_b = id_map.get_name(subgraph.get_id(node_b));
 
-                cerr << '\t' << name_a << " " << name_b << '\n' << std::flush;
+//                cerr << '\t' << name_a << " " << name_b << '\n' << std::flush;
 
                 auto result = diploid_path_names.find(name_a);
 
@@ -266,12 +305,12 @@ void phase_chains(
 
                 // Choose the more supported orientation, defaulting to "forward orientation" if equal
                 if (forward_score >= flipped_score){
-                    cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node_a)) << " and " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node_b)) << '\n';
+//                    cerr << "\t\tappending: " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node_a)) << " and " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node_b)) << '\n';
                     graph.append_step(paternal_path, node_a);
                     graph.append_step(maternal_path, node_b);
                 }
                 else{
-                    cerr << "\t\tappending: " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node_a)) << " and " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node_b)) << '\n';
+//                    cerr << "\t\tappending: " << graph.get_path_name(maternal_path) << " += " << id_map.get_name(graph.get_id(node_a)) << " and " << graph.get_path_name(paternal_path) << " += " << id_map.get_name(graph.get_id(node_b)) << '\n';
                     graph.append_step(maternal_path, node_a);
                     graph.append_step(paternal_path, node_b);
                 }
@@ -315,10 +354,10 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     unordered_set<string> haploid_path_names;
     find_diploid_paths(graph, diploid_path_names, haploid_path_names);
 
-    cerr << '\n' << "DIPLOID PATHS" << '\n';
-    for (auto& item: diploid_path_names){
-        cerr << item.first << " " << item.second << '\n';
-    }
+//    cerr << '\n' << "DIPLOID PATHS" << '\n';
+//    for (auto& item: diploid_path_names){
+//        cerr << item.first << " " << item.second << '\n';
+//    }
 
     cerr << "Extending paths by 1..." << '\n';
 
@@ -360,10 +399,6 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 
     cerr << "Unzipping..." << '\n';
 
-    size_t rounding_unit = 10000;
-    map<size_t, size_t> raw_diploid_sizes;
-    map<size_t, size_t> chained_diploid_sizes;
-
     ofstream maternal_fasta("maternal.fasta");
     ofstream paternal_fasta("paternal.fasta");
     ofstream unphased_fasta("unphased.fasta");
@@ -381,8 +416,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         Bipartition ploidy_bipartition(cc_graph, cc_id_map, diploid_nodes);
         ploidy_bipartition.partition();
 
-        cerr << "PLOIDY subgraphs: " << '\n';
-        ploidy_bipartition.print();
+//        cerr << "PLOIDY subgraphs: " << '\n';
+//        ploidy_bipartition.print();
 
         // Generate criteria for node-chaining BFS
         unordered_set<nid_t> chain_nodes;
@@ -391,8 +426,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         Bipartition chain_bipartition(cc_graph, cc_id_map, chain_nodes);
         chain_bipartition.partition();
 
-        cerr << "CHAIN subgraphs: " << '\n';
-        chain_bipartition.print();
+//        cerr << "CHAIN subgraphs: " << '\n';
+//        chain_bipartition.print();
 
         string filename_prefix = "component_" + to_string(c) + "_";
         ofstream file(filename_prefix + ".gfa");
@@ -419,6 +454,18 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         unordered_set<string> paternal_node_names;
         unordered_set<string> maternal_node_names;
 
+//        cerr << "Merging diploid singletons... " << '\n';
+        merge_diploid_singletons(diploid_path_names, chain_bipartition);
+
+        ofstream test_gfa_chain_merged(filename_prefix + "chain_metagraph_merged.gfa");
+        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged);
+
+        ofstream test_csv_meta_chain_merged(filename_prefix + "chain_metagraph_merged.csv");
+        chain_bipartition.write_meta_graph_csv(test_csv_meta_chain_merged);
+
+        ofstream test_csv_parent_chain_merged(filename_prefix + "chain_parent_graph_merged.csv");
+        chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
+
         phase_chains(
                 chain_bipartition,
                 cc_graph,
@@ -432,13 +479,13 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");
         handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
 
-        cerr << "Writing to FASTA" << '\n';
+//        cerr << "Writing to FASTA" << '\n';
 
         cc_graph.for_each_handle([&](const handle_t& h){
             auto id = cc_graph.get_id(h);
             auto name = cc_id_map.get_name(id);
 
-            cerr << name << '\n';
+//            cerr << name << '\n';
 
             if (maternal_node_names.count(name) > 0){
                 maternal_fasta << '>' << c << '.' << name << '\n';
