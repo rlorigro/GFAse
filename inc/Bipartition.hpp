@@ -39,7 +39,7 @@ private:
     sparse_hash_map<size_t,PackedSubgraphOverlay> subgraphs;
     sparse_hash_map<size_t,bool> subgraph_partitions;
     sparse_hash_map<nid_t,size_t> node_to_subgraph;
-    sparse_hash_map <edge_t, vector<edge_t> > meta_edge_to_edges;
+    sparse_hash_map <edge_t, unordered_set<edge_t> > meta_edge_to_edges;
     unordered_set<nid_t> node_subset;
     size_t max_id = 0;
 

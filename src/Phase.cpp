@@ -32,19 +32,20 @@ void count_kmers(
         // TODO: stop using names entirely!!
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
-        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
-            try {
-                FixedBinarySequence<uint64_t, 2> s(sequence);
+//        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
+//            try {
+//                FixedBinarySequence<uint64_t, 2> s(sequence);
+                FixedBinarySequence<uint64_t, 2> s;
 
                 // Compare kmer to parental kmers
                 ks.increment_parental_kmer_count(component_name, haplotype, s);
-            }
-            catch(exception& e){
-                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.get_step_of_kmer_end())));
-                cerr << e.what() << '\n';
-                throw runtime_error("Error parsing sequence for node: " + node_name);
-            }
-        });
+//            }
+//            catch(exception& e){
+//                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.get_step_of_kmer_end())));
+//                cerr << e.what() << '\n';
+//                throw runtime_error("Error parsing sequence for node: " + node_name);
+//            }
+//        });
     }
 }
 
@@ -131,12 +132,9 @@ void generate_chain_critera(
 
 
 void merge_diploid_singletons(const unordered_map<string,string>& diploid_path_names, Bipartition& chain_bipartition){
-    unordered_set<size_t> visited;
+    unordered_set <pair <size_t,size_t> > to_be_merged;
 
     chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-        if (visited.count(subgraph_index) != 0){
-            return;
-        }
 
         // Look for phaseable subgraphs only (they contain at least one diploid node) and size == 1 (singleton)
         if (chain_bipartition.get_partition_of_subgraph(subgraph_index) == 0 and chain_bipartition.get_subgraph_size(subgraph_index) == 1){
@@ -160,13 +158,13 @@ void merge_diploid_singletons(const unordered_map<string,string>& diploid_path_n
 
             auto other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
 
-//            cerr << "Merging subgraphs: " << subgraph_index << " + " << other_subgraph_index << '\n';
-            chain_bipartition.merge_subgraphs(other_subgraph_index, subgraph_index);
-
-            visited.emplace(other_subgraph_index);
-            visited.emplace(subgraph_index);
+            to_be_merged.emplace(min(subgraph_index,other_subgraph_index), max(subgraph_index,other_subgraph_index));
         }
     });
+
+    for (auto& item: to_be_merged){
+        chain_bipartition.merge_subgraphs(item.first, item.second);
+    }
 }
 
 
@@ -209,6 +207,7 @@ void phase_chains(
         // Find edges to other subgraphs
         chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
             left_edge_nodes.emplace(h);
+            cerr << "queuing start node: " << id_map.get_name(graph.get_id(h)) << (graph.get_is_reverse(h) ? '-' : '+') << '\n';
         });
 
         // Make sure there are not both tips and edges
@@ -316,6 +315,10 @@ void phase_chains(
                 }
             }
             else{
+                cerr << "ERROR for subgraph_index: " << subgraph_index << " with nodes: " << '\n';
+                for (auto& h: nodes){
+                    cerr << '\t' << id_map.get_name(graph.get_id(h)) << '\n';
+                }
                 throw runtime_error("ERROR: diploid chain does not have 1 or 2 nodes in single position in chain");
             }
 
@@ -343,6 +346,8 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     HashGraph graph;
     IncrementalIdMap<string> id_map;
     KmerSets <FixedBinarySequence <uint64_t, 2> > ks(paternal_kmers, maternal_kmers);
+
+    cerr << "Loading GFA..." << '\n';
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 
@@ -388,7 +393,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     });
 
     // Debug
-    ks.print_component_parent_conf_matrix();
+//    ks.print_component_parent_conf_matrix();
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;

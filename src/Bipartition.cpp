@@ -56,8 +56,10 @@ void Bipartition::partition(){
     }
 
     graph.for_each_edge([&](const edge_t& e){
-        auto id_a = graph.get_id(e.first);
-        auto id_b = graph.get_id(e.second);
+        auto e_normalized = graph.edge_handle(e.first, e.second);
+
+        auto id_a = graph.get_id(e_normalized.first);
+        auto id_b = graph.get_id(e_normalized.second);
 
         auto subgraph_index_a = node_to_subgraph.at(id_a);
         auto subgraph_index_b = node_to_subgraph.at(id_b);
@@ -66,14 +68,14 @@ void Bipartition::partition(){
         auto partition_b = get_partition_of_node(id_b);
 
         if (subgraph_index_a != subgraph_index_b){
-            auto h_a = metagraph.get_handle(nid_t(subgraph_index_a), graph.get_is_reverse(e.first));
-            auto h_b = metagraph.get_handle(nid_t(subgraph_index_b), graph.get_is_reverse(e.second));
+            auto h_a = metagraph.get_handle(nid_t(subgraph_index_a), graph.get_is_reverse(e_normalized.first));
+            auto h_b = metagraph.get_handle(nid_t(subgraph_index_b), graph.get_is_reverse(e_normalized.second));
 
-            metagraph.create_edge(h_a, h_b);
+            auto meta_edge = metagraph.edge_handle(h_a, h_b);
+            metagraph.create_edge(meta_edge.first, meta_edge.second);
 
             // The metagraph edge can be used to find all individual edges that linked subgraphs in the parent graph
-            edge_t meta_edge = metagraph.edge_handle(h_a, h_b);
-            meta_edge_to_edges[meta_edge].emplace_back(e);
+            meta_edge_to_edges[meta_edge].emplace(e_normalized);
 
             if (partition_a == partition_b){
                 throw runtime_error("ERROR: direct edge between two subgraphs with the same partition membership");
@@ -100,30 +102,30 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
     auto metagraph_handle_b = metagraph.get_handle(nid_t(subgraph_index_b));
     auto metagraph_handle_a = metagraph.get_handle(nid_t(subgraph_index_a));
 
-    vector<edge_t> to_be_deleted;
+    unordered_set<edge_t> to_be_deleted;
 
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (LEFT)
     metagraph.follow_edges(metagraph_handle_b, true, [&](const handle_t & h){
-        edge_t e_a = {h, metagraph_handle_a};
-        edge_t e_b = {h, metagraph_handle_b};
+        edge_t e_a = metagraph.edge_handle(h, metagraph_handle_a);
+        edge_t e_b = metagraph.edge_handle(h, metagraph_handle_b);
 
         for (auto& parent_edge: meta_edge_to_edges.at(e_b)){
-            meta_edge_to_edges[e_a].emplace_back(parent_edge);
+            meta_edge_to_edges[e_a].emplace(graph.edge_handle(parent_edge.first,parent_edge.second));
         }
 
-        to_be_deleted.emplace_back(e_b);
+        to_be_deleted.emplace(e_b);
     });
 
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (RIGHT)
     metagraph.follow_edges(metagraph_handle_b, false, [&](const handle_t & h){
-        edge_t e_a = {metagraph_handle_a, h};
-        edge_t e_b = {metagraph_handle_b, h};
+        edge_t e_a = metagraph.edge_handle(metagraph_handle_a, h);
+        edge_t e_b = metagraph.edge_handle(metagraph_handle_b, h);
 
         for (auto& parent_edge: meta_edge_to_edges.at(e_b)){
-            meta_edge_to_edges[e_a].emplace_back(parent_edge);
+            meta_edge_to_edges[e_a].emplace(graph.edge_handle(parent_edge.first,parent_edge.second));
         }
 
-        to_be_deleted.emplace_back(e_b);
+        to_be_deleted.emplace(e_b);
     });
 
     for (auto& e: to_be_deleted){
@@ -131,6 +133,7 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
     }
 
     subgraphs.erase(subgraph_index_b);
+    metagraph.destroy_handle(metagraph_handle_b);
     subgraph_partitions.erase(subgraph_index_b);
 }
 
@@ -191,33 +194,70 @@ void Bipartition::follow_subgraph_edges(size_t subgraph_index, bool go_left, con
 
 void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f){
     auto n = nid_t(subgraph_index);
-    auto h = metagraph.get_handle(n);
+    auto h = metagraph.get_handle(n, false);
 
-    metagraph.follow_edges(h, left, [&](const handle_t& h_other){
-        edge_t e;
-        if (left) {
-            e = metagraph.edge_handle(h_other, h);
-        }
-        else{
-            e = metagraph.edge_handle(h, h_other);
-        }
+    unordered_set <handle_t> boundary_nodes;
 
-        for (auto& parent_edge: meta_edge_to_edges.at(e)){
-            auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
-            auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
+//    cerr << "Looking for boundary nodes of subgraph: " << subgraph_index << '\n';
 
-            if (first_index == subgraph_index and second_index != subgraph_index){
-                f(parent_edge.first);
-            }
-            else if (first_index != subgraph_index and second_index == subgraph_index){
-                f(parent_edge.second);
+    for (auto& l: {true,false}){
+//        cerr << (l ? "checking left" : "checking right") << '\n';
+
+        metagraph.follow_edges(h, l, [&](const handle_t& h_other){
+            edge_t e;
+            if (l) {
+                e = metagraph.edge_handle(h_other, h);
             }
             else{
-                throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+                e = metagraph.edge_handle(h, h_other);
             }
-        }
-    });
 
+//            cerr << "\tmeta-edge: "
+//                 << graph.get_id(e.first) << (graph.get_is_reverse(e.first) ? '-' : '+') << " -> "
+//                 << graph.get_id(e.second) << (graph.get_is_reverse(e.second) ? '-' : '+') << '\n';
+
+            for (auto parent_edge: meta_edge_to_edges.at(e)){
+//                cerr << "\t\tparent edge: "
+//                     << id_map.get_name(graph.get_id(parent_edge.first)) << (graph.get_is_reverse(parent_edge.first) ? '-' : '+') << " -> "
+//                     << id_map.get_name(graph.get_id(parent_edge.second)) << (graph.get_is_reverse(parent_edge.second) ? '-' : '+') << '\n';
+
+                auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
+                auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
+
+                if (first_index == subgraph_index and second_index != subgraph_index){
+                    // Verify that the edge has the handle-of-interest in the F orientation
+                    if (graph.get_is_reverse(parent_edge.first)){
+                        if (left){
+//                            cerr << "\t\t\tfound: " << id_map.get_name(graph.get_id(parent_edge.first)) << '\n';
+                            boundary_nodes.emplace(graph.flip(parent_edge.first));
+                        }
+                    }
+                    else if (not left){
+                        boundary_nodes.emplace(parent_edge.first);
+                    }
+                }
+                else if (first_index != subgraph_index and second_index == subgraph_index){
+                    // Verify that the edge has the handle-of-interest in the F orientation
+                    if (graph.get_is_reverse(parent_edge.second)){
+                        if (not left){
+//                            cerr << "\t\t\tfound: " << id_map.get_name(graph.get_id(parent_edge.second)) << '\n';
+                            boundary_nodes.emplace(graph.flip(parent_edge.second));
+                        }
+                    }
+                    else if (left){
+                        boundary_nodes.emplace(parent_edge.second);
+                    }
+                }
+                else{
+                    throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+                }
+            }
+        });
+    }
+
+    for (auto& item: boundary_nodes){
+        f(item);
+    }
 }
 
 

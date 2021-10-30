@@ -90,7 +90,7 @@ void handle_graph_to_gfa(const HandleGraph& graph, ostream& output_gfa){
         write_edge_to_gfa(graph, edge, output_gfa);
     });
 
-    output_gfa.flush();
+    output_gfa << std::flush;
 }
 
 

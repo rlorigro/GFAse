@@ -789,6 +789,9 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
         auto name = graph.get_path_name(p);
         string haplotype_path_name = name + temporary_suffix;
+
+        cerr << haplotype_path_name << '\n';
+
         auto new_id = id_map.insert(name);
         handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);
 
