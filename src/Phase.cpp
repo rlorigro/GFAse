@@ -177,6 +177,7 @@ void phase_chains(
         unordered_set<string>& paternal_node_names,
         unordered_set<string>& maternal_node_names,
         ofstream& provenance_csv_file,
+        string provenance_path_prefix,
         char path_delimiter
 ){
 
@@ -339,7 +340,7 @@ void phase_chains(
         }
     });
 
-    write_paths_to_csv(graph, id_map, provenance_csv_file);
+    write_paths_to_csv(graph, id_map, provenance_csv_file, provenance_path_prefix);
     unzip(graph, id_map, false);
 }
 
@@ -482,6 +483,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
         ofstream test_csv_parent_chain_merged(filename_prefix + "chain_parent_graph_merged.csv");
         chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
 
+        string component_path_prefix = to_string(c) + '.';
         phase_chains(
                 chain_bipartition,
                 cc_graph,
@@ -491,6 +493,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
                 paternal_node_names,
                 maternal_node_names,
                 provenance_csv_file,
+                component_path_prefix,
                 path_delimiter);
 
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");
@@ -505,15 +508,15 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
 //            cerr << name << '\n';
 
             if (maternal_node_names.count(name) > 0){
-                maternal_fasta << '>' << c << '.' << name << '\n';
+                maternal_fasta << '>' << component_path_prefix << name << '\n';
                 maternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else if (paternal_node_names.count(name) > 0){
-                paternal_fasta << '>' << c << '.' << name << '\n';
+                paternal_fasta << '>' << component_path_prefix << name << '\n';
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
-                unphased_fasta << '>' << c << '.' << name << '\n';
+                unphased_fasta << '>' << component_path_prefix << name << '\n';
                 unphased_fasta << cc_graph.get_sequence(h) << '\n';
             }
         });

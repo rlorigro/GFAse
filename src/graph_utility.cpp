@@ -880,9 +880,9 @@ void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& 
 }
 
 
-void write_paths_to_csv(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ofstream& file){
+void write_paths_to_csv(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ofstream& file, string path_prefix){
     graph.for_each_path_handle([&](const path_handle_t& path){
-        string path_name = graph.get_path_name(path);
+        string path_name = path_prefix + graph.get_path_name(path);
         size_t n_steps = graph.get_step_count(path);
         size_t i = 0;
 
