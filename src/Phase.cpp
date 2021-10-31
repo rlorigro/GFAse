@@ -176,6 +176,7 @@ void phase_chains(
         const KmerSets <FixedBinarySequence <uint64_t,2> >& ks,
         unordered_set<string>& paternal_node_names,
         unordered_set<string>& maternal_node_names,
+        ofstream& provenance_csv_file,
         char path_delimiter
 ){
 
@@ -338,6 +339,7 @@ void phase_chains(
         }
     });
 
+    write_paths_to_csv(graph, id_map, provenance_csv_file);
     unzip(graph, id_map, false);
 }
 
@@ -407,6 +409,15 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
     ofstream maternal_fasta("maternal.fasta");
     ofstream paternal_fasta("paternal.fasta");
     ofstream unphased_fasta("unphased.fasta");
+
+    path provenance_output_path = "phase_chains.csv";
+    ofstream provenance_csv_file(provenance_output_path);
+
+    if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+    }
+
+    provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
@@ -479,6 +490,7 @@ void phase_haplotype_paths(path gfa_path, size_t k, path paternal_kmers, path ma
                 ks,
                 paternal_node_names,
                 maternal_node_names,
+                provenance_csv_file,
                 path_delimiter);
 
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");

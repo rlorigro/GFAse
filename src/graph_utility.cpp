@@ -879,5 +879,31 @@ void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& 
     });
 }
 
+
+void write_paths_to_csv(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ofstream& file){
+    graph.for_each_path_handle([&](const path_handle_t& path){
+        string path_name = graph.get_path_name(path);
+        size_t n_steps = graph.get_step_count(path);
+        size_t i = 0;
+
+        file << path_name << ',' << n_steps << ',';
+
+        graph.for_each_step_in_path(path, [&](const step_handle_t& s){
+            auto h = graph.get_handle_of_step(s);
+            auto name = id_map.get_name(graph.get_id(h));
+
+            file << name << (graph.get_is_reverse(h) ? '-' : '+');
+            if (i < n_steps - 1){
+                file << ' ';
+            }
+
+            i++;
+        });
+
+        file << '\n';
+    });
+}
+
+
 }
 
