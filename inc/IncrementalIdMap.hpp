@@ -89,7 +89,7 @@ template<class T> int64_t IncrementalIdMap<T>::get_id(const T& name) const{
 
 
 template<class T> T IncrementalIdMap<T>::get_name(int64_t id) const{
-    return names[id-1+zero_based];
+    return names.at(id-1+zero_based);
 }
 
 
