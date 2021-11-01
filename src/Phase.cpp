@@ -32,20 +32,19 @@ void count_kmers(
         // TODO: stop using names entirely!!
         tie(component_name, haplotype) = parse_path_string(path_name, path_delimiter);
 
-//        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
-//            try {
-//                FixedBinarySequence<uint64_t, 2> s(sequence);
-                FixedBinarySequence<uint64_t, 2> s;
+        kmer.for_each_haploid_kmer([&](const deque<char>& sequence){
+            try {
+                FixedBinarySequence<uint64_t, 2> s(sequence);
 
                 // Compare kmer to parental kmers
                 ks.increment_parental_kmer_count(component_name, haplotype, s);
-//            }
-//            catch(exception& e){
-//                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.get_step_of_kmer_end())));
-//                cerr << e.what() << '\n';
-//                throw runtime_error("Error parsing sequence for node: " + node_name);
-//            }
-//        });
+            }
+            catch(exception& e){
+                auto node_name = id_map.get_name(graph.get_id(graph.get_handle_of_step(kmer.get_step_of_kmer_end())));
+                cerr << e.what() << '\n';
+                throw runtime_error("Error parsing sequence for node: " + node_name);
+            }
+        });
     }
 }
 
