@@ -1,6 +1,6 @@
 #include "Phase.hpp"
 
-using gfase::phase_haplotype_paths;
+using gfase::phase_k;
 
 int main(){
     path script_path = __FILE__;
@@ -11,7 +11,7 @@ int main(){
     path maternal_kmers_path = project_directory / "data/simple_chain_maternal_kmers.fasta";
     path paternal_kmers_path = project_directory / "data/simple_chain_paternal_kmers.fasta";
 
-    phase_haplotype_paths(gfa_path, 6, paternal_kmers_path, maternal_kmers_path, '.');
+    phase_k(gfa_path, 6, paternal_kmers_path, maternal_kmers_path, '.');
 
     return 0;
 }

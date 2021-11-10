@@ -28,6 +28,8 @@ using std::cerr;
 namespace gfase {
 
 
+
+
 template<class T, size_t T2> class FixedBinarySequence {
 public:
     /// Attributes ///
@@ -39,6 +41,7 @@ public:
     /// Methods ///
     FixedBinarySequence();
     FixedBinarySequence(const FixedBinarySequence& s);
+    FixedBinarySequence(const array <T,T2>& s);
     template <class T3> FixedBinarySequence(const T3& s);
     void get_reverse_complement(FixedBinarySequence<T,T2>& rc, size_t length) const;
     void to_string(string& s, size_t length) const;
@@ -85,6 +88,11 @@ template<class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence():
 
 template <class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(const FixedBinarySequence<T,T2>& s):
         sequence(s.sequence)
+{}
+
+
+template <class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(const array <T,T2>& a):
+        sequence(a)
 {}
 
 
@@ -186,7 +194,7 @@ namespace std {
 template <size_t T2> class hash<gfase::FixedBinarySequence<uint64_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<uint64_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint64_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint64_t)), 9223372036854775783);
     }
 };
 
@@ -194,7 +202,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<int64_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<int64_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int64_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int64_t)), 9223372036854775783);
     }
 };
 
@@ -202,7 +210,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<uint32_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<uint32_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint32_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint32_t)), 9223372036854775783);
     }
 };
 
@@ -210,7 +218,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<int32_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<int32_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int32_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int32_t)), 9223372036854775783);
     }
 };
 
@@ -218,7 +226,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<uint16_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<uint16_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint16_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint16_t)), 9223372036854775783);
     }
 };
 
@@ -226,7 +234,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<int16_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<int16_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int16_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int16_t)), 9223372036854775783);
     }
 };
 
@@ -234,7 +242,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<uint8_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<uint8_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint8_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(uint8_t)), 9223372036854775783);
     }
 };
 
@@ -242,7 +250,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<int8_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<int8_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int8_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(int8_t)), 9223372036854775783);
     }
 };
 
@@ -250,7 +258,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<__uint128_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<__uint128_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__uint128_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__uint128_t)), 9223372036854775783);
     }
 };
 
@@ -258,7 +266,7 @@ public:
 template <size_t T2> class hash<gfase::FixedBinarySequence<__int128_t,T2> > {
 public:
     size_t operator()(const gfase::FixedBinarySequence<__int128_t,T2>& s) const {
-        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__int128_t)), 14741);
+        return MurmurHash64A(s.sequence.data(), int(s.sequence.size()*sizeof(__int128_t)), 9223372036854775783);
     }
 };
 

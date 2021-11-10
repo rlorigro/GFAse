@@ -47,7 +47,7 @@ int main (int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
-    gfase::phase_haplotype_paths(gfa_path, k, paternal_kmers, maternal_kmers);
+    gfase::phase_k(gfa_path, k, paternal_kmers, maternal_kmers);
 
     return 0;
 }

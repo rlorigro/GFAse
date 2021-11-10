@@ -456,6 +456,42 @@ int main(){
         }
     }
 
+
+    spp::sparse_hash_set <FixedBinarySequence <uint32_t,1> > b16_set;
+    for (uint32_t i=0; i<uint32_t(pow(4,16)); i++){
+        if (i % 2 == 1){
+            continue;
+        }
+
+        array<uint32_t,1> a = {i};
+        b16_set.emplace(a);
+    }
+
+    for (uint32_t i=0; i<uint32_t(pow(4,16)); i++){
+        array<uint32_t,1> a = {i};
+        FixedBinarySequence <uint32_t,1> binary_seq(a);
+
+        if (i % 2 == 1){
+            auto result = b16_set.find(binary_seq);
+
+            if (result != b16_set.end()){
+                string seq;
+                binary_seq.to_string(seq, 16);
+                throw runtime_error("FAIL: sequence " + seq + " found in set despite never having been added");
+            }
+        }
+        else{
+            auto result = b16_set.find(binary_seq);
+
+            if (result == b16_set.end()){
+                string seq;
+                binary_seq.to_string(seq, 16);
+
+                throw runtime_error("FAIL: sequence " + seq + " not found in set");
+            }
+        }
+    }
+
     return 0;
 }
 

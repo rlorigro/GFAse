@@ -69,6 +69,7 @@ template <class T> class KmerSets {
         void for_each_component_matrix(const function<void(const string& name, const array <array <double,2>, 2> component)>& f);
         double get_count(const string& component, size_t haplotype_index, size_t parental_index) const;
         void get_matrix(const string& component, array <array <double, 2>, 2>& matrix) const;
+        size_t get_k();
 };
 
 
@@ -104,6 +105,11 @@ template <class T> KmerSets<T>::KmerSets(path paternal_kmer_fa_path, path matern
     // Fill the kmer sets
     load_fasta_into_unordered_set(paternal_kmer_fa_path, paternal_kmer_set);
     load_fasta_into_unordered_set(maternal_kmer_fa_path, maternal_kmer_set);
+}
+
+
+template <class T> size_t KmerSets<T>::get_k(){
+    return k;
 }
 
 
