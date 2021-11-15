@@ -421,6 +421,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
     ks.for_each_component_matrix([&](const string& name, const array <array <double,2>, 2> matrix){
         component_matrix_outfile
+                << name << ','
                 << matrix[0][KmerSets<string>::paternal_index] << ','
                 << matrix[0][KmerSets<string>::maternal_index] << ','
                 << matrix[1][KmerSets<string>::paternal_index] << ','
