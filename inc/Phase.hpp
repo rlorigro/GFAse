@@ -233,6 +233,7 @@ template <class T, size_t T2> void phase_chains(
         array <array <double, 2>, 2> matrix;
 
         queue <set <handle_t> > q;
+        set<nid_t> visited;
         set<handle_t> next_nodes;
 
         // Chain might terminate in an edge to another subgraph or in a dead end ("tip") so both need to be searched for
@@ -360,7 +361,13 @@ template <class T, size_t T2> void phase_chains(
             next_nodes.clear();
             for (auto& node: nodes) {
                 subgraph.follow_edges(node, false, [&](const handle_t& h){
-                    next_nodes.emplace(h);
+                    auto h_id = subgraph.get_id(h);
+
+                    // Avoid adding self-looped or reversing nodes more than once to the queue
+                    if (visited.count(h_id) == 0) {
+                        next_nodes.emplace(h);
+                        visited.emplace(h_id);
+                    }
                 });
             }
 
@@ -417,7 +424,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
     // Open file and print header
     ofstream component_matrix_outfile("component_matrix_outfile.csv");
-    component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count \n";
+    component_matrix_outfile << "component_name,hap_0_paternal_count,hap_0_maternal_count,hap_1_paternal_count,hap_1_maternal_count\n";
 
     ks.for_each_component_matrix([&](const string& name, const array <array <double,2>, 2> matrix){
         component_matrix_outfile
