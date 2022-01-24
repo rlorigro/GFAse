@@ -42,7 +42,7 @@ private:
     step_handle_t terminal_step;
     size_t terminal_index;
 
-    // K can be any size, so bit shift operations are not a simple option anymore
+    // K can be any size, so bit push_back operations are not a simple option anymore
     deque<char> sequence;
     size_t k;
 

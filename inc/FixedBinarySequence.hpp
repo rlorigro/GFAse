@@ -1,6 +1,7 @@
-#ifndef SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
-#define SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
+#ifndef GFASE_FIXEDBINARYSEQUENCE_HPP
+#define GFASE_FIXEDBINARYSEQUENCE_HPP
 
+#include "BinarySequence.hpp"
 #include "MurmurHash3.hpp"
 #include "MurmurHash2.hpp"
 
@@ -11,6 +12,7 @@
 #include <string>
 #include <deque>
 #include <array>
+#include <cmath>
 #include <iostream>
 
 using std::runtime_error;
@@ -22,12 +24,11 @@ using std::bitset;
 using std::string;
 using std::deque;
 using std::array;
+using std::pow;
 using std::cerr;
 
 
 namespace gfase {
-
-
 
 
 template<class T, size_t T2> class FixedBinarySequence {
@@ -41,10 +42,11 @@ public:
     /// Methods ///
     FixedBinarySequence();
     FixedBinarySequence(const FixedBinarySequence& s);
-    FixedBinarySequence(const array <T,T2>& s);
     template <class T3> FixedBinarySequence(const T3& s);
+    template <class T3> FixedBinarySequence(const BinarySequence<T3>& s, size_t fixed_length);
     void get_reverse_complement(FixedBinarySequence<T,T2>& rc, size_t length) const;
     void to_string(string& s, size_t length) const;
+    void shift(char c, size_t length);
     void print_as_bits() const;
 };
 
@@ -91,11 +93,6 @@ template <class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(con
 {}
 
 
-template <class T, size_t T2> FixedBinarySequence<T,T2>::FixedBinarySequence(const array <T,T2>& a):
-        sequence(a)
-{}
-
-
 template<class T, size_t T2> template <class T3> FixedBinarySequence<T,T2>::FixedBinarySequence(const T3& s):
     sequence({})  // Bracket initializer ensures the array is filled with zeros
 {
@@ -125,6 +122,92 @@ template<class T, size_t T2> template <class T3> FixedBinarySequence<T,T2>::Fixe
         sequence.at(word_index) |= bits;
         length++;
     }
+}
+
+
+template<class T, size_t T2> template <class T3> FixedBinarySequence<T,T2>::FixedBinarySequence(const BinarySequence<T3>& s, size_t fixed_length):
+    sequence({})  // Bracket initializer ensures the array is filled with zeros
+{
+    if (sizeof(T) != sizeof(T3)){
+        throw runtime_error("ERROR: no implementation for conversion between array of differing word type");
+    }
+    if (fixed_length < s.length){
+        throw runtime_error("ERROR: cannot initialize FixedBinarySequence from longer BinarySequence");
+    }
+
+    string test;
+    int64_t l = 0;
+    for (size_t i=0; i<s.sequence.size(); i++){
+        sequence[i] = s.sequence[i];
+
+        l += sizeof(T)*8;
+
+//        cerr << "Converting: " << i << ' ' << l << ' ' << 2*fixed_length << ' ' << (fixed_length*2)%(sizeof(T)*8) << '\n';
+//
+//        this->to_string(test, fixed_length);
+//        cerr << test << '\n';
+//        cerr << std::bitset<sizeof(T)*8>(sequence[i]) << '\n';
+
+        if (l > int64_t(fixed_length)*2){
+            const T mask = pow(T(2),(fixed_length*2)%(sizeof(T)*8))-1;
+
+//            cerr << std::bitset<sizeof(T)*8>(mask) << '\n';
+//            cerr << std::bitset<sizeof(T)*8>(sequence[i]) << '\n';
+            sequence[i] &= mask;
+
+//            this->to_string(test, fixed_length);
+//            cerr << test << '\n';
+
+            break;
+        }
+    }
+}
+
+
+/// A function to push a new base but not alter the length of the sequence (as a fixed length queue would)
+/// \tparam T
+/// \param c
+template <class T, size_t T2> void FixedBinarySequence<T,T2>::shift(char c, size_t length){
+    T bits = base_to_index.at(c);
+
+    if (bits == 4){
+        throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(1,c) + " (ord=" + std::to_string(int(c)) + ")");
+    }
+
+    for (size_t i=0; i<sequence.size(); i++){
+        if (i > 0) {
+            T mask = 3;
+//            cerr << bitset<sizeof(T)*8>(mask) << '\n';
+//            cerr << '\n';
+
+            T leftover = sequence[i] & mask;
+//            cerr << bitset<sizeof(T)*8>(sequence[i]) << '\n';
+//            cerr << bitset<sizeof(T)*8>(leftover) << '\n';
+
+            leftover <<= sizeof(T)*8 - 2;
+//            cerr << bitset<sizeof(T)*8>(leftover) << '\n';
+//            cerr << '\n';
+//
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+//            cerr << bitset<sizeof(T)*8>(T(pow(2,sizeof(T)*8 - 2) - 1)) << '\n';
+            sequence[i-1] &= T(pow(2,sizeof(T)*8 - 2) - 1);
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+
+            sequence[i-1] |= leftover;
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+//
+//            cerr << '\n';
+//            cerr << '\n';
+
+        }
+        sequence[i] >>= 2;
+    }
+
+    uint8_t shift_size = (2*(length-1)) % (sizeof(T)*8);
+
+    bits <<= shift_size;
+
+    sequence.back() |= bits;
 }
 
 
@@ -160,6 +243,8 @@ template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s
     if (sequence.empty()){
         return;
     }
+
+    s.clear();
 
     T mask = 3;
     size_t bp_per_word = (sizeof(T)*8)/2;
@@ -275,4 +360,4 @@ public:
 
 
 
-#endif //SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
+#endif //GFASE_FIXEDBINARYSEQUENCE_HPP

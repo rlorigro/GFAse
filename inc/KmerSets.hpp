@@ -31,8 +31,8 @@ template <class T> class KmerSets {
 	/// Attributes ///
 	private:
 		// Sets for each member of the trio
-		sparse_hash_set <T> paternal_kmer_set ;
-		sparse_hash_set <T> maternal_kmer_set ;
+		sparse_hash_set <T> paternal_kmer_set;
+		sparse_hash_set <T> maternal_kmer_set;
 
         // < component,  [component_hap_path][parent_hap_index] >
         unordered_map<string, array <array <double,2>, 2> > component_map;
@@ -68,6 +68,8 @@ template <class T> class KmerSets {
 		void print_component_parent_conf_matrix() const;
         void for_each_component_matrix(const function<void(const string& name, const array <array <double,2>, 2> component)>& f);
         double get_count(const string& component, size_t haplotype_index, size_t parental_index) const;
+        size_t n_paternal_kmers() const;
+        size_t n_maternal_kmers() const;
         void get_matrix(const string& component, array <array <double, 2>, 2>& matrix) const;
         size_t get_k();
 };
@@ -110,6 +112,16 @@ template <class T> KmerSets<T>::KmerSets(path paternal_kmer_fa_path, path matern
 
 template <class T> size_t KmerSets<T>::get_k(){
     return k;
+}
+
+
+template <class T> size_t KmerSets<T>::n_paternal_kmers() const{
+    return num_paternal_kmers;
+}
+
+
+template <class T> size_t KmerSets<T>::n_maternal_kmers() const{
+    return num_maternal_kmers;
 }
 
 

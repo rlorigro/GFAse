@@ -1,10 +1,14 @@
 #include "BinarySequence.hpp"
+#include "Filesystem.hpp"
 #include <unordered_set>
+#include <fstream>
 #include <list>
 #include <map>
 
 using gfase::BinarySequence;
+using ghc::filesystem::path;
 using std::unordered_set;
+using std::ifstream;
 using std::list;
 using std::map;
 using std::runtime_error;
@@ -276,6 +280,89 @@ int main(){
         cerr << "set_int buckets:" << '\n';
         print_bucket_info(set_int);
     }
+
+    {
+        string seq = "ACGT";
+
+        BinarySequence<uint8_t> bs(seq);
+        string result;
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('A');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('A');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('C');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('C');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('G');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('G');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('T');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        bs.shift('T');
+        bs.to_string(result);
+        cerr << result << '\n';
+
+    }
+
+//    {
+        /// Test the speed and accuracy of the shift operation
+//        path script_path = __FILE__;
+//        path project_directory = script_path.parent_path().parent_path().parent_path();
+//
+//        // Get test VCF path
+//        path relative_fasta_path = "data/HG002.chrX_v0.7.fasta";
+//        path absolute_fasta_path = project_directory / relative_fasta_path;
+//
+//        ifstream file(absolute_fasta_path);
+//
+//        string line;
+//        string seq;
+//
+//        while (getline(file, line)) {
+//            if (line[0] != '>'){
+//                seq += line;
+//            }
+//        }
+//
+////        string seq = "ACGTAACCGGTTAAACCCGGGTTT";
+//
+//        cerr << seq.size() << '\n';
+//
+//        BinarySequence<uint16_t> bs;
+//
+//        string result;
+//
+//        for (size_t i=0; i<seq.size(); i++){
+//            if (i < sizeof(uint16_t)*8){
+//                bs.push_back(seq[i]);
+//            }
+//            else{
+//                bs.shift(seq[i]);
+//            }
+//
+//            bs.to_string(result);
+//            cerr << i << ' ' << result << '\n';
+//        }
+//    }
 
     return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
-#define SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
+#ifndef GFASE_BINARYSEQUENCE_HPP
+#define GFASE_BINARYSEQUENCE_HPP
 
 #include "MurmurHash3.hpp"
 #include "MurmurHash2.hpp"
@@ -10,6 +10,7 @@
 #include <bitset>
 #include <string>
 #include <deque>
+#include <cmath>
 #include <array>
 
 using std::runtime_error;
@@ -20,6 +21,7 @@ using std::bitset;
 using std::string;
 using std::deque;
 using std::array;
+using std::pow;
 using std::cerr;
 
 
@@ -39,6 +41,7 @@ public:
     BinarySequence();
     BinarySequence(const BinarySequence& s);
     template <class T2> BinarySequence(const T2& s);
+    void push_back(char c);
     void shift(char c);
     void to_string(string& s);
     size_t get_byte_length() const;
@@ -95,12 +98,12 @@ template<class T> template <class T2> BinarySequence<T>::BinarySequence(const T2
     static_assert(is_integral<T>::value, "ERROR: provided type for BinarySequence is not integer");
 
     for (auto& c: s){
-        shift(c);
+        push_back(c);
     }
 }
 
 
-template <class T> void BinarySequence<T>::shift(char c){
+template <class T> void BinarySequence<T>::push_back(char c){
     T bits = base_to_index.at(c);
 
     if (bits == 4){
@@ -126,11 +129,59 @@ template <class T> void BinarySequence<T>::shift(char c){
     }
 }
 
+/// A function to push a new base but not alter the length of the sequence (as a fixed length queue would)
+/// \tparam T
+/// \param c
+template <class T> void BinarySequence<T>::shift(char c){
+    T bits = base_to_index.at(c);
+
+    if (bits == 4){
+        throw runtime_error("ERROR: non ACGT character encountered in sequence: " + string(1,c) + " (ord=" + std::to_string(int(c)) + ")");
+    }
+
+    for (size_t i=0; i<sequence.size(); i++){
+        if (i > 0) {
+            T mask = 3;
+//            cerr << bitset<sizeof(T)*8>(mask) << '\n';
+//            cerr << '\n';
+
+            T leftover = sequence[i] & mask;
+//            cerr << bitset<sizeof(T)*8>(sequence[i]) << '\n';
+//            cerr << bitset<sizeof(T)*8>(leftover) << '\n';
+
+            leftover <<= sizeof(T)*8 - 2;
+//            cerr << bitset<sizeof(T)*8>(leftover) << '\n';
+//            cerr << '\n';
+
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+//            cerr << bitset<sizeof(T)*8>(T(pow(2,sizeof(T)*8 - 2) - 1)) << '\n';
+            sequence[i-1] &= T(pow(2,sizeof(T)*8 - 2) - 1);
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+
+            sequence[i-1] |= leftover;
+//            cerr << bitset<sizeof(T)*8>(sequence[i-1]) << '\n';
+//
+//            cerr << '\n';
+//            cerr << '\n';
+
+        }
+        sequence[i] >>= 2;
+    }
+
+    uint8_t shift_size = (2*(length-1)) % (sizeof(T)*8);
+
+    bits <<= shift_size;
+
+    sequence.back() |= bits;
+}
+
 
 template<class T> void BinarySequence<T>::to_string(string& s){
     if (sequence.empty()){
         return;
     }
+
+    s.clear();
 
     T mask = 3;
 
@@ -263,4 +314,4 @@ public:
 
 
 
-#endif //SIMPLE_DOTPLOT_BINARYSEQUENCE_HPP
+#endif //GFASE_BINARYSEQUENCE_HPP

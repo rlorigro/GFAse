@@ -1,4 +1,5 @@
 #include "FixedBinarySequence.hpp"
+#include "BinarySequence.hpp"
 #include "KmerSets.hpp"
 #include <unordered_set>
 #include <string>
@@ -8,6 +9,7 @@
 
 using gfase::get_reverse_complement;
 using gfase::FixedBinarySequence;
+using gfase::BinarySequence;
 using gfase::KmerSets;
 using std::unordered_set;
 using std::list;
@@ -490,6 +492,192 @@ int main(){
                 throw runtime_error("FAIL: sequence " + seq + " not found in set");
             }
         }
+    }
+
+    {
+        string seq = "ACGTAACCGGTT";
+
+        BinarySequence<uint16_t> bs(seq);
+        FixedBinarySequence<uint16_t,3> fbs(seq);
+        FixedBinarySequence<uint16_t,3> fbs_from_bs(bs, seq.size());
+
+        cerr << "TESTING: conversion from binary to fixed binary sequence" << '\n';
+
+        spp::sparse_hash_set <FixedBinarySequence<uint16_t,3> > set;
+
+        vector<char> bases = {'A','C','G','T'};
+        for (size_t i=0; i<1000; i++){
+            string random_seq;
+            for (size_t j=0; j<seq.size(); j++){
+                random_seq += bases[rand() % 4];
+            }
+
+            if (random_seq != seq) {
+                FixedBinarySequence<uint16_t, 3> random_fbs(random_seq);
+                set.insert(random_fbs);
+            }
+        }
+
+        string result;
+
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        fbs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        set.insert(fbs);
+
+        fbs_from_bs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        if (not set.contains(fbs_from_bs)){
+            throw runtime_error("FAIL: FixedBinarySequence initialized from BinarySequence not hashing equally to string initialization");
+        }
+    }
+
+    {
+        string seq = "GTTTTTTTTTTTTG";
+
+        BinarySequence<uint16_t> bs(seq);
+        FixedBinarySequence<uint16_t,3> fbs(seq);
+        FixedBinarySequence<uint16_t,3> fbs_from_bs(bs, seq.size());
+
+        cerr << "TESTING: conversion from binary to fixed binary sequence" << '\n';
+
+        spp::sparse_hash_set <FixedBinarySequence<uint16_t,3> > set;
+
+        vector<char> bases = {'A','C','G','T'};
+        for (size_t i=0; i<1000; i++){
+            string random_seq;
+            for (size_t j=0; j<seq.size(); j++){
+                random_seq += bases[rand() % 4];
+            }
+
+            if (random_seq != seq) {
+                FixedBinarySequence<uint16_t, 3> random_fbs(random_seq);
+                set.insert(random_fbs);
+            }
+        }
+
+        string result;
+
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        fbs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        set.insert(fbs);
+
+        fbs_from_bs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        if (not set.contains(fbs_from_bs)){
+            throw runtime_error("FAIL: FixedBinarySequence initialized from BinarySequence not hashing equally to string initialization");
+        }
+    }
+
+    {
+        string seq = "GTTTTTTTTTTTTG";
+
+        BinarySequence<uint16_t> bs(seq);
+        FixedBinarySequence<uint16_t,4> fbs(seq);
+        FixedBinarySequence<uint16_t,4> fbs_from_bs(bs, seq.size());
+
+        cerr << "TESTING: conversion from binary to fixed binary sequence" << '\n';
+
+        spp::sparse_hash_set <FixedBinarySequence<uint16_t,4> > set;
+
+        vector<char> bases = {'A','C','G','T'};
+        for (size_t i=0; i<1000; i++){
+            string random_seq;
+            for (size_t j=0; j<seq.size(); j++){
+                random_seq += bases[rand() % 4];
+            }
+
+            if (random_seq != seq) {
+                FixedBinarySequence<uint16_t, 4> random_fbs(random_seq);
+                set.insert(random_fbs);
+            }
+        }
+
+        string result;
+
+        bs.to_string(result);
+        cerr << result << '\n';
+
+        fbs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        set.insert(fbs);
+
+        fbs_from_bs.to_string(result, seq.size());
+        cerr << result << '\n';
+
+        if (not set.contains(fbs_from_bs)){
+            throw runtime_error("FAIL: FixedBinarySequence initialized from BinarySequence not hashing equally to string initialization");
+        }
+    }
+
+    {
+        cerr << "TESTING: shift operation in FixedBinarySequence" << '\n';
+        string seq = "TGGGGGT";
+        FixedBinarySequence<uint8_t,2> fbs(seq);
+
+        string test;
+
+
+        fbs.shift('C',7);
+        for (auto& b: fbs.sequence){
+            cerr << bitset<sizeof(uint8_t)*8>(b) << ' ';
+        }
+        cerr << '\n';
+
+        fbs.to_string(test, 7);
+        cerr << test << '\n';
+
+        fbs.shift('C',7);
+        for (auto& b: fbs.sequence){
+            cerr << bitset<sizeof(uint8_t)*8>(b) << ' ';
+        }
+        cerr << '\n';
+
+        fbs.to_string(test, 7);
+        cerr << test << '\n';
+
+        fbs.shift('C',7);
+        for (auto& b: fbs.sequence){
+            cerr << bitset<sizeof(uint8_t)*8>(b) << ' ';
+        }
+        cerr << '\n';
+
+        fbs.to_string(test, 7);
+        cerr << test << '\n';
+
+        fbs.shift('C',7);
+        for (auto& b: fbs.sequence){
+            cerr << bitset<sizeof(uint8_t)*8>(b) << ' ';
+        }
+        cerr << '\n';
+
+        fbs.to_string(test, 7);
+        cerr << test << '\n';
+
+        fbs.shift('T',7);
+        for (auto& b: fbs.sequence){
+            cerr << bitset<sizeof(uint8_t)*8>(b) << ' ';
+        }
+        cerr << '\n';
+
+        fbs.to_string(test, 7);
+        cerr << test << '\n';
+
+        seq = "GTCCCCT";
+        FixedBinarySequence<uint8_t,2> fbs2(seq);
+
+        cerr << hash <FixedBinarySequence <uint8_t,2> >()(fbs) << '\n';
+        cerr << hash <FixedBinarySequence <uint8_t,2> >()(fbs2) << '\n';
     }
 
     return 0;

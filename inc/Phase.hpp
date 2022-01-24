@@ -11,6 +11,7 @@
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
 #include "KmerSets.hpp"
+#include "Color.hpp"
 #include "CLI11.hpp"
 
 #include "bdsg/hash_graph.hpp"
@@ -386,6 +387,8 @@ template <class T, size_t T2> void phase_chains(
 
 template <class T, size_t T2>
 void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
+    size_t min_unphased_contig_length = 0;
+
     HashGraph graph;
     IncrementalIdMap<string> id_map;
     KmerSets <FixedBinarySequence <T, T2> > ks(paternal_kmers, maternal_kmers);
@@ -450,6 +453,10 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
     ofstream maternal_fasta("maternal.fasta");
     ofstream paternal_fasta("paternal.fasta");
     ofstream unphased_fasta("unphased.fasta");
+
+    ofstream unphased_parental_counts("unphased_parental_counts.csv");
+    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "color" << '\n';
+    Coolwarm colormap;
 
     path provenance_output_path = "phase_chains.csv";
     ofstream provenance_csv_file(provenance_output_path);
@@ -532,6 +539,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");
         handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
 
+        vector<handle_t> unphased_handles;
         cc_graph.for_each_handle([&](const handle_t& h){
             auto id = cc_graph.get_id(h);
             auto name = cc_id_map.get_name(id);
@@ -545,10 +553,45 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
-                unphased_fasta << '>' << component_path_prefix << name << '\n';
-                unphased_fasta << cc_graph.get_sequence(h) << '\n';
+                unphased_handles.emplace_back(h);
             }
         });
+
+        for (auto& h: unphased_handles){
+            size_t contig_length = cc_graph.get_length(h);
+
+            if (contig_length < min_unphased_contig_length){
+                continue;
+            }
+
+            string sequence = cc_graph.get_sequence(h);
+            string initial_kmer = sequence.substr(0,k);
+            FixedBinarySequence<T,T2> kmer(initial_kmer);
+
+            size_t maternal_count = ks.is_maternal(kmer);
+            size_t paternal_count = ks.is_paternal(kmer);
+
+            for (size_t i = k; i<cc_graph.get_length(h); i++){
+                kmer.shift(cc_graph.get_base(h,i), k);
+
+                maternal_count += ks.is_maternal(kmer);
+                paternal_count += ks.is_paternal(kmer);
+            }
+
+            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
+            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
+
+            double sign = ((normalized_maternal_score > normalized_paternal_score) ? 1 : -1);
+            double ratio = max(normalized_maternal_score, normalized_paternal_score)/min(normalized_maternal_score, normalized_paternal_score) - 1;
+
+            double color_index = 0.5 + 0.5*sign*min(double(3-1),ratio)/(3-1);   // Saturate at 3x
+            auto color = colormap.get_rgb(color_index);
+            string hex_color = rgb_to_hex(color[0], color[1], color[2]);
+
+            cerr << maternal_count << ' ' << paternal_count << " " << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
+
+            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << '#' << hex_color << '\n';
+        }
     }
 }
 

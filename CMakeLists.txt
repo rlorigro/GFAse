@@ -46,6 +46,7 @@ set(SOURCES
         src/BinaryIO.cpp
         src/BinarySequence.cpp
         src/Bipartition.cpp
+        src/Color.cpp
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
@@ -316,6 +317,8 @@ set(TESTS
         test_phase_haplotype_paths
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
+        test_rgb_to_hex
+        test_specialization
         )
 
 foreach(FILENAME_PREFIX ${TESTS})

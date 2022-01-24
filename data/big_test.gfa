@@ -102,3 +102,33 @@ P	2.0	b2+,d2+,e2+	0M,0M
 P	2.1	c2+,d2+,f2+	0M,0M
 P	3.0	h2+,j2+,k2+	0M,0M
 P	3.1	i2+,j2+,l2+	0M,0M
+S	a3	ATGGTTT
+S	b3	T
+S	c3	A
+S	d3	TCACGAA
+S	e3	T
+S	f3	A
+S	g3	CAGTACT
+S	h3	T
+S	i3	A
+S	j3	CGTATGA
+S	k3	T
+S	l3	A
+S	m3	AATGCTG
+L	a3	+	b3	+	0M
+L	a3	+	c3	+	0M
+L	b3	+	d3	+	0M
+L	c3	+	d3	+	0M
+L	d3	+	e3	+	0M
+L	d3	+	f3	+	0M
+L	e3	+	g3	+	0M
+L	f3	+	g3	+	0M
+L	g3	+	h3	+	0M
+L	g3	+	i3	+	0M
+L	h3	+	j3	+	0M
+L	i3	+	j3	+	0M
+L	j3	+	k3	+	0M
+L	j3	+	l3	+	0M
+L	k3	+	m3	+	0M
+L	l3	+	m3	+	0M
+L	m3	+	m3	+	0M
