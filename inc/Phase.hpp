@@ -455,7 +455,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
     ofstream unphased_fasta("unphased.fasta");
 
     ofstream unphased_parental_counts("unphased_parental_counts.csv");
-    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "color" << '\n';
+    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "color" << '\n';
 
     ofstream unphased_kmers_log("unphased_kmers.csv");
     unphased_kmers_log << "count" << ',' << "is_mat" << ',' << "is_pat" << '\n';
@@ -576,18 +576,27 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             FixedBinarySequence<T,T2> kmer(initial_kmer);
 
             unphased_kmer_counts[kmer]++;
+
+            for (size_t i = k; i<cc_graph.get_length(h); i++){
+                kmer.shift(cc_graph.get_base(h,i), k);
+                unphased_kmer_counts[kmer]++;
+            }
         }
     }
 
     sparse_hash_set <FixedBinarySequence<T,T2> > unique_kmers;
     for (auto& [kmer, count]: unphased_kmer_counts){
         if (count == 1){
-            unique_kmers.insert(kmer);
+            unique_kmers.emplace(kmer);
         }
 
         bool is_mat = ks.is_maternal(kmer);
         bool is_pat = ks.is_paternal(kmer);
 
+//        string test;
+//        kmer.to_string(test, k);
+//
+//        cerr << test << ',' << count << ',' << is_mat << ',' << is_pat << '\n';
         unphased_kmers_log << count << ',' << is_mat << ',' << is_pat << '\n';
     }
 
@@ -640,7 +649,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             auto color = colormap.get_rgb(color_index);
             string hex_color = rgb_to_hex(color[0], color[1], color[2]);
 
-            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
+//            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
 
             unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
         }
