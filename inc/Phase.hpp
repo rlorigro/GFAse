@@ -639,11 +639,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 }
             }
 
-            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
-            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
+//            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
+//            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
 
-            double sign = ((normalized_maternal_score > normalized_paternal_score) ? 1 : -1);
-            double ratio = max(normalized_maternal_score, normalized_paternal_score)/min(normalized_maternal_score, normalized_paternal_score) - 1;
+            double sign = ((unique_maternal_count > unique_paternal_count) ? 1 : -1);
+            double ratio = double(max(unique_maternal_count, unique_paternal_count) + 1)/double(min(unique_maternal_count, unique_paternal_count) + 1) - 1;
 
             double color_index = 0.5 + 0.5*sign*min(double(3-1),ratio)/(3-1);   // Saturate at 3x
             auto color = colormap.get_rgb(color_index);
