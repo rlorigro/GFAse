@@ -18,6 +18,7 @@ def align(ref_path, query_path, n_threads):
     command = ["minimap2",
                "-x", "asm20",
                "-t", str(n_threads),
+               "-K", "10g",
                "--secondary=no",
                "-n", "10",
                "-c",
