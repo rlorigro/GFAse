@@ -115,7 +115,7 @@ if __name__ == "__main__":
                 maternal_ref_path=args.ref_mat,
                 paternal_query_path=args.query_pat,
                 maternal_query_path=args.query_mat,
-                unphased_query_path=args.query_mat,
+                unphased_query_path=args.query_unphased,
                 n_threads=args.threads)
 
 
