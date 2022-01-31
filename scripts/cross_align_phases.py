@@ -34,21 +34,33 @@ def align(ref_path, query_path, n_threads):
     return output_name
 
 
-def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, n_threads):
+def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, unphased_query_path, n_threads):
     if n_threads is None:
         n_threads = os.cpu_count()
 
-    output_name = align(ref_path=paternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
-    print("Output file name: " + output_name)
+    if paternal_query_path is not None and paternal_ref_path is not None:
+        output_name = align(ref_path=paternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
 
-    output_name = align(ref_path=maternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
-    print("Output file name: " + output_name)
+    if paternal_query_path is not None and maternal_ref_path is not None:
+        output_name = align(ref_path=maternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
 
-    output_name = align(ref_path=paternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
-    print("Output file name: " + output_name)
+    if maternal_query_path is not None and paternal_ref_path is not None:
+        output_name = align(ref_path=paternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
 
-    output_name = align(ref_path=maternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
-    print("Output file name: " + output_name)
+    if maternal_query_path is not None and maternal_ref_path is not None:
+        output_name = align(ref_path=maternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
+
+    if unphased_query_path is not None and paternal_ref_path is not None:
+        output_name = align(ref_path=paternal_ref_path, query_path=unphased_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
+
+    if unphased_query_path is not None and maternal_ref_path is not None:
+        output_name = align(ref_path=maternal_ref_path, query_path=unphased_query_path, n_threads=n_threads)
+        print("Output file name: " + output_name)
 
     return
 
@@ -70,13 +82,22 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--query_pat",
-        required=True,
+        required=False,
+        default=None,
         type=str
     )
 
     parser.add_argument(
         "--query_mat",
-        required=True,
+        required=False,
+        default=None,
+        type=str
+    )
+
+    parser.add_argument(
+        "--query_unphased",
+        required=False,
+        default=None,
         type=str
     )
 
@@ -93,6 +114,7 @@ if __name__ == "__main__":
                 maternal_ref_path=args.ref_mat,
                 paternal_query_path=args.query_pat,
                 maternal_query_path=args.query_mat,
+                unphased_query_path=args.query_mat,
                 n_threads=args.threads)
 
 
