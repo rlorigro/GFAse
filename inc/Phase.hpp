@@ -454,14 +454,6 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
     ofstream paternal_fasta("paternal.fasta");
     ofstream unphased_fasta("unphased.fasta");
 
-    ofstream unphased_parental_counts("unphased_parental_counts.csv");
-    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "color" << '\n';
-
-    ofstream unphased_kmers_log("unphased_kmers.csv");
-    unphased_kmers_log << "count" << ',' << "is_mat" << ',' << "is_pat" << '\n';
-
-    Coolwarm colormap;
-
     path provenance_output_path = "phase_chains.csv";
     ofstream provenance_csv_file(provenance_output_path);
 
@@ -472,7 +464,6 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
     provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
     vector <vector <handle_t> > unphased_handles_per_component(connected_components.size());
-    sparse_hash_map <FixedBinarySequence<T,T2>, size_t> unphased_kmer_counts;
 
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
@@ -559,11 +550,26 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
+                unphased_fasta << '>' << component_path_prefix << name << '\n';
+                unphased_fasta << cc_graph.get_sequence(h) << '\n';
                 unphased_handles_per_component[c].emplace_back(h);
             }
         });
+    }
 
-        // Count k-mers, so we can later eliminate non-unique ones
+    ofstream unphased_parental_counts("unphased_parental_counts.csv");
+    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "color" << '\n';
+
+    ofstream unphased_kmers_log("unphased_kmers.csv");
+    unphased_kmers_log << "count" << ',' << "is_mat" << ',' << "is_pat" << '\n';
+
+    sparse_hash_map <FixedBinarySequence<T,T2>, size_t> unphased_kmer_counts;
+    Coolwarm colormap;
+
+    // Count k-mers, so we can later eliminate non-unique ones
+    for (size_t c=0; c<connected_components.size(); c++){
+        auto& cc_graph = connected_components[c];
+
         for (auto& h: unphased_handles_per_component[c]){
             size_t contig_length = cc_graph.get_length(h);
 
@@ -578,12 +584,13 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             unphased_kmer_counts[kmer]++;
 
             for (size_t i = k; i<cc_graph.get_length(h); i++){
-                kmer.shift(cc_graph.get_base(h,i), k);
+                kmer.shift(sequence[i], k);
                 unphased_kmer_counts[kmer]++;
             }
         }
     }
 
+    // Eliminate non-unique kmers
     sparse_hash_set <FixedBinarySequence<T,T2> > unique_kmers;
     for (auto& [kmer, count]: unphased_kmer_counts){
         if (count == 1){
@@ -625,7 +632,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             size_t unique_paternal_count = ks.is_paternal(kmer) and unique_kmers.contains(kmer);
 
             for (size_t i = k; i<cc_graph.get_length(h); i++){
-                kmer.shift(cc_graph.get_base(h,i), k);
+                kmer.shift(sequence[i], k);
 
                 bool is_mat = ks.is_maternal(kmer);
                 bool is_pat = ks.is_paternal(kmer);
@@ -651,7 +658,9 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
 //            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
 
-            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
+            string component_path_prefix = to_string(c) + '.';
+
+            unphased_parental_counts << component_path_prefix << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
         }
     }
 }
