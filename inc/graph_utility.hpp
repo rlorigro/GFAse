@@ -135,7 +135,7 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
 void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& h, bool is_left, bool is_right)>& f);
 
-void write_paths_to_csv(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ofstream& file, string path_prefix="");
+void write_paths_to_csv(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, ofstream& file);
 
 }
 

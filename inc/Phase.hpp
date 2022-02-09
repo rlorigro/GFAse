@@ -272,7 +272,7 @@ template <class T, size_t T2> void phase_chains(
         if (not next_nodes.empty() and subgraph.get_node_count() > 1){
             q.emplace(next_nodes);
 
-            string path_prefix = to_string(subgraph_index);
+            string path_prefix = provenance_path_prefix + '.' + to_string(subgraph_index);
 
             string maternal_path_name = path_prefix + ".m";
             string paternal_path_name = path_prefix + ".p";
@@ -380,7 +380,7 @@ template <class T, size_t T2> void phase_chains(
         }
     });
 
-    write_paths_to_csv(graph, id_map, provenance_csv_file, provenance_path_prefix);
+    write_paths_to_csv(graph, id_map, provenance_csv_file);
     unzip(graph, id_map, false);
 }
 
@@ -542,15 +542,15 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             auto name = cc_id_map.get_name(id);
 
             if (maternal_node_names.count(name) > 0){
-                maternal_fasta << '>' << component_path_prefix << name << '\n';
+                maternal_fasta << '>' << name << '\n';
                 maternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else if (paternal_node_names.count(name) > 0){
-                paternal_fasta << '>' << component_path_prefix << name << '\n';
+                paternal_fasta << '>' << name << '\n';
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
-                unphased_fasta << '>' << component_path_prefix << name << '\n';
+                unphased_fasta << '>' << name << '\n';
                 unphased_fasta << cc_graph.get_sequence(h) << '\n';
                 unphased_handles_per_component[c].emplace_back(h);
             }
@@ -658,9 +658,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
 //            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
 
-            string component_path_prefix = to_string(c) + '.';
-
-            unphased_parental_counts << component_path_prefix << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
+            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
         }
     }
 }

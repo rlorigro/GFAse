@@ -330,7 +330,17 @@ def assign_phase_by_alignment(name, paternal_elements, maternal_elements):
     max_indel_length = 50
 
     # print("--- PATERNAL ELEMENTS ---")
+    mat_longest_alignment = 0
+    mat_longest_contig = None
+    pat_longest_alignment = 0
+    pat_longest_contig = None
+
     for element in sorted(paternal_elements, key=lambda x: x.get_query_start()):
+        l = element.get_ref_length()
+        if l > pat_longest_alignment:
+            pat_longest_alignment = l
+            pat_longest_contig = element.get_ref_name()
+
         pat_contigs.add(element.get_ref_name())
         for coord,operation,length in iterate_cigar(element):
             if operation == '=':
@@ -347,6 +357,11 @@ def assign_phase_by_alignment(name, paternal_elements, maternal_elements):
 
     # print("--- MATERNAL ELEMENTS ---")
     for element in sorted(maternal_elements, key=lambda x: x.get_query_start()):
+        l = element.get_ref_length()
+        if l > mat_longest_alignment:
+            mat_longest_alignment = l
+            mat_longest_contig = element.get_ref_name()
+
         mat_contigs.add(element.get_ref_name())
         for coord,operation,length in iterate_cigar(element):
             if operation == '=':
@@ -368,15 +383,39 @@ def assign_phase_by_alignment(name, paternal_elements, maternal_elements):
 
     score = numpy.log2(mat_non_matches/pat_non_matches)
 
-    if any("X" in c for c in mat_contigs):
-        print("%s,%d,%.4f,%.4f,%.4f" % (name, query_length, pat_non_matches, mat_non_matches, score))
-        print("pat_contigs", pat_contigs)
-        print("mat_contigs", mat_contigs)
+    ref_name = None
+
+    if score > 0:
+        ref_name = pat_longest_contig
+    elif score < 0:
+        ref_name = mat_longest_contig
+    elif pat_longest_contig == mat_longest_contig:
+        ref_name = pat_longest_contig
+    else:
+        # If the scores are equal, see which alignment is longer
+        pat_length = sum([c.get_ref_length() for c in paternal_elements])
+        mat_length = sum([c.get_ref_length() for c in maternal_elements])
+
+        if pat_length > mat_length and pat_length > 0:
+            ref_name = pat_longest_contig
+        elif mat_length > pat_length and mat_length > 0:
+            ref_name = mat_longest_contig
+
+    # if any("X" in c for c in mat_contigs):
+    #     print("%s,%d,%.4f,%.4f,%.4f" % (name, query_length, pat_non_matches, mat_non_matches, score))
+    #     print("pat_contigs", pat_contigs)
+    #     print("mat_contigs", mat_contigs)
 
     # if "Y" in pat_contigs:
     #     print("%s,%d,%.4f,%.4f,%.4f" % (name, query_length, pat_non_matches, mat_non_matches, score))
     #     print("pat_contigs", pat_contigs)
     #     print("mat_contigs", mat_contigs)
+
+    # if score == 0 and len(mat_contigs) == 0:
+    #     print("%s,%d,%.4f,%.4f,%.4f" % (name, query_length, pat_non_matches, mat_non_matches, score))
+    #     print("pat_contigs", pat_contigs)
+    #     print("mat_contigs", mat_contigs)
+    #     print("ref_name", ref_name)
 
     # if name.endswith(".p") and pat_identity < mat_identity:
     #     plot_dual_alignment(name=name, paternal_elements=paternal_elements, maternal_elements=maternal_elements)
@@ -384,13 +423,15 @@ def assign_phase_by_alignment(name, paternal_elements, maternal_elements):
     # if name.endswith(".m") and mat_identity < pat_identity:
     #     plot_dual_alignment(name=name, paternal_elements=paternal_elements, maternal_elements=maternal_elements)
 
-    return score
+    return score, ref_name
 
 
 def main():
-    maternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/unphased_VS_HG002_mat_cur_20211005.paf"
-    paternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/unphased_VS_HG002_pat_cur_20211005.paf"
-    bandage_labels_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/unphased_parental_counts_UNIQUE.csv"
+    maternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/renamed/unphased_VS_HG002_mat_cur_20211005.paf"
+    paternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/renamed/unphased_VS_HG002_pat_cur_20211005.paf"
+    bandage_labels_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/unphased_parental_counts_UNIQUE_renamed.csv"
+
+    output_path = bandage_labels_path.replace(".csv", "_aligned.csv")
 
     alignments_by_contig = get_alignments_by_contig(maternal_ref_align_path, paternal_ref_align_path)
 
@@ -398,11 +439,12 @@ def main():
     pat_total_length = 0
     unphased_total_length = 0
 
-    with open(bandage_labels_path, 'r') as file:
+    with open(bandage_labels_path, 'r') as file, open(output_path, 'w') as output_file:
         for l,line in enumerate(file):
-            name = line.strip().split(',')[0]
+            if l == 0:
+                output_file.write(line.strip() + ",ref_name,ref_score\n")
 
-            print(name)
+            name = line.strip().split(',')[0]
 
             if name in alignments_by_contig:
                 paternal_elements, maternal_elements = alignments_by_contig[name]
@@ -413,7 +455,7 @@ def main():
         #
         # plot_dual_alignment(name=name, paternal_elements=paternal_elements, maternal_elements=maternal_elements)
 
-                score = assign_phase_by_alignment(
+                score, ref_name = assign_phase_by_alignment(
                     name=name,
                     paternal_elements=paternal_elements,
                     maternal_elements=maternal_elements)
@@ -435,11 +477,16 @@ def main():
                 else:
                     unphased_total_length += query_length
 
+                output_file.write(line.strip())
+                output_file.write(',')
+                output_file.write(str(ref_name))
+                output_file.write(',')
+                output_file.write("%.4f" % score)
+                output_file.write('\n')
+
     print("mat_total_length", mat_total_length)
     print("pat_total_length", pat_total_length)
     print("unphased_total_length", unphased_total_length)
-
-
 
 
 if __name__ == "__main__":
