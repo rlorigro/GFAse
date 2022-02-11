@@ -558,7 +558,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
     }
 
     ofstream unphased_parental_counts("unphased_parental_counts.csv");
-    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "color" << '\n';
+    unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "score" << ',' << "unique_score" << ',' << "color" << '\n';
 
     ofstream unphased_kmers_log("unphased_kmers.csv");
     unphased_kmers_log << "count" << ',' << "is_mat" << ',' << "is_pat" << '\n';
@@ -625,11 +625,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             string initial_kmer = sequence.substr(0,k);
             FixedBinarySequence<T,T2> kmer(initial_kmer);
 
-            size_t maternal_count = ks.is_maternal(kmer);
-            size_t paternal_count = ks.is_paternal(kmer);
+            double maternal_count = ks.is_maternal(kmer);
+            double paternal_count = ks.is_paternal(kmer);
 
-            size_t unique_maternal_count = ks.is_maternal(kmer) and unique_kmers.contains(kmer);
-            size_t unique_paternal_count = ks.is_paternal(kmer) and unique_kmers.contains(kmer);
+            double unique_maternal_count = ks.is_maternal(kmer) and unique_kmers.contains(kmer);
+            double unique_paternal_count = ks.is_paternal(kmer) and unique_kmers.contains(kmer);
 
             for (size_t i = k; i<cc_graph.get_length(h); i++){
                 kmer.shift(sequence[i], k);
@@ -646,10 +646,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 }
             }
 
-            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
-            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
+            double normalized_paternal_score = (paternal_count + 0.000001)/ks.n_paternal_kmers();
+            double normalized_maternal_score = (maternal_count + 0.000001)/ks.n_maternal_kmers();
 
             double score = log2(normalized_paternal_score/normalized_maternal_score);
+            double unique_score = log2((unique_paternal_count + 0.000001)/(unique_maternal_count + 0.000001));
 
             double color_index = 0.5 + 0.5*(score/3);   // Saturate at 3x
 
@@ -661,7 +662,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
 //            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
 
-            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << '#' << hex_color << '\n';
+            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << score << ',' << unique_score << ',' << '#' << hex_color << '\n';
         }
     }
 }
