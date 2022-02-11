@@ -521,7 +521,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         ofstream test_csv_parent_chain_merged(filename_prefix + "chain_parent_graph_merged.csv");
         chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
 
-        string component_path_prefix = to_string(c) + '.';
+        string component_path_prefix = to_string(c);
         phase_chains<T,T2>(
                 chain_bipartition,
                 cc_graph,
@@ -646,13 +646,16 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 }
             }
 
-//            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
-//            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
+            double normalized_paternal_score = (double(paternal_count) + 0.000001)/ks.n_paternal_kmers();
+            double normalized_maternal_score = (double(maternal_count) + 0.000001)/ks.n_maternal_kmers();
 
-            double sign = ((unique_maternal_count > unique_paternal_count) ? 1 : -1);
-            double ratio = double(max(unique_maternal_count, unique_paternal_count) + 1)/double(min(unique_maternal_count, unique_paternal_count) + 1) - 1;
+            double score = log2(normalized_paternal_score/normalized_maternal_score);
 
-            double color_index = 0.5 + 0.5*sign*min(double(3-1),ratio)/(3-1);   // Saturate at 3x
+            double color_index = 0.5 + 0.5*(score/3);   // Saturate at 3x
+
+            color_index = min(1.0,color_index);
+            color_index = max(0.0,color_index);
+
             auto color = colormap.get_rgb(color_index);
             string hex_color = rgb_to_hex(color[0], color[1], color[2]);
 

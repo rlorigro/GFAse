@@ -427,9 +427,9 @@ def assign_phase_by_alignment(name, paternal_elements, maternal_elements):
 
 
 def main():
-    maternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/renamed/unphased_VS_HG002_mat_cur_20211005.paf"
-    paternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/align/hprc_hg002/renamed/unphased_VS_HG002_pat_cur_20211005.paf"
-    bandage_labels_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage/unphased_parental_counts_UNIQUE_renamed.csv"
+    maternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage_renamed/align/unphased_VS_HG002_mat_cur_20211005.paf"
+    paternal_ref_align_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage_renamed/align/unphased_VS_HG002_pat_cur_20211005.paf"
+    bandage_labels_path = "/home/ryan/data/test_gfase/paolo_ul_run9/phased_k31_double_coverage_renamed/unphased_parental_counts.csv"
 
     output_path = bandage_labels_path.replace(".csv", "_aligned.csv")
 
@@ -439,12 +439,19 @@ def main():
     pat_total_length = 0
     unphased_total_length = 0
 
+    names = set()
+
     with open(bandage_labels_path, 'r') as file, open(output_path, 'w') as output_file:
         for l,line in enumerate(file):
             if l == 0:
                 output_file.write(line.strip() + ",ref_name,ref_score\n")
 
             name = line.strip().split(',')[0]
+
+            if name in names:
+                exit("ERROR: duplicate name in CSV")
+
+            names.add(name)
 
             if name in alignments_by_contig:
                 paternal_elements, maternal_elements = alignments_by_contig[name]
