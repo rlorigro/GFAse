@@ -136,9 +136,17 @@ void generate_chain_critera(
                 // subgraphs, by doing a two-edge walk right/left and left/right
                 unordered_set<size_t> second_degree_neighbors;
 
+                // Make sure it isn't possible to visit more than 2 phased bubble sides from this unphased node
+                unordered_set<size_t> left_first_degree_neighbors;
+                unordered_set<size_t> right_first_degree_neighbors;
+
                 ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
                     auto id = ploidy_bipartition.get_id(h);
                     auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
+
+                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
+                        left_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                    }
 
                     ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
                         auto id2 = ploidy_bipartition.get_id(h2);
@@ -151,6 +159,10 @@ void generate_chain_critera(
                     auto id = ploidy_bipartition.get_id(h);
                     auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
 
+                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
+                        right_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                    }
+
                     ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
                         auto id2 = ploidy_bipartition.get_id(h2);
                         auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
@@ -159,7 +171,7 @@ void generate_chain_critera(
                 });
 
                 // If there are no second degree neighbors, this unphased subgraph passes
-                if (second_degree_neighbors.size() == 1){
+                if (second_degree_neighbors.size() == 1 and right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3){
                     ploidy_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h) {
                         chain_nodes.emplace(subgraph.get_id(h));
                     });

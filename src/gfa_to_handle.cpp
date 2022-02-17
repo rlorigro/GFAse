@@ -85,7 +85,16 @@ void gfa_to_handle_graph(
         }
 
         for (size_t i=0; i<nodes.size(); i++){
-            nid_t node_id = id_map.get_id(nodes[i]);
+            nid_t node_id;
+
+            try {
+                node_id = id_map.get_id(nodes[i]);
+            }
+            catch (const std::exception& e){
+                cerr << e.what() << '\n';
+                throw runtime_error("EEROR: node in path not found in GFA: " + nodes[i]);
+            }
+
             handle_t handle = graph.get_handle(node_id, reversals[i]);
 
             if (i > 0 and not graph.has_edge(prev_handle, handle)){

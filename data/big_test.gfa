@@ -78,9 +78,19 @@ S	g2	CAGTACT
 S	h2	T
 S	i2	A
 S	j2	CGTATGA
-S	k2	T
-S	l2	A
-S	m2	AATGCTG
+S	x2	CGTATGA
+S	k2_0	T
+S	l2_0	A
+S	m2_0	AATGCTG
+S	k2_1	T
+S	l2_1	A
+S	m2_1	AATGCTG
+S	o2_0	T
+S	p2_0	A
+S	q2_0	AATGCTG
+S	o2_1	T
+S	p2_1	A
+S	q2_1	AATGCTG
 L	a2	+	b2	+	0M
 L	a2	+	c2	+	0M
 L	b2	+	d2	+	0M
@@ -93,15 +103,31 @@ L	g2	+	h2	+	0M
 L	g2	+	i2	+	0M
 L	h2	+	j2	+	0M
 L	i2	+	j2	+	0M
-L	j2	+	k2	+	0M
-L	j2	+	l2	+	0M
-L	k2	+	m2	+	0M
-L	l2	+	m2	+	0M
-L	m2	+	m2	+	0M
+L	j2	+	x2	+	0M
+L	x2	+	k2_0	+	0M
+L	x2	+	l2_0	+	0M
+L	k2_0	+	m2_0	+	0M
+L	l2_0	+	m2_0	+	0M
+L	x2	+	k2_1	+	0M
+L	x2	+	l2_1	+	0M
+L	k2_1	+	m2_1	+	0M
+L	l2_1	+	m2_1	+	0M
+L	m2_1	+	o2_1	+	0M
+L	m2_1	+	p2_1	+	0M
+L	m2_0	+	o2_0	+	0M
+L	m2_0	+	p2_0	+	0M
+L	o2_1	+	q2_1	+	0M
+L	p2_1	+	q2_1	+	0M
+L	o2_0	+	q2_0	+	0M
+L	p2_0	+	q2_0	+	0M
 P	2.0	b2+,d2+,e2+	0M,0M
 P	2.1	c2+,d2+,f2+	0M,0M
-P	3.0	h2+,j2+,k2+	0M,0M
-P	3.1	i2+,j2+,l2+	0M,0M
+P	3.0	h2+,j2+	0M
+P	3.1	i2+,j2+	0M
+P	3.0.0	l2_0+,m2_0+,o2_0+	0M,0M
+P	3.0.1	k2_0+,m2_0+,p2_0+	0M,0M
+P	3.1.0	l2_1+,m2_1+,o2_1+	0M,0M
+P	3.1.1	k2_1+,m2_1+,p2_1+	0M,0M
 S	a3	ATGGTTT
 S	b3	T
 S	c3	A

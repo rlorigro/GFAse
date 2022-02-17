@@ -444,7 +444,7 @@ def main():
     with open(bandage_labels_path, 'r') as file, open(output_path, 'w') as output_file:
         for l,line in enumerate(file):
             if l == 0:
-                output_file.write(line.strip() + ",ref_name,ref_score\n")
+                output_file.write(line.strip() + ",ref_name,ref_score,query_length\n")
 
             name = line.strip().split(',')[0]
 
@@ -475,7 +475,7 @@ def main():
                 else:
                     exit("ERROR: no entries for contig: " + name)
 
-                threshold = numpy.log2(1.5)
+                threshold = numpy.log2(0.01)
 
                 if score < -threshold:
                     mat_total_length += query_length
@@ -489,6 +489,8 @@ def main():
                 output_file.write(str(ref_name))
                 output_file.write(',')
                 output_file.write("%.4f" % score)
+                output_file.write(',')
+                output_file.write(str(query_length))
                 output_file.write('\n')
 
     print("mat_total_length", mat_total_length)

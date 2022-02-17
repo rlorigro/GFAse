@@ -306,6 +306,10 @@ void GfaReader::for_each_path(const function<void(string& path_name, vector<stri
                         }
                     }
                     else{
+                        if (nodes.size() != n_subdelimiters + 2){
+                            throw runtime_error("ERROR: parsing path " + path_name);
+                        }
+
                         n_subdelimiters++;
                     }
                 }
