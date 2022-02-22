@@ -399,7 +399,9 @@ template <class T, size_t T2> void phase_chains(
 
 template <class T, size_t T2>
 void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
-    size_t min_unphased_contig_length = 0;
+    size_t min_unphased_contig_length = 100000;
+    double min_total_kmers = 30;
+    double score_threshold = 0.02;
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
@@ -562,8 +564,8 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
-                unphased_fasta << '>' << name << '\n';
-                unphased_fasta << cc_graph.get_sequence(h) << '\n';
+//                unphased_fasta << '>' << name << '\n';
+//                unphased_fasta << cc_graph.get_sequence(h) << '\n';
                 unphased_handles_per_component[c].emplace_back(h);
             }
         });
@@ -585,17 +587,13 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         for (auto& h: unphased_handles_per_component[c]){
             size_t contig_length = cc_graph.get_length(h);
 
-            if (contig_length < min_unphased_contig_length){
-                continue;
-            }
-
             string sequence = cc_graph.get_sequence(h);
             string initial_kmer = sequence.substr(0,k);
             FixedBinarySequence<T,T2> kmer(initial_kmer);
 
             unphased_kmer_counts[kmer]++;
 
-            for (size_t i = k; i<cc_graph.get_length(h); i++){
+            for (size_t i = k; i<contig_length; i++){
                 kmer.shift(sequence[i], k);
                 unphased_kmer_counts[kmer]++;
             }
@@ -612,10 +610,6 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         bool is_mat = ks.is_maternal(kmer);
         bool is_pat = ks.is_paternal(kmer);
 
-//        string test;
-//        kmer.to_string(test, k);
-//
-//        cerr << test << ',' << count << ',' << is_mat << ',' << is_pat << '\n';
         unphased_kmers_log << count << ',' << is_mat << ',' << is_pat << '\n';
     }
 
@@ -629,9 +623,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         for (auto& h: unphased_handles_per_component[c]){
             size_t contig_length = cc_graph.get_length(h);
 
-            if (contig_length < min_unphased_contig_length){
-                continue;
-            }
+            auto name = cc_id_map.get_name(cc_graph.get_id(h));
 
             string sequence = cc_graph.get_sequence(h);
             string initial_kmer = sequence.substr(0,k);
@@ -672,9 +664,27 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
             auto color = colormap.get_rgb(color_index);
             string hex_color = rgb_to_hex(color[0], color[1], color[2]);
 
-//            cerr << maternal_count << ' ' << paternal_count << ' ' << unique_maternal_count << ' ' << unique_paternal_count << ' ' << color_index << " - " <<  color[0]*255 << ' ' << color[1]*255 << ' ' << color[2]*255 << ' ' << hex_color << '\n';
+            unphased_parental_counts << name << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << score << ',' << unique_score << ',' << '#' << hex_color << '\n';
 
-            unphased_parental_counts << cc_id_map.get_name(cc_graph.get_id(h)) << ',' << maternal_count << ',' << paternal_count << ',' << unique_maternal_count << ',' << unique_paternal_count << ',' << score << ',' << unique_score << ',' << '#' << hex_color << '\n';
+            if ((contig_length > min_unphased_contig_length) and (maternal_count + paternal_count > min_total_kmers)){
+                if (unique_score > score_threshold){
+                    paternal_fasta << '>' << name << '\n';
+                    paternal_fasta << cc_graph.get_sequence(h) << '\n';
+                }
+                else if (unique_score < -score_threshold){
+                    maternal_fasta << '>' << name << '\n';
+                    maternal_fasta << cc_graph.get_sequence(h) << '\n';
+                }
+                else{
+                    unphased_fasta << '>' << name << '\n';
+                    unphased_fasta << cc_graph.get_sequence(h) << '\n';
+                }
+            }
+            else{
+                // These contigs don't meet minimum criteria to even evaluate their score
+                unphased_fasta << '>' << name << '\n';
+                unphased_fasta << cc_graph.get_sequence(h) << '\n';
+            }
         }
     }
 }

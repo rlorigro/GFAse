@@ -64,7 +64,10 @@ def main():
 
             print()
 
-    y = y_score
+    # y = y_score
+    y = y_unique_score
+
+    threshold = 0.02
 
     log_sizes = [max(1,numpy.log10(x)-2)**3 for x in sizes]
 
@@ -81,23 +84,25 @@ def main():
         name = names[i]
 
         if "X" in name:
-            if sizes[i] > 5000:
-                pyplot.text(x[i], y[i], "X %.1f" % (float(sizes[i])/1000))
+            # if sizes[i] > 50000:
+            #     pyplot.text(x[i], y[i], "X %.1f" % (float(sizes[i])/1000))
             pass
 
         elif "Y" in name:
-            if sizes[i] > 5000:
+            if sizes[i] > 50000:
                 pyplot.text(x[i], y[i], "Y %.1f" % (float(sizes[i])/1000))
             pass
 
-        # elif sizes[i] > 300000:
+        # elif sizes[i] > 100000:
         #     pyplot.text(x[i], y[i], "%s %.1f" % (name, float(sizes[i])/1000))
 
         if sizes[i] > 100_000:
-            if y[i] > 0:
+            if y[i] > threshold:
                 total_paternal += sizes[i]
-            if y[i] < 0:
+            elif y[i] < -threshold:
                 total_maternal += sizes[i]
+            else:
+                total_unphased += sizes[i]
         else:
             total_unphased += sizes[i]
 
