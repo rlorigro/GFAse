@@ -56,7 +56,7 @@ set(SOURCES
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
-        src/OverlapMap.cpp
+#        src/OverlapMap.cpp
         src/Phase.cpp
         src/KmerSets.cpp
         )
@@ -148,8 +148,8 @@ message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 # Download or update library as an external project
 ExternalProject_Add(project_bdsg
         GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-        DOWNLOAD_COMMAND ""
-        UPDATE_COMMAND ""
+#        DOWNLOAD_COMMAND ""
+#        UPDATE_COMMAND ""
         PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
         BUILD_IN_SOURCE True
@@ -249,8 +249,8 @@ message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 ExternalProject_Add(project_snarls
         GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
         GIT_TAG main
-        DOWNLOAD_COMMAND ""
-        UPDATE_COMMAND ""
+#        DOWNLOAD_COMMAND ""
+#        UPDATE_COMMAND ""
         PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
         BUILD_IN_SOURCE True
@@ -300,11 +300,12 @@ message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 # ---------------------------------------- #
 ############################################
 
-
-#set(Boost_DEBUG 1)
-find_package( Boost 1.60 COMPONENTS program_options REQUIRED )
-include_directories( ${Boost_INCLUDE_DIR} )
-
+#
+##set(Boost_DEBUG 1)
+#find_package( Boost 1.60 COMPONENTS program_options REQUIRED )
+#include_directories( ${Boost_INCLUDE_DIR} )
+#
+#
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -334,7 +335,7 @@ foreach(FILENAME_PREFIX ${TESTS})
             Threads::Threads
             snarls
             bdsg
-            ${Boost_LIBRARIES}
+#            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
@@ -348,7 +349,7 @@ set(EXECUTABLES
         count_kmers
         create_bandage_path_color_table
         extract_haplotype_kmers
-        find_overlapping_alignments
+#        find_overlapping_alignments
         get_degree_stats
         get_path_lengths
         locate_kmer_matches
@@ -365,7 +366,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
             Threads::Threads
             snarls
             bdsg
-            ${Boost_LIBRARIES}
+#            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
