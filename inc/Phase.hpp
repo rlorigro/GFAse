@@ -466,6 +466,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
     ofstream maternal_fasta("maternal.fasta");
     ofstream paternal_fasta("paternal.fasta");
+    ofstream unphased_initial_fasta("unphased_initial.fasta");
     ofstream unphased_fasta("unphased.fasta");
 
     path provenance_output_path = "phase_chains.csv";
@@ -564,8 +565,8 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
                 paternal_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
-//                unphased_fasta << '>' << name << '\n';
-//                unphased_fasta << cc_graph.get_sequence(h) << '\n';
+                unphased_initial_fasta << '>' << name << '\n';
+                unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
                 unphased_handles_per_component[c].emplace_back(h);
             }
         });
