@@ -15,20 +15,24 @@ message(STATUS "CMAKE_SYSTEM: ${CMAKE_SYSTEM}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ------- Memory debug ------- #
+if (dev)
+    message(STATUS "---- Building with debug options ----")
 
-#set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-#set(ASAN_OPTIONS=check_initialization_order=1)
-#set(ASAN_OPTIONS=detect_leaks=1)
+    # Memory debug
+    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+    set(ASAN_OPTIONS=check_initialization_order=1)
+    set(ASAN_OPTIONS=detect_leaks=1)
 
-# --- Standard compilation --- #
+    add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
 
-#set(CMAKE_CXX_FLAGS "-fexceptions")
+else()
+    message(STATUS "---- Building with optimization ----")
 
-# ---------------------------- #
+    # Standard compilation
+    add_definitions(-O3 -Wall)              # Much optimization
+endif()
 
-#add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
-add_definitions(-O3 -Wall)              # Much optimization
+
 
 #########################################
 # ------------------------------------- #
@@ -144,18 +148,29 @@ message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-
-# Download or update library as an external project
-ExternalProject_Add(project_bdsg
-        GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-#        DOWNLOAD_COMMAND ""
-#        UPDATE_COMMAND ""
-        PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
-        INSTALL_COMMAND make install
-        )
+if (dev)
+    # Download or update library as an external project
+    ExternalProject_Add(project_bdsg
+            GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
+            DOWNLOAD_COMMAND ""
+            UPDATE_COMMAND ""
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
+            INSTALL_COMMAND make install
+            )
+else()
+    # Download or update library as an external project
+    ExternalProject_Add(project_bdsg
+            GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
+            INSTALL_COMMAND make install
+            )
+endif()
 
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_bdsg INSTALL_DIR)
@@ -244,19 +259,31 @@ message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-
-# Download or update library as an external project
-ExternalProject_Add(project_snarls
-        GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
-        GIT_TAG main
-#        DOWNLOAD_COMMAND ""
-#        UPDATE_COMMAND ""
-        PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
-        INSTALL_COMMAND make install
-        )
+if (dev)
+    # Download or update library as an external project
+    ExternalProject_Add(project_snarls
+            GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+            GIT_TAG main
+            DOWNLOAD_COMMAND ""
+            UPDATE_COMMAND ""
+            PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+            INSTALL_COMMAND make install
+            )
+else()
+    # Download or update library as an external project
+    ExternalProject_Add(project_snarls
+            GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+            GIT_TAG main
+            PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+            INSTALL_COMMAND make install
+            )
+endif()
 
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_snarls INSTALL_DIR)
