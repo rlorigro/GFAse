@@ -32,6 +32,7 @@ void gfa_to_handle_graph(
 
     GfaReader gfa_reader(gfa_file_path);
 
+    cerr << "Creating nodes..." << '\n';
     // Create all the nodes/sequences
     gfa_reader.for_each_sequence([&](string& name, string& sequence){
         // TODO: check if node name is empty or node sequence is empty
@@ -39,6 +40,7 @@ void gfa_to_handle_graph(
         graph.create_handle(sequence, id);
     });
 
+    cerr << "Creating edges..." << '\n';
     // Create all the edges between nodes
     gfa_reader.for_each_link([&](string& node_a, bool reversal_a, string& node_b, bool reversal_b, string& cigar){
         const nid_t source_id = parse_gfa_sequence_id(node_a, id_map);
@@ -68,6 +70,7 @@ void gfa_to_handle_graph(
         }
     });
 
+    cerr << "Creating paths..." << '\n';
     // Construct paths
     gfa_reader.for_each_path([&](string& path_name, vector<string>& nodes, vector<bool>& reversals, vector<string>& cigars){
         if (ignore_singleton_paths and nodes.size() == 1){

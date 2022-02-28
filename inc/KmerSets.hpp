@@ -266,7 +266,8 @@ template <class T> double KmerSets<T>::get_count(const string& component, size_t
     auto result = component_map.find(component);
 
     if (result == component_map.end()){
-        throw runtime_error("ERROR: component" + component + " not found in kmer counts");
+        cerr <<  "WARNING: component " + component + " not found in kmer counts, returning 0" << '\n';
+        return 0;
     }
 
     return result->second[haplotype_index][paternal_index];
@@ -277,13 +278,18 @@ template <class T> void KmerSets<T>::get_matrix(const string& component, array <
     auto result = component_map.find(component);
 
     if (result == component_map.end()){
-        throw runtime_error("ERROR: component" + component + " not found in kmer counts");
+        cerr <<  "WARNING: component " + component + " not found in kmer counts, returning 0" << '\n';
+        matrix[0][0] = 0;
+        matrix[0][1] = 0;
+        matrix[1][0] = 0;
+        matrix[1][1] = 0;
     }
-
-    matrix[0][0] = result->second[0][0];
-    matrix[0][1] = result->second[0][1];
-    matrix[1][0] = result->second[1][0];
-    matrix[1][1] = result->second[1][1];
+    else {
+        matrix[0][0] = result->second[0][0];
+        matrix[0][1] = result->second[0][1];
+        matrix[1][0] = result->second[1][0];
+        matrix[1][1] = result->second[1][1];
+    }
 }
 
 

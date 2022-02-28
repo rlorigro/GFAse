@@ -67,7 +67,7 @@ set(SOURCES
 
 
 project(GFAse)
-add_library(GFAse STATIC ${SOURCES}) 
+add_library(GFAse STATIC ${SOURCES})
 
 # To make sure the library is named Name.so,
 # get rid of the "lib" prefix.
@@ -316,7 +316,7 @@ include_directories(
         external/snarls/include/mio/
         external/snarls/include/tsl/
         external/snarls/include/vg/
-        )
+)
 
 message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 
@@ -353,7 +353,7 @@ set(TESTS
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
-        )
+)
 
 foreach(FILENAME_PREFIX ${TESTS})
     add_executable(${FILENAME_PREFIX} src/test/${FILENAME_PREFIX}.cpp)
@@ -384,7 +384,7 @@ set(EXECUTABLES
         remove_empty_nodes
         split_connected_components
         unzip
-        )
+)
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
     add_executable(${FILENAME_PREFIX} src/executable/${FILENAME_PREFIX}.cpp)
