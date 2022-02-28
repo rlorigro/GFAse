@@ -60,7 +60,7 @@ set(SOURCES
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
-        #        src/OverlapMap.cpp
+#        src/OverlapMap.cpp
         src/Phase.cpp
         src/KmerSets.cpp
         )
@@ -353,7 +353,7 @@ set(TESTS
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
-        )
+)
 
 foreach(FILENAME_PREFIX ${TESTS})
     add_executable(${FILENAME_PREFIX} src/test/${FILENAME_PREFIX}.cpp)
@@ -362,7 +362,7 @@ foreach(FILENAME_PREFIX ${TESTS})
             Threads::Threads
             snarls
             bdsg
-            #            ${Boost_LIBRARIES}
+#            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
@@ -376,7 +376,7 @@ set(EXECUTABLES
         count_kmers
         create_bandage_path_color_table
         extract_haplotype_kmers
-        #        find_overlapping_alignments
+#        find_overlapping_alignments
         get_degree_stats
         get_path_lengths
         locate_kmer_matches
@@ -384,7 +384,7 @@ set(EXECUTABLES
         remove_empty_nodes
         split_connected_components
         unzip
-        )
+)
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})
     add_executable(${FILENAME_PREFIX} src/executable/${FILENAME_PREFIX}.cpp)
@@ -393,7 +393,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
             Threads::Threads
             snarls
             bdsg
-            #            ${Boost_LIBRARIES}
+#            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
