@@ -209,13 +209,9 @@ void GfaReader::for_each_sequence(const function<void(string& name, string& sequ
             position++;
         }
 
-        cerr << name << ' ' << line.size() << ' ' << start_position << ' ' << stop_position << '\n';
-
         // Trim the line and send that in the "sequence" field to avoid copying the string again.
         line.erase(stop_position);
-//        line.erase(stop_position, line.size() - stop_position);
         line.erase(0, start_position);
-        cerr << line << '\n';
 
         f(name, line);
     });
