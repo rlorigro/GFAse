@@ -15,14 +15,23 @@ message(STATUS "CMAKE_SYSTEM: ${CMAKE_SYSTEM}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "---- Building with debug options ----")
+if (dev)
+    message(STATUS "---- Building with debug options ----")
 
-# Memory debug
-set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-set(ASAN_OPTIONS=check_initialization_order=1)
-set(ASAN_OPTIONS=detect_leaks=1)
+    # Memory debug
+    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+    set(ASAN_OPTIONS=check_initialization_order=1)
+    set(ASAN_OPTIONS=detect_leaks=1)
 
-add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
+    add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
+
+else()
+    message(STATUS "---- Building with optimization ----")
+
+    # Standard compilation
+    add_definitions(-O3 -Wall)              # Much optimization
+endif()
+
 
 
 #########################################
@@ -51,14 +60,14 @@ set(SOURCES
         src/IncrementalIdMap.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
-#        src/OverlapMap.cpp
+        #        src/OverlapMap.cpp
         src/Phase.cpp
         src/KmerSets.cpp
         )
 
 
 project(GFAse)
-add_library(GFAse STATIC ${SOURCES}) 
+add_library(GFAse STATIC ${SOURCES})
 
 # To make sure the library is named Name.so,
 # get rid of the "lib" prefix.
@@ -139,15 +148,29 @@ message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-# Download or update library as an external project
-ExternalProject_Add(project_bdsg
-        GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
-        PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
-        INSTALL_COMMAND make install
-        )
+if (dev)
+    # Download or update library as an external project
+    ExternalProject_Add(project_bdsg
+            GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
+            DOWNLOAD_COMMAND ""
+            UPDATE_COMMAND ""
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
+            INSTALL_COMMAND make install
+            )
+else()
+    # Download or update library as an external project
+    ExternalProject_Add(project_bdsg
+            GIT_REPOSITORY https://github.com/vgteam/libbdsg.git
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bdsg/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bdsg/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bdsg/
+            INSTALL_COMMAND make install
+            )
+endif()
 
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_bdsg INSTALL_DIR)
@@ -236,16 +259,31 @@ message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-# Download or update library as an external project
-ExternalProject_Add(project_snarls
-        GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
-        GIT_TAG main
-        PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
-        INSTALL_COMMAND make install
-        )
+if (dev)
+    # Download or update library as an external project
+    ExternalProject_Add(project_snarls
+            GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+            GIT_TAG main
+            DOWNLOAD_COMMAND ""
+            UPDATE_COMMAND ""
+            PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+            INSTALL_COMMAND make install
+            )
+else()
+    # Download or update library as an external project
+    ExternalProject_Add(project_snarls
+            GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+            GIT_TAG main
+            PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+            INSTALL_COMMAND make install
+            )
+endif()
 
 # Define INSTALL_DIR as the install directory for external library
 ExternalProject_Get_Property(project_snarls INSTALL_DIR)
@@ -278,7 +316,7 @@ include_directories(
         external/snarls/include/mio/
         external/snarls/include/tsl/
         external/snarls/include/vg/
-        )
+)
 
 message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 
@@ -324,7 +362,7 @@ foreach(FILENAME_PREFIX ${TESTS})
             Threads::Threads
             snarls
             bdsg
-#            ${Boost_LIBRARIES}
+            #            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
@@ -338,7 +376,7 @@ set(EXECUTABLES
         count_kmers
         create_bandage_path_color_table
         extract_haplotype_kmers
-#        find_overlapping_alignments
+        #        find_overlapping_alignments
         get_degree_stats
         get_path_lengths
         locate_kmer_matches
@@ -355,7 +393,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
             Threads::Threads
             snarls
             bdsg
-#            ${Boost_LIBRARIES}
+            #            ${Boost_LIBRARIES}
             divsufsort
             libhandlegraph
             libsdsl)
