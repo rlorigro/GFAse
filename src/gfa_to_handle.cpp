@@ -37,6 +37,14 @@ void gfa_to_handle_graph(
     gfa_reader.for_each_sequence([&](string& name, string& sequence){
         // TODO: check if node name is empty or node sequence is empty
         auto id = parse_gfa_sequence_id(name, id_map);
+
+        cerr << "graph: "<< &graph << endl;
+        cerr << "id_map: "<< &id_map << endl;
+        cerr << "name: "<< &name << endl;
+        cerr << "id: "<< &id << endl;
+        cerr << "sequence: "<< &sequence << endl;
+        cerr << '\n';
+
         graph.create_handle(sequence, id);
     });
 
