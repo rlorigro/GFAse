@@ -1,5 +1,5 @@
-#ifndef GAFSE_BINARYIO_CPP_H
-#define GAFSE_BINARYIO_CPP_H
+#ifndef GFASE_BINARYIO_CPP_H
+#define GFASE_BINARYIO_CPP_H
 
 #include "BinaryIO.hpp"
 
@@ -15,7 +15,7 @@ void write_string_to_binary(ostream& file, string& s){
 
 void read_string_from_binary(istream& file, string& s, uint64_t length){
     ///
-    /// Without worrying about size conversions, read any value to a file using ostream.write
+    /// Without worrying about size conversions, read any value from a file using istream.read
     ///
 
     s.resize(length);
