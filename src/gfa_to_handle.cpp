@@ -45,6 +45,29 @@ void gfa_to_handle_graph(
         cerr << "sequence: "<< &sequence << endl;
         cerr << '\n';
 
+        // Test graph is valid
+        graph.get_node_count();
+        graph.get_edge_count();
+        graph.get_path_count();
+
+        // Test id_map is valid
+        for (auto& n: id_map.names){
+            cerr << n << ',';
+        }
+        cerr << '\n';
+
+        // Test sequence is valid
+        for (auto& c: sequence){
+            cerr << c;
+        }
+        cerr << '\n';
+
+        // Test id is valid
+        cerr << id << '\n';
+
+        // Test name is valid
+        cerr << name << '\n';
+
         graph.create_handle(sequence, id);
     });
 
