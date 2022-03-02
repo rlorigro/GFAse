@@ -34,7 +34,7 @@ void gfa_to_handle_graph(
 
     cerr << "Creating nodes..." << '\n';
     // Create all the nodes/sequences
-    gfa_reader.for_each_sequence([&](string& name, string& sequence){
+    function<void(string&,string&)> f = [&](string& name, string& sequence) {
         // TODO: check if node name is empty or node sequence is empty
         auto id = parse_gfa_sequence_id(name, id_map);
 
@@ -69,7 +69,9 @@ void gfa_to_handle_graph(
         cerr << name << '\n';
 
         graph.create_handle(sequence, id);
-    });
+    };
+
+    gfa_reader.for_each_sequence(f);
 
     cerr << "Creating edges..." << '\n';
     // Create all the edges between nodes
