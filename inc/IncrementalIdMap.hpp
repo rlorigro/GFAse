@@ -1,7 +1,7 @@
 #ifndef GFASE_INCREMENTALIDMAP_HPP
 #define GFASE_INCREMENTALIDMAP_HPP
 
-#include "handlegraph/handle_graph.hpp"
+#include "bdsg/hash_graph.hpp"
 #include <string>
 #include <vector>
 #include <map>
@@ -11,7 +11,7 @@
 using std::string;
 using std::vector;
 using std::unordered_map;
-using handlegraph::nid_t;
+using bdsg::nid_t;
 using std::unique_ptr;
 using std::runtime_error;
 using std::unique_ptr;

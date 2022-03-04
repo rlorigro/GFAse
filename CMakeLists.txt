@@ -18,8 +18,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "---- Building with debug options ----")
 
 # Memory debug
-set(CMAKE_CXX_FLAGS "-fexceptions")
+#set(CMAKE_CXX_FLAGS "-fexceptions")
 #set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=undefined")
 #set(ASAN_OPTIONS=check_initialization_order=1)
 #set(ASAN_OPTIONS=detect_leaks=1)
 

@@ -25,9 +25,9 @@ using bdsg::HashGraph;
 using bdsg::MutablePathMutableHandleGraph;
 using bdsg::MutablePathDeletableHandleGraph;
 using bdsg::PackedSubgraphOverlay;
-using handlegraph::path_handle_t;
-using handlegraph::step_handle_t;
-using handlegraph::handle_t;
+using bdsg::path_handle_t;
+using bdsg::step_handle_t;
+using bdsg::handle_t;
 
 using std::string;
 using std::cout;

@@ -1,10 +1,9 @@
 #include "gfa_to_handle.hpp"
 
-using handlegraph::handle_t;
-using handlegraph::path_handle_t;
-using handlegraph::step_handle_t;
+using bdsg::handle_t;
+using bdsg::path_handle_t;
+using bdsg::step_handle_t;
 using bdsg::MutablePathHandleGraph;
-using bdsg::HandleGraph;
 using bdsg::HandleGraph;
 
 namespace gfase {

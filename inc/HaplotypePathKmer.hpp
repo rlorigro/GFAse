@@ -8,12 +8,12 @@
 #include <string>
 
 using bdsg::HashGraph;
-using handlegraph::MutablePathMutableHandleGraph;
-using handlegraph::MutablePathDeletableHandleGraph;
-using handlegraph::PathHandleGraph;
-using handlegraph::path_handle_t;
-using handlegraph::step_handle_t;
-using handlegraph::handle_t;
+using bdsg::MutablePathMutableHandleGraph;
+using bdsg::MutablePathDeletableHandleGraph;
+using bdsg::PathHandleGraph;
+using bdsg::path_handle_t;
+using bdsg::step_handle_t;
+using bdsg::handle_t;
 
 using std::function;
 using std::deque;

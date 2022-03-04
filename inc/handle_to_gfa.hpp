@@ -6,11 +6,11 @@
 #include "IncrementalIdMap.hpp"
 #include <fstream>
 
-using handlegraph::PathHandleGraph;
-using handlegraph::HandleGraph;
-using handlegraph::path_handle_t;
-using handlegraph::handle_t;
-using handlegraph::edge_t;
+using bdsg::PathHandleGraph;
+using bdsg::HandleGraph;
+using bdsg::path_handle_t;
+using bdsg::handle_t;
+using bdsg::edge_t;
 using std::runtime_error;
 using std::ostream;
 using std::string;

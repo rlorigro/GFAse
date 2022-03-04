@@ -1,9 +1,12 @@
 #include "handle_to_gfa.hpp"
-#include "handlegraph/path_handle_graph.hpp"
+#include "bdsg/hash_graph.hpp"
 
-using handlegraph::PathHandleGraph;
-using handlegraph::path_handle_t;
-using handlegraph::step_handle_t;
+using bdsg::PathHandleGraph;
+using bdsg::HandleGraph;
+using bdsg::handle_t;
+using bdsg::edge_t;
+using bdsg::path_handle_t;
+using bdsg::step_handle_t;
 
 using std::runtime_error;
 

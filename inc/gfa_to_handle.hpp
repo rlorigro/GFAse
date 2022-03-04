@@ -18,8 +18,8 @@
 
 using namespace std;
 using std::runtime_error;
-using handlegraph::nid_t;
-using handlegraph::step_handle_t;
+using bdsg::nid_t;
+using bdsg::step_handle_t;
 using bdsg::MutableHandleGraph;
 using bdsg::MutablePathMutableHandleGraph;
 using gfase::IncrementalIdMap;

@@ -15,10 +15,10 @@
 #include <fstream>
 #include <array>
 
-using handlegraph::PathHandleGraph;
-using handlegraph::HandleGraph;
-using handlegraph::handle_t;
-using handlegraph::edge_t;
+using bdsg::PathHandleGraph;
+using bdsg::HandleGraph;
+using bdsg::handle_t;
+using bdsg::edge_t;
 using bdsg::PackedSubgraphOverlay;
 using bdsg::HashGraph;
 using spp::sparse_hash_map;
