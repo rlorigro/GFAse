@@ -18,9 +18,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "---- Building with debug options ----")
 
 # Memory debug
-set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-set(ASAN_OPTIONS=check_initialization_order=1)
-set(ASAN_OPTIONS=detect_leaks=1)
+set(CMAKE_CXX_FLAGS "-fexceptions")
+#set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+#set(ASAN_OPTIONS=check_initialization_order=1)
+#set(ASAN_OPTIONS=detect_leaks=1)
 
 add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
 
@@ -311,6 +312,7 @@ set(TESTS
         test_gfareader
         test_kmer_unordered_set
         test_libsnarls
+        test_load_gfa
         test_phase_haplotype_paths
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
