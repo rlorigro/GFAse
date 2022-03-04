@@ -230,59 +230,59 @@ include_directories(${SOURCE_DIR}/sparsepp)
 # ------------------------------------------ #
 ##############################################
 
-# Need to explicitly enable ExternalProject functionality
-include(ExternalProject)
-
-message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
-message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
-message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-
-# Download or update library as an external project
-ExternalProject_Add(project_snarls
-        GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
-        GIT_TAG main
-        PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
-        BUILD_IN_SOURCE True
-        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
-        INSTALL_COMMAND make install
-        )
-
-# Define INSTALL_DIR as the install directory for external library
-ExternalProject_Get_Property(project_snarls INSTALL_DIR)
-
-# Create new library for external project (so it can be linked with main library)
-add_library(snarls SHARED IMPORTED)
-set_property(TARGET snarls
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsnarls.${LIB_SUFFIX})
-
-#add_library(libsdsl SHARED IMPORTED)
-#set_property(TARGET libsdsl
-#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.${LIB_SUFFIX})
-
-# Define library as dependent on the downloaded project
-add_dependencies(
-        snarls
-        project_snarls
-)
-
-# Define main library as dependent on the downloaded project (transitively)
-add_dependencies(GFAse snarls)
-
-# Ensure that main library has access to primary dependencies' and secondary dependencies' headers
-include_directories(
-        external/snarls/include/
-        external/snarls/include/libvgio/
-        external/snarls/include/structures/
-        external/snarls/include/dynamic/
-        external/snarls/include/gtest/
-        external/snarls/include/mio/
-        external/snarls/include/tsl/
-        external/snarls/include/vg/
-)
-
-message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+## Need to explicitly enable ExternalProject functionality
+#include(ExternalProject)
+#
+#message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+#message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+#message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+#message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+#
+## Download or update library as an external project
+#ExternalProject_Add(project_snarls
+#        GIT_REPOSITORY https://github.com/vgteam/libsnarls.git
+#        GIT_TAG main
+#        PREFIX ${CMAKE_SOURCE_DIR}/external/snarls/
+#        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/snarls/ -DRUN_DOXYGEN=OFF -DBUILD_PYTHON_BINDINGS=OFF
+#        BUILD_IN_SOURCE True
+#        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/snarls/
+#        INSTALL_COMMAND make install
+#        )
+#
+## Define INSTALL_DIR as the install directory for external library
+#ExternalProject_Get_Property(project_snarls INSTALL_DIR)
+#
+## Create new library for external project (so it can be linked with main library)
+#add_library(snarls SHARED IMPORTED)
+#set_property(TARGET snarls
+#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsnarls.${LIB_SUFFIX})
+#
+##add_library(libsdsl SHARED IMPORTED)
+##set_property(TARGET libsdsl
+##        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.${LIB_SUFFIX})
+#
+## Define library as dependent on the downloaded project
+#add_dependencies(
+#        snarls
+#        project_snarls
+#)
+#
+## Define main library as dependent on the downloaded project (transitively)
+#add_dependencies(GFAse snarls)
+#
+## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+#include_directories(
+#        external/snarls/include/
+#        external/snarls/include/libvgio/
+#        external/snarls/include/structures/
+#        external/snarls/include/dynamic/
+#        external/snarls/include/gtest/
+#        external/snarls/include/mio/
+#        external/snarls/include/tsl/
+#        external/snarls/include/vg/
+#)
+#
+#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 
 
 ############################################
@@ -312,7 +312,7 @@ set(TESTS
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
         test_kmer_unordered_set
-        test_libsnarls
+#        test_libsnarls
         test_load_gfa
         test_phase_haplotype_paths
         test_nonbinary_sequence_performance
@@ -325,7 +325,7 @@ foreach(FILENAME_PREFIX ${TESTS})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
-            snarls
+#            snarls
             bdsg
             #            ${Boost_LIBRARIES}
             divsufsort
@@ -356,7 +356,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
-            snarls
+#            snarls
             bdsg
             #            ${Boost_LIBRARIES}
             divsufsort
