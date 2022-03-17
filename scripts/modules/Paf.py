@@ -174,10 +174,21 @@ class PafElement:
 
 
 def iterate_cigar(paf_element):
-    coord = paf_element.get_query_start()
+    cigar_operations = paf_element.get_cigar()
 
-    for operation,length in paf_element.get_cigar():
-        yield coord,operation,length
+    ref_coord = paf_element.get_ref_start()
+    query_coord = paf_element.get_query_start()
+
+    if paf_element.get_reversal():
+        cigar_operations = reversed(cigar_operations)
+        ref_coord = paf_element.get_ref_stop()
+        query_coord = paf_element.get_query_start()
+
+    for operation,length in cigar_operations:
+        yield ref_coord,query_coord,operation,length
+
+        if is_reference_move(operation):
+            ref_coord += length*(1-2*int(paf_element.get_reversal()))
 
         if is_query_move(operation):
-            coord += length
+            query_coord += length

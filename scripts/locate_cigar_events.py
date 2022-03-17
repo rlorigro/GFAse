@@ -7,18 +7,22 @@ def locate_cigar_events(paf_path, indel_threshold):
     n_inserts = 0
     n_deletes = 0
 
+    reversal_char = ['+','-']
+
+    print(','.join(["line", "ref_name", "ref_coord", "query_name", "query_coord", "reversal", "operation", "length", "map_quality"]))
+
     with open(paf_path, 'r') as file:
         for l,line in enumerate(file):
             element = PafElement(line, store_tags=True)
 
-            for coord,operation,length in iterate_cigar(element):
+            for ref_coord,query_coord,operation,length in iterate_cigar(element):
                 if length > indel_threshold:
                     if operation == 'I':
                         n_inserts += 1
-                        print(','.join(list(map(str,[element.get_ref_name(), element.get_query_name(), coord, operation, length]))))
+                        print(','.join(list(map(str,[l,element.get_ref_name(), ref_coord, element.get_query_name(), query_coord, reversal_char[element.get_reversal()], operation, length, element.get_map_quality()]))))
                     if operation == 'D':
                         n_deletes += 1
-                        print(','.join(list(map(str,[element.get_ref_name(), element.get_query_name(), coord, operation, length]))))
+                        print(','.join(list(map(str,[l,element.get_ref_name(), ref_coord, element.get_query_name(), query_coord, reversal_char[element.get_reversal()], operation, length, element.get_map_quality()]))))
 
     # print("n_inserts", n_inserts)
     # print("n_deletes", n_deletes)
