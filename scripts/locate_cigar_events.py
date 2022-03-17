@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         required=True,
-        type=str,
+        type=int,
         help="Minimum length of indel cigar operation (I/D) to report"
     )
 
