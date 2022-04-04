@@ -23,29 +23,33 @@ def plot_ngx(lengths, genome_size, output_dir):
 
     fig.set_size_inches(12,10)
 
-    total = sum(lengths)
+    total = float(sum(lengths))
+    genome_size = float(genome_size)
 
     if total > genome_size:
         sys.stderr.write("WARNING: observed total sequence length is greater than genome size")
 
-    unit = 10**max(0,round((numpy.log10(genome_size) - 3) / 3)*3)
+    unit = float(10)**float(max(0,round((numpy.log10(genome_size) - 3) / 3)*3))
 
-    ng50 = None
+    ng50 = 0.0
 
-    x_prev = 0
-    s_prev = None
-    for s in sorted(lengths, reverse=True):
-        s /= unit
+    x_prev = 0.0
+    s_prev = 0.0
+    for i,s in enumerate(sorted(lengths, reverse=True)):
+        s = float(s)/float(unit)
 
         x0 = x_prev
         x1 = x_prev + s
 
-        if x0*unit >= genome_size/2 and x1*unit > genome_size/2:
+        if x0*unit <= genome_size/2 and x1*unit > genome_size/2:
+            print(s)
+            print(s*unit)
+
             ng50 = s*unit
 
         pyplot.plot([x0,x1],[s,s], color="C1")
 
-        if s_prev is not None:
+        if i > 0:
             pyplot.plot([x0,x0],[s_prev,s], color="C1")
 
         x_prev = x1
@@ -75,7 +79,7 @@ def plot_ngx(lengths, genome_size, output_dir):
             file.write('\n')
 
     with open(ng50_txt_path,'w') as file:
-        file.write(str(ng50))
+        file.write(str(int(ng50)))
         file.write('\n')
 
 
@@ -94,8 +98,6 @@ def main(input_path, output_dir, genome_size):
             else:
                 # Increment most recent length by size of line (without newline char)
                 lengths[-1] += len(line) - 1
-
-    lengths = sorted(lengths, reverse=True)
 
     plot_ngx(lengths=lengths, genome_size=genome_size, output_dir=output_dir)
 
