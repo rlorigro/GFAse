@@ -13,6 +13,8 @@ def get_name_of_unit(n):
         return "Mbp"
     if n == 1_000:
         return "Kbp"
+    if n == 0:
+        return "bp"
 
 
 def plot_ngx(lengths, genome_size, output_dir):
