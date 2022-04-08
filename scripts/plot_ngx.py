@@ -277,14 +277,6 @@ if __name__ == "__main__":
         help="Size of genome"
     )
 
-    parser.add_argument(
-        "--arms",
-        required=False,
-        default=False,
-        action="store_true",
-        help="If this flag is added, also plot the NGx for chromosome arms"
-    )
-
     args = parser.parse_args()
 
     args.i = parse_comma_separated_string(args.i)
