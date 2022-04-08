@@ -241,7 +241,7 @@ if __name__ == "__main__":
         "-i",
         required=True,
         type=str,
-        help="Input fasta file path, OR a preset name: " + ','.join(PRESET_LENGTHS.keys())
+        help="Comma separated list of input fasta file paths, OR a preset names: " + ','.join(PRESET_LENGTHS.keys())
     )
 
     parser.add_argument(
