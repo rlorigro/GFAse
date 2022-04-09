@@ -376,6 +376,7 @@ set(EXECUTABLES
         create_bandage_path_color_table
         extract_haplotype_kmers
 #        find_overlapping_alignments
+        generate_contact_map_from_sam
         get_degree_stats
         get_path_lengths
         locate_kmer_matches
