@@ -9,6 +9,7 @@ using CLI::App;
 #include <stdexcept>
 #include <fstream>
 #include <utility>
+#include <limits>
 #include <bitset>
 #include <vector>
 #include <array>
@@ -17,6 +18,8 @@ using CLI::App;
 using std::unordered_set;
 using std::unordered_map;
 using std::runtime_error;
+using std::numeric_limits;
+using std::streamsize;
 using std::to_string;
 using std::ifstream;
 using std::ofstream;
@@ -152,6 +155,15 @@ void generate_contact_map_from_sam(path sam_path, string required_prefix, int8_t
 
     unordered_map <string, array <set <SAMElement, decltype(sam_comparator)*>, 2> > mappings;
 
+    char header_delimiter = '@';
+
+    // If this is a header line, skip to the next line and increment n_lines until we are no longer on a header
+    while (file.peek() == header_delimiter){
+        cerr << string(1, file.peek()) << '\n';
+        file.ignore(numeric_limits<streamsize>::max(), '\n');
+        n_lines++;
+    }
+
     while (file.get(c)){
         if (c == '\n'){
             n_delimiters = 0;
@@ -203,6 +215,7 @@ void generate_contact_map_from_sam(path sam_path, string required_prefix, int8_t
         }
     }
 
+    // Filter the mappings for each read pair to verify that they actually have a first and second pair
     vector<string> to_be_deleted;
     for (auto& [name,mates]: mappings){
 
