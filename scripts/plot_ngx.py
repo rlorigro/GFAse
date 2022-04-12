@@ -61,8 +61,61 @@ HG38_ARM_LENGTHS = [
 ]
 
 
+CHM13_ARM_LENGTHS = [
+    124048267,
+    124339061,
+    40649191,
+    94108943,
+    52743313,
+    82384456,
+    35911664,
+    97412884,
+    16522942,
+    97043744,
+    11400261,
+    89761231,
+    17186630,
+    82566565,
+    36838903,
+    59491471,
+    25689679,
+    58587218,
+    18449624,
+    62092914,
+    27792923,
+    33914441,
+    93503283,
+    149193469,
+    28012753,
+    38197502,
+    11134529,
+    33956153,
+    14249622,
+    37075304,
+    94076514,
+    107029434,
+    52452474,
+    141122471,
+    48317879,
+    133727560,
+    59672548,
+    112454080,
+    62064435,
+    98502993,
+    45270456,
+    100988875,
+    46267185,
+    104350062,
+    59373565,
+    94886001,
+    10724418,
+    51735611
+]
+
+
 PRESET_LENGTHS = {
-    "hg38_chromosome_arms":HG38_ARM_LENGTHS
+    "hg38_chromosome_arms":HG38_ARM_LENGTHS,
+    "chm13_chromosome_arms":CHM13_ARM_LENGTHS,
 }
 
 VALID_FILE_TYPES = {".fa",".fasta",".fna"}
@@ -241,7 +294,7 @@ if __name__ == "__main__":
         "-i",
         required=True,
         type=str,
-        help="Comma separated list of input fasta file paths, OR a preset names: " + ','.join(PRESET_LENGTHS.keys())
+        help="Comma separated list of: input fasta file paths and/or a preset name: " + ','.join(PRESET_LENGTHS.keys())
     )
 
     parser.add_argument(
