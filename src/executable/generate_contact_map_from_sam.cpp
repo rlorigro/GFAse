@@ -141,8 +141,9 @@ public:
     unordered_map<int32_t,int32_t> id_to_bubble;
 
     Bubbles();
-    void emplace(int32_t id1, int32_t id2, bool phase);
+    void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
     void at(size_t i, Bubble& b);
+    void emplace(int32_t id1, int32_t id2, bool phase);
     int32_t find(int32_t id);
     void flip(size_t b);
     size_t size() const;
@@ -153,6 +154,27 @@ Bubbles::Bubbles():
     bubbles(),
     id_to_bubble()
 {}
+
+
+void Bubbles::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map){
+    ofstream file(output_path);
+
+    if (not file.is_open() or not file.good()){
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    file << "Name" << ',' << "Color" << '\n';
+
+    for (auto& b: bubbles){
+        auto id0 = b.get(0);
+        auto id1 = b.get(1);
+
+        file << id_map.get_name(id0) << ',' << "Dark Orange" << '\n';
+        file << id_map.get_name(id1) << ',' << "Green Yellow" << '\n';
+    }
+
+
+}
 
 
 void Bubbles::emplace(int32_t id1, int32_t id2, bool phase){
@@ -267,7 +289,7 @@ void parse_sam_file(
             }
 
             if (valid_prefix) {
-                auto id = id_map.try_insert(ref_name);
+                id_map.try_insert(ref_name);
                 auto mapq = int8_t(stoi(mapq_token));
 
                 if (mapq >= min_mapq) {
@@ -496,6 +518,25 @@ void phase_contacts(
 }
 
 
+void write_contact_map(
+        path output_path,
+        unordered_map <int32_t, unordered_map<int32_t, int32_t> >& contact_map,
+        IncrementalIdMap<string>& id_map){
+    ofstream output_file(output_path);
+
+    if (not output_file.is_open() or not output_file.good()){
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    for (auto& [id,map2]: contact_map){
+        for (auto& [id2,count]: map2){
+            output_file << id_map.get_name(id) << ',' << id_map.get_name(id2) << ',' << count << '\n';
+        }
+    }
+
+}
+
+
 void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(true);
@@ -525,24 +566,22 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
 
     generate_adjacency_matrix(bubbles, contact_map, adjacency);
 
+    phase_contacts(contact_map, id_map, bubbles);
+
     path contacts_output_path = sam_path;
+    path bandage_output_path = sam_path;
 
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
 
-    string suffix = suffix1 + "_" + suffix2 + "_contacts.csv";
+    string contacts_suffix = suffix1 + "_" + suffix2 + "_contacts.csv";
+    string bandage_suffix = suffix1 + "_" + suffix2 + "_bandage.csv";
 
-    contacts_output_path.replace_extension(suffix);
-    ofstream output_file(contacts_output_path);
-    for (auto& [id,map2]: contact_map){
-        for (auto& [id2,count]: map2){
-            output_file << id_map.get_name(id) << ',' << id_map.get_name(id2) << ',' << count << '\n';
-        }
-    }
+    contacts_output_path.replace_extension(contacts_suffix);
+    bandage_output_path.replace_extension(bandage_suffix);
 
-    phase_contacts(contact_map, id_map, bubbles);
-
-
+    write_contact_map(contacts_output_path, contact_map, id_map);
+    bubbles.write_bandage_csv(bandage_output_path, id_map);
 }
 
 
