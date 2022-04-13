@@ -38,6 +38,8 @@ public:
     // Add a node ID to the running list, do whatever needs to be done to make sure the mapping is reversible, and then
     // return its incremental ID, based on the number of nodes added so far
     int64_t insert(const T& s);
+    int64_t try_insert(const T& s);
+    int64_t do_insert(const T& s);
 
     // Find the original node ID from its integer ID
     T get_name(int64_t id) const;
@@ -46,7 +48,15 @@ public:
     // Check if key/value has been added already, returns true if it exists
     bool exists(const T& name);
     bool exists(int64_t id);
+
+    size_t size();
 };
+
+
+
+template<class T> size_t IncrementalIdMap<T>::size(){
+    return names.size();
+}
 
 
 template<class T> IncrementalIdMap<T>::IncrementalIdMap(bool zero_based):
@@ -59,6 +69,23 @@ template <class T> int64_t IncrementalIdMap<T>::insert(const T& s) {
         throw runtime_error("Error: attempted to insert duplicate key with id: " + to_string(get_id(s)));
     }
 
+    return do_insert(s);
+}
+
+
+template <class T> int64_t IncrementalIdMap<T>::try_insert(const T& s) {
+    auto result = ids.find(s);
+
+    if (result == ids.end()){
+        return do_insert(s);
+    }
+    else{
+        return result->second;
+    }
+}
+
+
+template <class T> int64_t IncrementalIdMap<T>::do_insert(const T& s) {
     // Make a copy of the node name string
     names.push_back(s);
 
@@ -71,6 +98,8 @@ template <class T> int64_t IncrementalIdMap<T>::insert(const T& s) {
     // For convenience, return the ID number that was generated
     return id;
 }
+
+
 
 
 template<class T> bool IncrementalIdMap<T>::exists(const T& name){

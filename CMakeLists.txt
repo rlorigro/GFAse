@@ -58,11 +58,12 @@ set(SOURCES
         src/HaplotypePathKmer.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
+        src/KmerSets.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
 #        src/OverlapMap.cpp
         src/Phase.cpp
-        src/KmerSets.cpp
+        src/SAMElement.cpp
         )
 
 
