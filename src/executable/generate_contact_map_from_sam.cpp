@@ -1,17 +1,21 @@
 #include "IncrementalIdMap.hpp"
+#include "sparsepp/spp.h"
 #include "SAMElement.hpp"
 #include "Filesystem.hpp"
+#include "misc.hpp"
 #include "CLI11.hpp"
 
+using spp::sparse_hash_map;
 using ghc::filesystem::path;
 using gfase::IncrementalIdMap;
-using gfase::sam_comparator;
 using gfase::SAMElement;
 using CLI::App;
 
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 #include <stdexcept>
+#include <algorithm>
 #include <fstream>
 #include <utility>
 #include <random>
@@ -27,8 +31,10 @@ using std::runtime_error;
 using std::numeric_limits;
 using std::streamsize;
 using std::to_string;
+using std::function;
 using std::ifstream;
 using std::ofstream;
+using std::shuffle;
 using std::string;
 using std::vector;
 using std::bitset;
@@ -39,7 +45,8 @@ using std::cerr;
 using std::set;
 
 
-using mappings_t = unordered_map <string, array <set <SAMElement, decltype(sam_comparator)*>, 2> >;
+using mappings_t = sparse_hash_map <string, array <set <SAMElement>, 2> >;
+using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
 
 
 void print_mappings(const mappings_t& mappings){
@@ -70,11 +77,11 @@ public:
     Bubble();
     Bubble(int32_t id1, int32_t id2, bool phase);
     void flip();
-    int32_t first();
-    int32_t second();
-    int32_t get(bool i);
-    int32_t is_first(int32_t id);
-    int32_t is_second(int32_t id);
+    int32_t first() const;
+    int32_t second() const;
+    int32_t get(bool side) const;
+    int32_t is_first(int32_t id) const;
+    int32_t is_second(int32_t id) const;
 };
 
 
@@ -95,12 +102,12 @@ void Bubble::flip(){
 }
 
 
-int32_t Bubble::first(){
+int32_t Bubble::first() const{
     return ids[0 + phase];
 }
 
 
-int32_t Bubble::second(){
+int32_t Bubble::second() const{
     return ids[1 - phase];
 }
 
@@ -110,12 +117,12 @@ int32_t Bubble::second(){
 /// 1 0 1
 /// 0 0 0
 /// 1 1 0
-int32_t Bubble::get(bool side){
+int32_t Bubble::get(bool side) const{
     return ids[side != phase];
 }
 
 
-int32_t Bubble::is_first(int32_t id){
+int32_t Bubble::is_first(int32_t id) const{
     if (get(id) == 0){
         return true;
     }
@@ -125,7 +132,7 @@ int32_t Bubble::is_first(int32_t id){
 }
 
 
-int32_t Bubble::is_second(int32_t id){
+int32_t Bubble::is_second(int32_t id) const{
     if (get(id) == 1){
         return true;
     }
@@ -138,11 +145,21 @@ int32_t Bubble::is_second(int32_t id){
 class Bubbles {
 public:
     vector<Bubble> bubbles;
-    unordered_map<int32_t,int32_t> id_to_bubble;
+    unordered_map<int32_t,int32_t> ref_id_to_bubble_id;
+    vector <vector <int32_t> > bubble_to_bubble;
+    unordered_set <pair <int32_t, int32_t> > bubble_pairs;
 
     Bubbles();
     void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
+    void generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map);
+    void for_each_adjacent_bubble(int32_t b, const function<void(Bubble& bubble)>& f);
+    void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble& bubble)>& f) const;
+    void for_each_bubble_pair(const function<void(Bubble& b1, Bubble& b2)>& f);
+    void for_each_bubble_pair(const function<void(const Bubble& b1, const Bubble& b2)>& f) const;
+    void get_phases(vector<bool>& bubble_phases);
+    void set_phases(vector<bool>& bubble_phases);
     void at(size_t i, Bubble& b);
+    Bubble at(size_t i) const;
     void emplace(int32_t id1, int32_t id2, bool phase);
     int32_t find(int32_t id);
     void flip(size_t b);
@@ -151,9 +168,75 @@ public:
 
 
 Bubbles::Bubbles():
-    bubbles(),
-    id_to_bubble()
+        bubbles(),
+        ref_id_to_bubble_id(),
+        bubble_to_bubble(),
+        bubble_pairs()
 {}
+
+
+void Bubbles::generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map){
+    bubble_to_bubble.resize(bubbles.size());
+
+    for (size_t b=0; b<bubbles.size(); b++) {
+        auto id0 = bubbles[b].get(0);
+        auto id1 = bubbles[b].get(1);
+
+        unordered_set<size_t> other_bubbles;
+
+        auto c0 = contact_map.find(id0);
+        auto c1 = contact_map.find(id1);
+
+        // Iterate all contacts with id0
+        if (c0 != contact_map.end()) {
+            for (auto&[other_id, count]: c0->second) {
+                auto b_other = find(other_id);
+                other_bubbles.emplace(b_other);
+            }
+        }
+
+        // Iterate all contacts with id1
+        if (c1 != contact_map.end()) {
+            for (auto&[other_id, count]: c1->second) {
+                auto b_other = find(other_id);
+                other_bubbles.emplace(b_other);
+            }
+        }
+
+        for (auto& b_other: other_bubbles) {
+            bubble_to_bubble[b].emplace_back(b_other);
+            bubble_pairs.emplace(b,b_other);
+        }
+    }
+}
+
+
+void Bubbles::for_each_adjacent_bubble(int32_t b, const function<void(Bubble& bubble)>& f){
+    for (auto& b_other: bubble_to_bubble[b]){
+        f(bubbles[b_other]);
+    }
+}
+
+
+void Bubbles::for_each_adjacent_bubble(int32_t b, const function<void(const Bubble& bubble)>& f) const{
+    for (const auto& b_other: bubble_to_bubble[b]){
+        f(bubbles[b_other]);
+    }
+}
+
+
+void Bubbles::for_each_bubble_pair(const function<void(Bubble& b0, Bubble& b1)>& f){
+    for (auto& p: bubble_pairs){
+        f(bubbles[p.first], bubbles[p.second]);
+    }
+}
+
+
+void Bubbles::for_each_bubble_pair(const function<void(const Bubble& b0, const Bubble& b1)>& f) const{
+    for (const auto& p: bubble_pairs){
+        f(bubbles[p.first], bubbles[p.second]);
+    }
+}
 
 
 void Bubbles::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map){
@@ -172,15 +255,35 @@ void Bubbles::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_m
         file << id_map.get_name(id0) << ',' << "Dark Orange" << '\n';
         file << id_map.get_name(id1) << ',' << "Green Yellow" << '\n';
     }
-
-
 }
 
 
 void Bubbles::emplace(int32_t id1, int32_t id2, bool phase){
-    id_to_bubble[id1] = int32_t(bubbles.size());
-    id_to_bubble[id2] = int32_t(bubbles.size());
+    ref_id_to_bubble_id[id1] = int32_t(bubbles.size());
+    ref_id_to_bubble_id[id2] = int32_t(bubbles.size());
     bubbles.emplace_back(id1, id2, phase);
+}
+
+
+void Bubbles::get_phases(vector<bool>& bubble_phases){
+    if (bubble_phases.size() != bubbles.size()){
+        bubble_phases.resize(bubbles.size());
+    }
+
+    for (size_t b=0; b<bubbles.size(); b++){
+        bubble_phases[b] = bubbles[b].phase;
+    }
+}
+
+
+void Bubbles::set_phases(vector<bool>& bubble_phases){
+    if (bubble_phases.size() != bubbles.size()){
+        throw runtime_error("ERROR: cannot set phase vector with unequal size vector");
+    }
+
+    for (size_t b=0; b<bubbles.size(); b++){
+        bubbles[b].phase = bubble_phases[b];
+    }
 }
 
 
@@ -194,8 +297,13 @@ void Bubbles::at(size_t i, Bubble& b){
 }
 
 
+Bubble Bubbles::at(size_t i) const{
+    return bubbles.at(i);
+}
+
+
 int32_t Bubbles::find(int32_t id){
-    return id_to_bubble.at(id);
+    return ref_id_to_bubble_id.at(id);
 }
 
 
@@ -234,8 +342,6 @@ void generate_bubbles_from_shasta_names(Bubbles& bubbles, IncrementalIdMap<strin
         // Later, will need to assume these missing entries in the contact map are 0
         auto other_id = id_map.try_insert(other_name);
         bubbles.emplace(int32_t(id), int32_t(other_id), 0);
-
-        cerr << name << ' ' << side << ' ' << other_name << '\n';
 
         visited.emplace(id);
         visited.emplace(other_id);
@@ -294,6 +400,7 @@ void parse_sam_file(
 
                 if (mapq >= min_mapq) {
                     SAMElement e(read_name, ref_name, n_lines, stoi(flag_token), mapq);
+
                     mappings[read_name][e.is_second_mate()].emplace(e);
                 }
             }
@@ -349,7 +456,7 @@ void remove_unpaired_reads(mappings_t& mappings){
 void generate_contact_map_from_mappings(
         mappings_t& mappings,
         IncrementalIdMap<string>& id_map,
-        unordered_map <int32_t, unordered_map<int32_t, int32_t> >& contact_map
+        contact_map_t& contact_map
 ){
     for (auto& [name,mates]: mappings) {
         size_t i = 0;
@@ -377,7 +484,7 @@ void generate_contact_map_from_mappings(
 
 void generate_adjacency_matrix(
         const Bubbles& bubbles,
-        const unordered_map <int32_t,unordered_map<int32_t, int32_t> >& contact_map,
+        const contact_map_t& contact_map,
         vector <vector <int32_t> >& adjacency
 ){
 
@@ -392,51 +499,18 @@ void generate_adjacency_matrix(
 }
 
 
-int64_t compute_consistency_score(
-        Bubbles& bubbles,
-        size_t bubble_index,
-        const unordered_map <int32_t, unordered_map<int32_t, int32_t> >& contact_map
-        ){
+int64_t compute_total_consistency_score(
+        const Bubbles& bubbles,
+        const contact_map_t& contact_map
+){
     int64_t score = 0;
 
-    Bubble bubble;
-    bubbles.at(int32_t(bubble_index), bubble);
+    bubbles.for_each_bubble_pair([&](const Bubble& b0, const Bubble& b1){
+        auto id0 = b0.get(0);
+        auto id1 = b0.get(1);
 
-    auto id0 = bubble.get(0);
-    auto id1 = bubble.get(1);
-
-    unordered_set<size_t> other_bubbles;
-
-    auto c0 = contact_map.find(id0);
-    auto c1 = contact_map.find(id1);
-
-    // Iterate all contacts with id0
-    if (c0 != contact_map.end()) {
-        for (auto&[other_id, count]: c0->second) {
-            Bubble other_bubble;
-            auto b_other = bubbles.find(other_id);
-
-            other_bubbles.emplace(b_other);
-        }
-    }
-
-    // Iterate all contacts with id1
-    if (c1 != contact_map.end()) {
-        for (auto&[other_id, count]: c1->second) {
-            Bubble other_bubble;
-            auto b_other = bubbles.find(other_id);
-
-            other_bubbles.emplace(b_other);
-        }
-    }
-
-    for (auto b_other: other_bubbles){
-        Bubble other_bubble;
-        bubbles.at(b_other, other_bubble);
-
-        auto other_id0 = other_bubble.get(0);
-        auto other_id1 = other_bubble.get(1);
-
+        auto other_id0 = b1.get(0);
+        auto other_id1 = b1.get(1);
 
         auto r0 = contact_map.find(id0);
         if (r0 != contact_map.end()){
@@ -465,14 +539,62 @@ int64_t compute_consistency_score(
                 score += r11->second;
             }
         }
-    }
+    });
+
+    return score;
+}
+
+int64_t compute_consistency_score(
+        const Bubbles& bubbles,
+        size_t bubble_index,
+        const contact_map_t& contact_map
+        ){
+    int64_t score = 0;
+
+    const Bubble bubble = bubbles.at(int32_t(bubble_index));
+
+    auto id0 = bubble.get(0);
+    auto id1 = bubble.get(1);
+
+    bubbles.for_each_adjacent_bubble(int32_t(bubble_index), [&](const Bubble& other_bubble){
+        auto other_id0 = other_bubble.get(0);
+        auto other_id1 = other_bubble.get(1);
+
+        auto r0 = contact_map.find(id0);
+        if (r0 != contact_map.end()){
+            auto r00 = r0->second.find(other_id0);
+            auto r01 = r0->second.find(other_id1);
+
+            if (r00 != r0->second.end()){
+                score += r00->second;
+            }
+
+            if (r01 != r0->second.end()){
+                score -= r01->second;
+            }
+        }
+
+        auto r1 = contact_map.find(id1);
+        if (r1 != contact_map.end()){
+            auto r10 = r1->second.find(other_id0);
+            auto r11 = r1->second.find(other_id1);
+
+            if (r10 != r1->second.end()){
+                score -= r10->second;
+            }
+
+            if (r11 != r1->second.end()){
+                score += r11->second;
+            }
+        }
+    });
 
     return score;
 }
 
 
 void phase_contacts(
-        const unordered_map <int32_t, unordered_map<int32_t, int32_t> >& contact_map,
+        const contact_map_t& contact_map,
         const IncrementalIdMap<string>& id_map,
         Bubbles& bubbles){
 
@@ -480,38 +602,48 @@ void phase_contacts(
     std::mt19937 rng(rd());
     std::uniform_int_distribution<int> uniform_distribution(0,int(bubbles.size()-1));
 
-    int64_t prev_total_score = std::numeric_limits<int64_t>::min();
-    int64_t total_score = 0;
+    int64_t best_score = std::numeric_limits<int64_t>::min();
+    vector<bool> best_phases(bubbles.size(), false);
 
-    for (size_t m=0; m<10; m++) {
-        for (size_t i=0; i<20; i++) {
-//            cerr << "--- " << i << " ---" << '\n';
-            for (size_t j=0; j<bubbles.size(); j++) {
-//                auto b = j;
-                auto b = uniform_distribution(rng);
+    int64_t total_score;
 
-                auto score = compute_consistency_score(bubbles, b, contact_map);
+    vector<size_t> order(bubbles.size());
+    for (size_t i=0; i<order.size(); i++){
+        order[i] = i;
+    }
+
+    for (size_t m=0; m<5000; m++) {
+        shuffle(order.begin(), order.end(), rng);
+
+        for (size_t i=0; i<bubbles.size(); i++) {
+//            auto b = uniform_distribution(rng);
+            auto b = order[i];
+
+            auto score = compute_consistency_score(bubbles, b, contact_map);
+            bubbles.flip(b);
+            auto flipped_score = compute_consistency_score(bubbles, b, contact_map);
+
+            // Unflip if original orientation was better
+            if (flipped_score < score) {
                 bubbles.flip(b);
-                auto flipped_score = compute_consistency_score(bubbles, b, contact_map);
-
-                // Unflip if original orientation was better
-                if (flipped_score < score) {
-                    bubbles.flip(b);
-                }
-
-//                cerr << b << ' ' << score << ' ' << flipped_score << '\n';
             }
+//            cerr << b << ' ' << score << ' ' << flipped_score << '\n';
         }
 
-        total_score = 0;
-        for (size_t b=0; b<bubbles.size(); b++){
-            total_score += compute_consistency_score(bubbles, b, contact_map);
+        total_score = compute_total_consistency_score(bubbles, contact_map);
+
+        if (total_score > best_score){
+            best_score = total_score;
+            bubbles.get_phases(best_phases);
         }
-        prev_total_score = total_score;
-        cerr << m << ' ' << total_score << '\n';
+        else{
+            bubbles.set_phases(best_phases);
+        }
+
+        cerr << m << ' ' << best_score << ' ' << total_score << '\n';
 
         // Randomly perturb
-        for (size_t i=0; i<((bubbles.size()/100) + 1); i++) {
+        for (size_t i=0; i<((bubbles.size()/10) + 1); i++) {
             bubbles.flip(uniform_distribution(rng));
         }
     }
@@ -520,7 +652,7 @@ void phase_contacts(
 
 void write_contact_map(
         path output_path,
-        unordered_map <int32_t, unordered_map<int32_t, int32_t> >& contact_map,
+        contact_map_t& contact_map,
         IncrementalIdMap<string>& id_map){
     ofstream output_file(output_path);
 
@@ -542,14 +674,11 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
     IncrementalIdMap<string> id_map(true);
 
     // Mappings grouped by their read name (to simplify paired-end parsing)
-    unordered_map <string, array <set <SAMElement, decltype(sam_comparator)*>, 2> > mappings;
+    mappings_t mappings;
 
     // Datastructures to represent linkages from hiC
-    unordered_map <int32_t, unordered_map<int32_t, int32_t> > contact_map;
+    contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
-
-    // To keep track of pairs of segments which exist in diploid bubbles
-    Bubbles bubbles;
 
     parse_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
 
@@ -559,8 +688,15 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
     // Build the contact map by iterating the pairs and creating edges in an all-by-all fashion between pairs
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
 
+    // To keep track of pairs of segments which exist in diploid bubbles
+    Bubbles bubbles;
+
     // Initialize bubble objects using the shasta convention for bubbles
     generate_bubbles_from_shasta_names(bubbles, id_map);
+
+    bubbles.generate_bubble_adjacency_from_contact_map(contact_map);
+
+    cerr << "Phasing " << bubbles.size() << " bubbles" << '\n';
 
 //    print_mappings(mappings);
 
