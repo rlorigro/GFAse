@@ -63,7 +63,7 @@ set(SOURCES
         src/MurmurHash3.cpp
 #        src/OverlapMap.cpp
         src/Phase.cpp
-        src/SAMElement.cpp
+        src/Sam.cpp
         )
 
 
