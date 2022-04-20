@@ -1,14 +1,15 @@
 #include "IncrementalIdMap.hpp"
-#include "sparsepp/spp.h"
-#include "SAMElement.hpp"
 #include "Filesystem.hpp"
-#include "misc.hpp"
+#include "sparsepp/spp.h"
 #include "CLI11.hpp"
+#include "misc.hpp"
+#include "Sam.hpp"
 
-using spp::sparse_hash_map;
-using ghc::filesystem::path;
+using gfase::for_element_in_sam_file;
 using gfase::IncrementalIdMap;
-using gfase::SAMElement;
+using ghc::filesystem::path;
+using spp::sparse_hash_map;
+using gfase::SamElement;
 using CLI::App;
 
 #include <unordered_map>
@@ -18,18 +19,22 @@ using CLI::App;
 #include <algorithm>
 #include <fstream>
 #include <utility>
+#include <atomic>
+#include <thread>
 #include <random>
 #include <limits>
 #include <bitset>
 #include <vector>
+#include <mutex>
 #include <array>
 #include <set>
 
+using std::numeric_limits;
 using std::unordered_set;
 using std::unordered_map;
 using std::runtime_error;
-using std::numeric_limits;
 using std::streamsize;
+using std::exception;
 using std::to_string;
 using std::function;
 using std::ifstream;
@@ -38,18 +43,24 @@ using std::shuffle;
 using std::string;
 using std::vector;
 using std::bitset;
+using std::thread;
+using std::atomic;
 using std::array;
+using std::mutex;
 using std::pair;
 using std::stoi;
 using std::cerr;
+using std::cref;
+using std::ref;
 using std::set;
 
 
-using mappings_t = sparse_hash_map <string, array <set <SAMElement>, 2> >;
+using paired_mappings_t = sparse_hash_map <string, array <set <SamElement>, 2> >;
+using unpaired_mappings_t = sparse_hash_map <string, set <SamElement> >;
 using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
 
 
-void print_mappings(const mappings_t& mappings){
+void print_mappings(const paired_mappings_t& mappings){
     for (const auto& [name,mates]: mappings){
         cerr << '\n';
         cerr << name << '\n';
@@ -156,8 +167,8 @@ public:
     void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble& bubble)>& f) const;
     void for_each_bubble_pair(const function<void(Bubble& b1, Bubble& b2)>& f);
     void for_each_bubble_pair(const function<void(const Bubble& b1, const Bubble& b2)>& f) const;
-    void get_phases(vector<bool>& bubble_phases);
-    void set_phases(vector<bool>& bubble_phases);
+    void get_phases(vector<bool>& bubble_phases) const;
+    void set_phases(const vector<bool>& bubble_phases);
     void at(size_t i, Bubble& b);
     Bubble at(size_t i) const;
     void emplace(int32_t id1, int32_t id2, bool phase);
@@ -246,14 +257,14 @@ void Bubbles::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_m
         throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
     }
 
-    file << "Name" << ',' << "Color" << '\n';
+    file << "Name" << ',' << "Phase" << ',' << "Color" << '\n';
 
     for (auto& b: bubbles){
         auto id0 = b.get(0);
         auto id1 = b.get(1);
 
-        file << id_map.get_name(id0) << ',' << "Dark Orange" << '\n';
-        file << id_map.get_name(id1) << ',' << "Green Yellow" << '\n';
+        file << id_map.get_name(id0) << ',' << 0 << ',' << "Dark Orange" << '\n';
+        file << id_map.get_name(id1) << ',' << 1 << ',' << "Green Yellow" << '\n';
     }
 }
 
@@ -265,7 +276,7 @@ void Bubbles::emplace(int32_t id1, int32_t id2, bool phase){
 }
 
 
-void Bubbles::get_phases(vector<bool>& bubble_phases){
+void Bubbles::get_phases(vector<bool>& bubble_phases) const{
     if (bubble_phases.size() != bubbles.size()){
         bubble_phases.resize(bubbles.size());
     }
@@ -276,7 +287,7 @@ void Bubbles::get_phases(vector<bool>& bubble_phases){
 }
 
 
-void Bubbles::set_phases(vector<bool>& bubble_phases){
+void Bubbles::set_phases(const vector<bool>& bubble_phases){
     if (bubble_phases.size() != bubbles.size()){
         throw runtime_error("ERROR: cannot set phase vector with unequal size vector");
     }
@@ -351,91 +362,34 @@ void generate_bubbles_from_shasta_names(Bubbles& bubbles, IncrementalIdMap<strin
 
 void parse_sam_file(
         path sam_path,
-        mappings_t& mappings,
+        paired_mappings_t& mappings,
         IncrementalIdMap<string>& id_map,
         string required_prefix,
         int8_t min_mapq){
 
-    ifstream file(sam_path);
-
-    if (not file.is_open() or not file.good()){
-        throw runtime_error("ERROR: could not read input file: " + sam_path.string());
-    }
-
-    char c;
-    size_t n_delimiters = 0;
-    int32_t n_lines = 0;
-
-    string read_name;
-    string flag_token;
-    string ref_name;
-    string mapq_token;
-
-    char header_delimiter = '@';
-
-    // If this is a header line, skip to the next line and increment n_lines until we are no longer on a header
-    while (file.peek() == header_delimiter){
-        cerr << string(1, file.peek()) << '\n';
-        file.ignore(numeric_limits<streamsize>::max(), '\n');
-        n_lines++;
-    }
-
-    while (file.get(c)){
-        if (c == '\n'){
-            n_delimiters = 0;
-
-            bool valid_prefix = true;
-            if (not required_prefix.empty()){
-                for (size_t i=0; i<required_prefix.size(); i++){
-                    if (ref_name[i] != required_prefix[i]){
-                        valid_prefix = false;
-                        break;
-                    }
+    for_element_in_sam_file(sam_path, [&](SamElement& e){
+        bool valid_prefix = true;
+        if (not required_prefix.empty()){
+            for (size_t i=0; i<required_prefix.size(); i++){
+                if (e.ref_name[i] != required_prefix[i]){
+                    valid_prefix = false;
+                    break;
                 }
             }
-
-            if (valid_prefix) {
-                id_map.try_insert(ref_name);
-                auto mapq = int8_t(stoi(mapq_token));
-
-                if (mapq >= min_mapq) {
-                    SAMElement e(read_name, ref_name, n_lines, stoi(flag_token), mapq);
-
-                    mappings[read_name][e.is_second_mate()].emplace(e);
-                }
-            }
-
-//            cerr << n_lines << " " << read_name << " " << ref_name << '\n';
-
-            read_name.clear();
-            flag_token.clear();
-            ref_name.clear();
-            mapq_token.clear();
-
-            n_lines++;
         }
-        else if (c == '\t'){
-            n_delimiters++;
-        }
-        else{
-            if (n_delimiters == 0){
-                read_name += c;
-            }
-            else if (n_delimiters == 1){
-                flag_token += c;
-            }
-            else if (n_delimiters == 2){
-                ref_name += c;
-            }
-            else if (n_delimiters == 4){
-                mapq_token += c;
+
+        if (valid_prefix) {
+            id_map.try_insert(e.ref_name);
+
+            if (e.mapq >= min_mapq) {
+                mappings[e.read_name][e.is_second_mate()].emplace(e);
             }
         }
-    }
+    });
 }
 
 
-void remove_unpaired_reads(mappings_t& mappings){
+void remove_unpaired_reads(paired_mappings_t& mappings){
     vector<string> to_be_deleted;
     for (auto& [name,mates]: mappings){
 
@@ -454,17 +408,18 @@ void remove_unpaired_reads(mappings_t& mappings){
 
 
 void generate_contact_map_from_mappings(
-        mappings_t& mappings,
+        unpaired_mappings_t& mappings,
         IncrementalIdMap<string>& id_map,
         contact_map_t& contact_map
 ){
-    for (auto& [name,mates]: mappings) {
+    // All-vs-all, assuming reference names are unique in first vs second mates
+    for (auto& [name,elements]: mappings) {
         size_t i = 0;
 
-        for (auto& e: mates[0]){
+        for (auto& e: elements){
             size_t j = 0;
 
-            for (auto& e2: mates[1]){
+            for (auto& e2: elements){
                 if (j >= i){
                     if (e.ref_name != e2.ref_name) {
                         auto id = int32_t(id_map.get_id(e.ref_name));
@@ -477,6 +432,28 @@ void generate_contact_map_from_mappings(
                 j++;
             }
             i++;
+        }
+    }
+}
+
+
+void generate_contact_map_from_mappings(
+        paired_mappings_t& mappings,
+        IncrementalIdMap<string>& id_map,
+        contact_map_t& contact_map
+){
+    // All-vs-all, assuming reference names are unique in first vs second mates
+    for (auto& [name,mates]: mappings) {
+        for (auto& e: mates[0]){
+            for (auto& e2: mates[1]){
+                if (e.ref_name != e2.ref_name) {
+                    auto id = int32_t(id_map.get_id(e.ref_name));
+                    auto id2 = int32_t(id_map.get_id(e2.ref_name));
+
+                    contact_map[id][id2]++;
+                    contact_map[id2][id]++;
+                }
+            }
         }
     }
 }
@@ -544,6 +521,7 @@ int64_t compute_total_consistency_score(
     return score;
 }
 
+
 int64_t compute_consistency_score(
         const Bubbles& bubbles,
         size_t bubble_index,
@@ -593,17 +571,25 @@ int64_t compute_consistency_score(
 }
 
 
-void phase_contacts(
+void random_phase_search(
         const contact_map_t& contact_map,
         const IncrementalIdMap<string>& id_map,
-        Bubbles& bubbles){
+        Bubbles bubbles,
+        vector<bool>& best_phases,
+        atomic<int64_t>& best_score,
+        atomic<size_t>& job_index,
+        mutex& phase_mutex,
+        size_t m_iterations
+        ){
 
+    size_t m = job_index.fetch_add(1);
+
+    // True random number
     std::random_device rd;
+
+    // Pseudorandom generator with true random seed
     std::mt19937 rng(rd());
     std::uniform_int_distribution<int> uniform_distribution(0,int(bubbles.size()-1));
-
-    int64_t best_score = std::numeric_limits<int64_t>::min();
-    vector<bool> best_phases(bubbles.size(), false);
 
     int64_t total_score;
 
@@ -612,12 +598,14 @@ void phase_contacts(
         order[i] = i;
     }
 
-    for (size_t m=0; m<5000; m++) {
-        shuffle(order.begin(), order.end(), rng);
+    while (m < m_iterations) {
+        // Randomly perturb
+        for (size_t i=0; i < ((bubbles.size()/10) + 1); i++) {
+            bubbles.flip(uniform_distribution(rng));
+        }
 
-        for (size_t i=0; i<bubbles.size(); i++) {
-//            auto b = uniform_distribution(rng);
-            auto b = order[i];
+        for (size_t i=0; i < bubbles.size()*3; i++) {
+            auto b = uniform_distribution(rng);
 
             auto score = compute_consistency_score(bubbles, b, contact_map);
             bubbles.flip(b);
@@ -627,26 +615,71 @@ void phase_contacts(
             if (flipped_score < score) {
                 bubbles.flip(b);
             }
-//            cerr << b << ' ' << score << ' ' << flipped_score << '\n';
         }
 
         total_score = compute_total_consistency_score(bubbles, contact_map);
 
-        if (total_score > best_score){
+        phase_mutex.lock();
+        if (total_score > best_score) {
             best_score = total_score;
             bubbles.get_phases(best_phases);
         }
-        else{
+        else {
             bubbles.set_phases(best_phases);
         }
 
-        cerr << m << ' ' << best_score << ' ' << total_score << '\n';
+        cerr << m << ' ' << best_score << ' ' << total_score << std::flush << '\n';
+        phase_mutex.unlock();
 
-        // Randomly perturb
-        for (size_t i=0; i<((bubbles.size()/10) + 1); i++) {
-            bubbles.flip(uniform_distribution(rng));
+        m = job_index.fetch_add(1);
+    }
+}
+
+
+void phase_contacts(
+        const contact_map_t& contact_map,
+        const IncrementalIdMap<string>& id_map,
+        Bubbles& bubbles,
+        size_t n_threads
+        ){
+
+    vector<bool> best_phases(bubbles.size(), false);
+
+    atomic<int64_t> best_score = std::numeric_limits<int64_t>::min();
+    atomic<size_t> job_index = 0;
+
+    size_t m_iterations = 10000;
+
+    // Thread-related variables
+    vector<thread> threads;
+    mutex phase_mutex;
+
+    // Launch threads
+    for (uint64_t i=0; i<n_threads; i++){
+        try {
+            threads.emplace_back(thread(
+                    random_phase_search,
+                    cref(contact_map),
+                    cref(id_map),
+                    bubbles,
+                    ref(best_phases),
+                    ref(best_score),
+                    ref(job_index),
+                    ref(phase_mutex),
+                    m_iterations
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
         }
     }
+
+    // Wait for threads to finish
+    for (auto& t: threads){
+        t.join();
+    }
+
+    bubbles.set_phases(best_phases);
 }
 
 
@@ -669,12 +702,12 @@ void write_contact_map(
 }
 
 
-void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
+void phase_hic(path sam_path, string required_prefix, int8_t min_mapq, size_t n_threads){
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(true);
 
     // Mappings grouped by their read name (to simplify paired-end parsing)
-    mappings_t mappings;
+    paired_mappings_t mappings;
 
     // Datastructures to represent linkages from hiC
     contact_map_t contact_map;
@@ -694,6 +727,7 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
     // Initialize bubble objects using the shasta convention for bubbles
     generate_bubbles_from_shasta_names(bubbles, id_map);
 
+    // Simplify contacts into bubble contacts (sometimes contacts are on one phase only)
     bubbles.generate_bubble_adjacency_from_contact_map(contact_map);
 
     cerr << "Phasing " << bubbles.size() << " bubbles" << '\n';
@@ -702,21 +736,24 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq){
 
     generate_adjacency_matrix(bubbles, contact_map, adjacency);
 
-    phase_contacts(contact_map, id_map, bubbles);
+    phase_contacts(contact_map, id_map, bubbles, n_threads);
 
-    path contacts_output_path = sam_path;
+    int64_t score = compute_total_consistency_score(bubbles, contact_map);
+
+//    path contacts_output_path = sam_path;
     path bandage_output_path = sam_path;
 
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
+    string suffix3 = "s" + to_string(int(score));
 
-    string contacts_suffix = suffix1 + "_" + suffix2 + "_contacts.csv";
-    string bandage_suffix = suffix1 + "_" + suffix2 + "_bandage.csv";
+//    string contacts_suffix = suffix1 + "_" + suffix2 + "_" + suffix3 + "_contacts.csv";
+    string bandage_suffix = suffix1 + "_" + suffix2 + "_" + suffix3 + "_bandage.csv";
 
-    contacts_output_path.replace_extension(contacts_suffix);
+//    contacts_output_path.replace_extension(contacts_suffix);
     bandage_output_path.replace_extension(bandage_suffix);
 
-    write_contact_map(contacts_output_path, contact_map, id_map);
+//    write_contact_map(contacts_output_path, contact_map, id_map);
     bubbles.write_bandage_csv(bandage_output_path, id_map);
 }
 
@@ -725,6 +762,7 @@ int main (int argc, char* argv[]){
     path sam_path;
     string required_prefix;
     int8_t min_mapq = 0;
+    size_t n_threads = 1;
 
     CLI::App app{"App description"};
 
@@ -744,9 +782,14 @@ int main (int argc, char* argv[]){
             min_mapq,
             "Minimum required mapq value for mapping to be counted");
 
+    app.add_option(
+            "-t,--threads",
+            n_threads,
+            "Maximum number of threads to use");
+
     CLI11_PARSE(app, argc, argv);
 
-    phase_hic(sam_path, required_prefix, min_mapq);
+    phase_hic(sam_path, required_prefix, min_mapq, n_threads);
 
     return 0;
 }
