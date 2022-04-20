@@ -80,6 +80,20 @@ void print_mappings(const paired_mappings_t& mappings){
 }
 
 
+void print_mappings(const unpaired_mappings_t& mappings){
+    for (const auto& [name,elements]: mappings){
+        cerr << '\n';
+        cerr << name << '\n';
+
+        cerr << "Alignments:" << '\n';
+        for (auto& e: elements){
+            cerr << '\t' << e.ref_name << '\t' << bitset<sizeof(e.flag)*8>(e.flag) << '\n';
+            cerr << '\t' << e.is_first_mate() << ' ' << e.is_second_mate() << ' ' << e.is_not_primary() << '\n';
+        }
+    }
+}
+
+
 class Bubble{
 public:
     array<int32_t,2> ids;
@@ -360,7 +374,7 @@ void generate_bubbles_from_shasta_names(Bubbles& bubbles, IncrementalIdMap<strin
 }
 
 
-void parse_sam_file(
+void parse_paired_sam_file(
         path sam_path,
         paired_mappings_t& mappings,
         IncrementalIdMap<string>& id_map,
@@ -381,8 +395,37 @@ void parse_sam_file(
         if (valid_prefix) {
             id_map.try_insert(e.ref_name);
 
-            if (e.mapq >= min_mapq) {
+            if (e.mapq >= min_mapq and (not e.is_not_primary())) {
                 mappings[e.read_name][e.is_second_mate()].emplace(e);
+            }
+        }
+    });
+}
+
+
+void parse_unpaired_sam_file(
+        path sam_path,
+        unpaired_mappings_t& mappings,
+        IncrementalIdMap<string>& id_map,
+        string required_prefix,
+        int8_t min_mapq){
+
+    for_element_in_sam_file(sam_path, [&](SamElement& e){
+        bool valid_prefix = true;
+        if (not required_prefix.empty()){
+            for (size_t i=0; i<required_prefix.size(); i++){
+                if (e.ref_name[i] != required_prefix[i]){
+                    valid_prefix = false;
+                    break;
+                }
+            }
+        }
+
+        if (valid_prefix) {
+            id_map.try_insert(e.ref_name);
+
+            if (e.mapq >= min_mapq and (not e.is_not_primary())) {
+                mappings[e.read_name].emplace(e);
             }
         }
     });
@@ -407,6 +450,22 @@ void remove_unpaired_reads(paired_mappings_t& mappings){
 }
 
 
+void remove_unlinked_reads(unpaired_mappings_t& mappings){
+    vector<string> to_be_deleted;
+    for (auto& [name,elements]: mappings){
+
+        // Remove all the entries where only one mapping exists for that read
+        if (elements.size() < 2){
+            to_be_deleted.emplace_back(name);
+        }
+    }
+
+    for (auto& item: to_be_deleted){
+        mappings.erase(item);
+    }
+}
+
+
 void generate_contact_map_from_mappings(
         unpaired_mappings_t& mappings,
         IncrementalIdMap<string>& id_map,
@@ -420,7 +479,7 @@ void generate_contact_map_from_mappings(
             size_t j = 0;
 
             for (auto& e2: elements){
-                if (j >= i){
+                if (j > i){
                     if (e.ref_name != e2.ref_name) {
                         auto id = int32_t(id_map.get_id(e.ref_name));
                         auto id2 = int32_t(id_map.get_id(e2.ref_name));
@@ -707,16 +766,15 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq, size_t n_
     IncrementalIdMap<string> id_map(true);
 
     // Mappings grouped by their read name (to simplify paired-end parsing)
-    paired_mappings_t mappings;
+    unpaired_mappings_t mappings;
 
     // Datastructures to represent linkages from hiC
     contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
 
-    parse_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
+    parse_unpaired_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
 
-    // Filter the mappings for each read pair to verify that they actually have a first and second pair
-    remove_unpaired_reads(mappings);
+    remove_unlinked_reads(mappings);
 
     // Build the contact map by iterating the pairs and creating edges in an all-by-all fashion between pairs
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
@@ -732,7 +790,7 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq, size_t n_
 
     cerr << "Phasing " << bubbles.size() << " bubbles" << '\n';
 
-//    print_mappings(mappings);
+    print_mappings(mappings);
 
     generate_adjacency_matrix(bubbles, contact_map, adjacency);
 
@@ -740,20 +798,20 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq, size_t n_
 
     int64_t score = compute_total_consistency_score(bubbles, contact_map);
 
-//    path contacts_output_path = sam_path;
+    path contacts_output_path = sam_path;
     path bandage_output_path = sam_path;
 
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
     string suffix3 = "s" + to_string(int(score));
 
-//    string contacts_suffix = suffix1 + "_" + suffix2 + "_" + suffix3 + "_contacts.csv";
+    string contacts_suffix = suffix1 + "_" + suffix2 + "_" + suffix3 + "_contacts.csv";
     string bandage_suffix = suffix1 + "_" + suffix2 + "_" + suffix3 + "_bandage.csv";
 
-//    contacts_output_path.replace_extension(contacts_suffix);
+    contacts_output_path.replace_extension(contacts_suffix);
     bandage_output_path.replace_extension(bandage_suffix);
 
-//    write_contact_map(contacts_output_path, contact_map, id_map);
+    write_contact_map(contacts_output_path, contact_map, id_map);
     bubbles.write_bandage_csv(bandage_output_path, id_map);
 }
 
