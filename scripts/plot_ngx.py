@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 from matplotlib.lines import Line2D
 from matplotlib import pyplot
+import matplotlib
 import argparse
 import numpy
 import sys
 import os
+
+
+matplotlib.use('Agg')
 
 
 # Using https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/cytoBand.txt.gz
