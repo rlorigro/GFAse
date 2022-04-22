@@ -1,3 +1,4 @@
+#include "bamtools/api/BamReader.h"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
 #include "sparsepp/spp.h"
@@ -7,9 +8,13 @@
 
 using gfase::for_element_in_sam_file;
 using gfase::IncrementalIdMap;
+using gfase::SamElement;
+
+using BamTools::BamAlignment;
+using BamTools::BamReader;
+
 using ghc::filesystem::path;
 using spp::sparse_hash_map;
-using gfase::SamElement;
 using CLI::App;
 
 #include <unordered_map>
@@ -87,8 +92,7 @@ void print_mappings(const unpaired_mappings_t& mappings){
 
         cerr << "Alignments:" << '\n';
         for (auto& e: elements){
-            cerr << '\t' << e.ref_name << '\t' << bitset<sizeof(e.flag)*8>(e.flag) << '\n';
-            cerr << '\t' << e.is_first_mate() << ' ' << e.is_second_mate() << ' ' << e.is_not_primary() << '\n';
+            cerr << '\t' << e.ref_name << '\t' << bitset<sizeof(e.flag)*8>(e.flag) << '\t' << "MQ" << int(e.mapq) << ' ' << 'P' << !e.is_not_primary() << ' ' << 'S' << e.is_supplementary() << '\n';
         }
     }
 }
@@ -432,6 +436,58 @@ void parse_unpaired_sam_file(
 }
 
 
+void parse_unpaired_bam_file(
+        path bam_path,
+        unpaired_mappings_t& mappings,
+        IncrementalIdMap<string>& id_map,
+        string required_prefix,
+        int8_t min_mapq){
+
+    BamReader reader;
+
+    if (!reader.Open(bam_path) ) {
+        throw std::runtime_error("ERROR: could not read BAM file: " + bam_path.string());
+    }
+
+    auto reference_data = reader.GetReferenceData();
+
+    BamAlignment e;
+    size_t l = 0;
+
+    while (reader.GetNextAlignment(e) ) {
+//        cerr << "e.Name" << ' ' << e.Name << '\n';
+//        cerr << "e.RefID" << ' ' << e.RefID << '\n';
+//        cerr << "int32_t(l)" << ' ' << int32_t(l) << '\n';
+//        cerr << "int16_t(e.AlignmentFlag)" << ' ' << int(e.AlignmentFlag) << '\n';
+//        cerr << "int8_t(e.MapQuality)" << ' ' << int(e.MapQuality) << '\n';
+//        cerr << '\n';
+
+        auto& ref_name = reference_data[e.RefID].RefName;
+
+        bool valid_prefix = true;
+        if (not required_prefix.empty()){
+            for (size_t i=0; i<required_prefix.size(); i++){
+                if (ref_name[i] != required_prefix[i]){
+                    valid_prefix = false;
+                    break;
+                }
+            }
+        }
+
+        if (valid_prefix) {
+            id_map.try_insert(ref_name);
+
+            if (e.MapQuality >= min_mapq and e.IsPrimaryAlignment()) {
+                SamElement s(e.Name, ref_name, int32_t(l), int16_t(e.AlignmentFlag), int8_t(e.MapQuality));
+                mappings[e.Name].emplace(s);
+            }
+        }
+
+        l++;
+    }
+}
+
+
 void remove_unpaired_reads(paired_mappings_t& mappings){
     vector<string> to_be_deleted;
     for (auto& [name,mates]: mappings){
@@ -450,7 +506,7 @@ void remove_unpaired_reads(paired_mappings_t& mappings){
 }
 
 
-void remove_unlinked_reads(unpaired_mappings_t& mappings){
+void remove_singleton_reads(unpaired_mappings_t& mappings){
     vector<string> to_be_deleted;
     for (auto& [name,elements]: mappings){
 
@@ -772,9 +828,17 @@ void phase_hic(path sam_path, string required_prefix, int8_t min_mapq, size_t n_
     contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
 
-    parse_unpaired_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
+    if (sam_path.extension() == ".sam") {
+        parse_unpaired_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
+    }
+    else if (sam_path.extension() == ".bam"){
+        parse_unpaired_bam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
+    }
+    else{
+        throw runtime_error("ERROR: unrecognized extension for SAM/BAM input file: " + sam_path.extension().string());
+    }
 
-    remove_unlinked_reads(mappings);
+    remove_singleton_reads(mappings);
 
     // Build the contact map by iterating the pairs and creating edges in an all-by-all fashion between pairs
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
@@ -827,7 +891,7 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-i,--input",
             sam_path,
-            "Path to SAM containing filtered, paired HiC reads")
+            "Path to SAM or BAM containing filtered, paired HiC reads")
             ->required();
 
     app.add_option(

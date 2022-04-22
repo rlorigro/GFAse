@@ -14,7 +14,7 @@ using std::cerr;
 namespace gfase {
 
 
-SamElement::SamElement(string& read_name, string& ref_name, int32_t line, int16_t flag, int8_t mapq) :
+SamElement::SamElement(string& read_name, string& ref_name, int64_t line, int16_t flag, int8_t mapq) :
         read_name(read_name),
         ref_name(ref_name),
         line(line),

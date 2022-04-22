@@ -18,10 +18,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (dev)
     message(STATUS "---- Building with debug options ----")
 
-    # Memory debug
-    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-    set(ASAN_OPTIONS=check_initialization_order=1)
-    set(ASAN_OPTIONS=detect_leaks=1)
+    # Memory debug -- disabled because it reports false leaks with Bamtools library
+#    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+#    set(ASAN_OPTIONS=check_initialization_order=1)
+#    set(ASAN_OPTIONS=detect_leaks=1)
 
     add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
 
@@ -224,6 +224,82 @@ message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 ##############################################
 # ------------------------------------------ #
 # -------- LINKING EXTERNAL LIBRARY -------- #
+# --------------- bamtools ----------------- #
+# ------------------------------------------ #
+##############################################
+
+# Need to explicitly enable ExternalProject functionality
+include(ExternalProject)
+
+message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+
+if (dev)
+    # Download or update library as an external project
+    ExternalProject_Add(project_bamtools
+            GIT_REPOSITORY https://github.com/pezmaster31/bamtools.git
+            DOWNLOAD_COMMAND ""
+            UPDATE_COMMAND ""
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bamtools/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bamtools/
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bamtools/
+            INSTALL_COMMAND make install
+            )
+else()
+    # Download or update library as an external project
+    ExternalProject_Add(project_bamtools
+            GIT_REPOSITORY https://github.com/pezmaster31/bamtools.git
+            PREFIX ${CMAKE_SOURCE_DIR}/external/bamtools/
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bamtools/
+            BUILD_IN_SOURCE True
+            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bamtools/
+            INSTALL_COMMAND make install
+            )
+endif()
+
+# Define INSTALL_DIR as the install directory for external library
+ExternalProject_Get_Property(project_bamtools INSTALL_DIR)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    error("NO MACs")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(LIB_SUFFIX "a")
+endif()
+
+
+# Create new library for external project (so it can be linked with main library)
+add_library(bamtools STATIC IMPORTED)
+set_property(TARGET bamtools
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbamtools.${LIB_SUFFIX})
+
+# Define library as dependent on the downloaded project
+add_dependencies(bamtools
+        project_bamtools
+        )
+
+# Define main library as dependent on the downloaded project (transitively)
+add_dependencies(GFAse bamtools)
+
+# Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+include_directories(external/bamtools/include/
+        external/bamtools/include/bamtools/
+        external/bamtools/include/bamtools/api
+        external/bamtools/include/bamtools/algorithms
+        external/bamtools/include/bamtools/shared
+        )
+
+# Add runtime path for main library so it can access external library
+#set_property(TARGET GFAse PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/bamtools")
+
+message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+
+
+##############################################
+# ------------------------------------------ #
+# -------- LINKING EXTERNAL LIBRARY -------- #
 # ---------------- sparsepp ---------------- #
 # ------------------------------------------ #
 ##############################################
@@ -336,6 +412,8 @@ include_directories(${SOURCE_DIR}/sparsepp)
 #
 #
 
+find_package(ZLIB REQUIRED)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -344,6 +422,7 @@ find_package(Threads REQUIRED)
 set(TESTS
         test_connected_component_finder
         test_bfs
+        test_bamtools
         test_binary_sequence
         test_binary_sequence_performance
         test_fixed_binary_sequence
@@ -361,6 +440,8 @@ foreach(FILENAME_PREFIX ${TESTS})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
+            bamtools
+            ZLIB::ZLIB
             bdsg
 #            ${Boost_LIBRARIES}
             divsufsort
@@ -377,12 +458,12 @@ set(EXECUTABLES
         create_bandage_path_color_table
         extract_haplotype_kmers
 #        find_overlapping_alignments
-        generate_contact_map_from_sam
         get_mapq_distribution_from_sam
         get_degree_stats
         get_path_lengths
         locate_kmer_matches
         phase_haplotype_paths
+        phase_contacts
         remove_empty_nodes
         split_connected_components
         unzip
@@ -393,6 +474,8 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
+            bamtools
+            ZLIB::ZLIB
             bdsg
 #            ${Boost_LIBRARIES}
             divsufsort

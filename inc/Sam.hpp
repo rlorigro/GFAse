@@ -28,7 +28,7 @@ public:
     int8_t mapq;
 
     SamElement();
-    SamElement(string& read_name, string& ref_name, int32_t line, int16_t flag, int8_t mapq);
+    SamElement(string& read_name, string& ref_name, int64_t line, int16_t flag, int8_t mapq);
 //    SamElement(SamElement&& other) noexcept;
 //    SamElement(const SamElement& other) noexcept;
 //    SamElement& operator=(SamElement&& other) noexcept;
