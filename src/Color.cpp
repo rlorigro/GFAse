@@ -17,6 +17,8 @@ using std::cerr;
 using std::string;
 
 
+namespace gfase{
+
 /// Convert integer value `val` to text in hexadecimal format.
 /// The minimum width is padded with leading zeros; if not
 /// specified, this `width` is derived from the type of the
@@ -1153,4 +1155,6 @@ string Viridis::get_svg_color(double x){
     string b = to_string(uint16_t(round(rgb[2]*255)));
     string s = "rgb(" + r + ',' + g + ',' + b + ")";
     return s;
+}
+
 }

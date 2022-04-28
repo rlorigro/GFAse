@@ -1,5 +1,5 @@
-#ifndef OVERLAP_ANALYSIS_COLOR_HPP
-#define OVERLAP_ANALYSIS_COLOR_HPP
+#ifndef GFASE_COLOR_HPP
+#define GFASE_COLOR_HPP
 
 
 #include <vector>
@@ -10,6 +10,7 @@ using std::vector;
 using std::array;
 using std::string;
 
+namespace gfase{
 
 template <typename T> inline std::string int_to_hex(T val, size_t width=sizeof(T)*2);
 
@@ -82,7 +83,7 @@ public:
     string get_svg_color(double x);
 };
 
+}
 
 
-
-#endif //OVERLAP_ANALYSIS_COLOR_HPP
+#endif //GFASE_COLOR_HPP

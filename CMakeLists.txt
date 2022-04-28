@@ -59,10 +59,12 @@ set(SOURCES
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         src/KmerSets.cpp
+        src/misc.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
 #        src/OverlapMap.cpp
         src/Phase.cpp
+        src/phase_assign.cpp
         src/Sam.cpp
         )
 
@@ -425,6 +427,7 @@ set(TESTS
         test_bamtools
         test_binary_sequence
         test_binary_sequence_performance
+        test_assign_phase
         test_fixed_binary_sequence
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
@@ -433,6 +436,7 @@ set(TESTS
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
+        test_set_intersection
 )
 
 foreach(FILENAME_PREFIX ${TESTS})
@@ -454,6 +458,7 @@ endforeach()
 # -------- EXECUTABLES --------
 
 set(EXECUTABLES
+        assign_phases_via_diploid_alignment
         count_kmers
         create_bandage_path_color_table
         extract_haplotype_kmers

@@ -462,7 +462,7 @@ void parse_unpaired_bam_file(
 //        cerr << "int8_t(e.MapQuality)" << ' ' << int(e.MapQuality) << '\n';
 //        cerr << '\n';
 
-        auto& ref_name = reference_data[e.RefID].RefName;
+        auto& ref_name = reference_data.at(e.RefID).RefName;
 
         bool valid_prefix = true;
         if (not required_prefix.empty()){

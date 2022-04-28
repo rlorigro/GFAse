@@ -1,5 +1,6 @@
 #include "Color.hpp"
 #include <iostream>
+using gfase::rgb_to_hex;
 using std::cerr;
 
 
