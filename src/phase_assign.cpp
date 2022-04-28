@@ -51,7 +51,7 @@ CigarSummary::CigarSummary():
 
 
 double CigarSummary::get_identity() {
-    return double(n_matches) / double(n_matches + n_mismatches + n_deletes + n_inserts) + double(1e-12);
+    return double(n_matches) / (double(n_matches + n_mismatches + n_deletes + n_inserts) + double(1e-12));
 }
 
 
