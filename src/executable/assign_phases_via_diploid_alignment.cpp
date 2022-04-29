@@ -10,6 +10,7 @@ int main(int argc, char* argv[]){
     path pat_ref_path;
     path mat_ref_path;
     path query_path;
+    string required_prefix;
     size_t n_threads = 1;
 
     CLI::App app{"App description"};
@@ -39,6 +40,11 @@ int main(int argc, char* argv[]){
         ->required();
 
     app.add_option(
+        "-p,required_prefix",
+        required_prefix,
+        "Optionally skip any reads/queries that dont contain this prefix");
+
+    app.add_option(
         "-t,--max_threads",
         n_threads,
         "Maximum number of threads to use");
@@ -51,6 +57,7 @@ int main(int argc, char* argv[]){
         pat_ref_path,
         mat_ref_path,
         query_path,
+        required_prefix,
         n_threads
     );
 

@@ -67,7 +67,7 @@ ostream& operator<<(ostream& o, const CigarSummary& c){
 }
 
 
-void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_summaries){
+void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_summaries, const string& required_prefix){
     BamReader reader;
 
     if (!reader.Open(bam_path) ) {
@@ -81,6 +81,25 @@ void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_s
     size_t l = 0;
     while (reader.GetNextAlignment(e) ) {
         if (e.IsPrimaryAlignment() and e.IsMapped()){
+            bool valid_prefix = true;
+            if (not required_prefix.empty()){
+                for (size_t i=0; i<required_prefix.size(); i++){
+                    if (e.Name[i] != required_prefix[i]){
+                        valid_prefix = false;
+                        break;
+                    }
+                }
+            }
+
+            if (not valid_prefix){
+                continue;
+            }
+
+            if (not e.IsSupplementary()){
+                auto& ref_name = reference_data.at(e.RefID).RefName;
+                cigar_summaries[e.Name].primary_ref = ref_name;
+            }
+
             for (auto& c: e.CigarData){
                 cigar_summaries[e.Name].update(c.Type, c.Length, 100);
             }
@@ -95,6 +114,7 @@ void assign_phases(
         path pat_ref_path,
         path mat_ref_path,
         path query_path,
+        string required_prefix,
         size_t n_threads
 ){
     create_directories(output_dir);
@@ -124,6 +144,32 @@ void assign_phases(
     map<string,size_t> query_lengths;
     get_query_lengths_from_fasta(query_path, query_lengths);
 
+    // Optionally remove entries that don't contain a prefix specified by user
+    vector<string> to_be_deleted;
+    for (auto& [name,l]: query_lengths){
+        bool valid_prefix = true;
+        if (not required_prefix.empty()){
+            for (size_t i=0; i<required_prefix.size(); i++){
+                if (name[i] != required_prefix[i]){
+                    valid_prefix = false;
+                    break;
+                }
+            }
+        }
+
+        if (not valid_prefix){
+            to_be_deleted.emplace_back(name);
+        }
+    }
+
+    for (auto& name: to_be_deleted){
+        query_lengths.erase(name);
+    }
+
+    to_be_deleted.clear();
+
+    // Initialize the cigar summaries with all the input reads, so that there are no missing maps later in the event
+    // that it was unmapped in one or both of the reference haplotypes
     for (auto& [name, length]: query_lengths){
         cerr << name << ' ' << length << '\n';
         const CigarSummary c;
@@ -137,8 +183,8 @@ void assign_phases(
     auto query_vs_pat_bam = sam_to_sorted_bam(query_vs_pat_sam, n_threads);
     auto query_vs_mat_bam = sam_to_sorted_bam(query_vs_mat_sam, n_threads);
 
-    parse_bam_cigars(query_vs_pat_bam, pat_cigar_summaries);
-    parse_bam_cigars(query_vs_mat_bam, mat_cigar_summaries);
+    parse_bam_cigars(query_vs_pat_bam, pat_cigar_summaries, required_prefix);
+    parse_bam_cigars(query_vs_mat_bam, mat_cigar_summaries, required_prefix);
 
     path output_path = output_dir / "phase_assignments.csv";
     ofstream output_file(output_path);
@@ -146,7 +192,7 @@ void assign_phases(
     auto c0 = rgb_to_hex(0.867,0.133,0.133);
     auto c1 = rgb_to_hex(0.078,0.518,0.518);
 
-    string header = {"name,phase,mat_identity,pat_identity,color"};
+    string header = {"name,length,phase,primary_ref,mat_identity,pat_identity,color"};
     output_file << header << '\n';
 
     for (const auto& [name, length]: query_lengths){
@@ -159,18 +205,36 @@ void assign_phases(
         cerr << "identity:" << '\t' << std::fixed << std::setprecision(6) << mat_cigar_summaries.at(name).get_identity() << '\n';
         cerr << '\n';
 
-        double mat_identity = mat_cigar_summaries.at(name).get_identity();
-        double pat_identity = pat_cigar_summaries.at(name).get_identity();
+        auto& mat_result = mat_cigar_summaries.at(name);
+        auto& pat_result = pat_cigar_summaries.at(name);
 
-        bool phase = 0;
-        string color = "#" + c0;
+        double mat_identity = mat_result.get_identity();
+        double pat_identity = pat_result.get_identity();
+
+        bool phase;
+        string color;
+        string primary_ref;
 
         if (mat_identity > pat_identity) {
             phase = 1;
             color = "#" + c1;
+            primary_ref = mat_result.primary_ref;
+        }
+        else{
+            phase = 0;
+            color = "#" + c0;
+            primary_ref = pat_result.primary_ref;
         }
 
-        vector<string> s = {name, to_string(phase), to_string(mat_identity), to_string(pat_identity), color};
+        vector<string> s = {
+                name,
+                to_string(length),
+                to_string(phase),
+                primary_ref,
+                to_string(mat_identity),
+                to_string(pat_identity),
+                color};
+
         output_file << join(s, ',') << '\n';
 
     }

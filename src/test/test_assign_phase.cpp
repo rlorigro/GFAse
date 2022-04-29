@@ -13,7 +13,7 @@ int main(){
 
     path output_dir = "test";
 
-    assign_phases(output_dir, pat_ref_path, mat_ref_path, query_path, 8);
+    assign_phases(output_dir, pat_ref_path, mat_ref_path, query_path, "", 8);
 
     return 0;
 }

@@ -19,6 +19,7 @@ namespace gfase{
 
 class CigarSummary{
 public:
+    string primary_ref;
     uint32_t n_matches;
     uint32_t n_mismatches;
     uint32_t n_deletes;
@@ -37,6 +38,7 @@ void assign_phases(
         path pat_ref_path,
         path mat_ref_path,
         path query_path,
+        string required_prefix,
         size_t n_threads
 );
 
