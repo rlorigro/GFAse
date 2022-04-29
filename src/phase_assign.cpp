@@ -101,7 +101,7 @@ void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_s
             }
 
             for (auto& c: e.CigarData){
-                cigar_summaries[e.Name].update(c.Type, c.Length, 100);
+                cigar_summaries[e.Name].update(c.Type, c.Length, 20);
             }
         }
         l++;
@@ -115,6 +115,7 @@ void assign_phases(
         path mat_ref_path,
         path query_path,
         string required_prefix,
+        bool extract_fasta,
         size_t n_threads
 ){
     create_directories(output_dir);
@@ -195,6 +196,8 @@ void assign_phases(
     string header = {"name,length,phase,primary_ref,mat_identity,pat_identity,color"};
     output_file << header << '\n';
 
+    unordered_map<string,bool> phased_contigs;
+
     for (const auto& [name, length]: query_lengths){
         cerr << name << '\n';
         cerr << "pat" << '\n';
@@ -226,6 +229,8 @@ void assign_phases(
             primary_ref = pat_result.primary_ref;
         }
 
+        phased_contigs.emplace(name, phase);
+
         vector<string> s = {
                 name,
                 to_string(length),
@@ -238,6 +243,7 @@ void assign_phases(
         output_file << join(s, ',') << '\n';
 
     }
+
 
 
 }
