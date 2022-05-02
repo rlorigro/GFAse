@@ -161,6 +161,9 @@ void bin_fasta_sequences(path input_fasta_path, path output_pat_fasta_path, path
                     name += c;
                 }
             }
+
+            // Skip rest of the header line which may contain space-separated data
+            input_file.ignore(std::numeric_limits<streamsize>::max(), '\n');
         }
         else if (c != '\n'){
             sequence += c;

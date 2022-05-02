@@ -107,6 +107,9 @@ void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_len
                     name += c;
                 }
             }
+
+            // Skip rest of the header line which may contain space-separated data
+            file.ignore(std::numeric_limits<streamsize>::max(), '\n');
         }
         else if (c != '\n'){
             query_lengths.at(name)++;
