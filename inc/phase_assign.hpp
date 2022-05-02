@@ -39,7 +39,8 @@ void assign_phases(
         path mat_ref_path,
         path query_path,
         string required_prefix,
-        size_t n_threads
+        size_t n_threads,
+        bool extract_fasta=false
 );
 
 

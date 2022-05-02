@@ -58,7 +58,8 @@ int main(int argc, char* argv[]){
         mat_ref_path,
         query_path,
         required_prefix,
-        n_threads
+        n_threads,
+        true
     );
 
     return 0;

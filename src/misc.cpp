@@ -115,44 +115,6 @@ void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_len
 }
 
 
-void bin_fasta_sequences(path fasta_path, const unordered_map<string,bool>& phased_contigs){
-    ifstream file(fasta_path);
-
-    string name;
-    string sequence;
-
-    // 0=pat, 1=mat, 2=both
-    int bin;
-    char c;
-
-    // TODO: in progress
-
-    while (file.get(c)){
-        if (c == '>'){
-            name.clear();
-            while (file.get(c)){
-                if (std::isspace(c)){
-                    // Check if this segment is phased, set flag accordingly
-                    auto result = phased_contigs.find(name);
-
-                    if (result != phased_contigs.end()){
-                        bin = int(result->second);
-                    }
-                    else{
-                        bin = 2;
-                    }
-                    break;
-                }
-                else {
-                    name += c;
-                }
-            }
-        }
-        else if (c != '\n'){
-            query_lengths.at(name)++;
-        }
-    }
-}
 
 
 }

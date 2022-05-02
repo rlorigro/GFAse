@@ -109,14 +109,76 @@ void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_s
 }
 
 
+void bin_fasta_sequence(string& name, string& sequence, int bin, ofstream& file0, ofstream& file1){
+    cerr << name << ' ' << sequence.substr(0,min(sequence.size(),size_t(10))) << '\n';
+
+    if (not sequence.empty()){
+        if (bin == 0){
+            file0 << '>' << name << '\n';
+            file0 << sequence << '\n';
+        }
+        else if (bin == 1){
+            file1 << '>' << name << '\n';
+            file1 << sequence << '\n';
+        }
+    }
+}
+
+
+void bin_fasta_sequences(path input_fasta_path, path output_pat_fasta_path, path output_mat_fasta_path, const unordered_map<string,bool>& phased_contigs){
+    ifstream input_file(input_fasta_path);
+    ofstream file0(output_pat_fasta_path);
+    ofstream file1(output_mat_fasta_path);
+
+    string name;
+    string sequence;
+
+    // 0=pat, 1=mat, 2=both
+    int bin = 2;
+    char c;
+
+    while (input_file.get(c)){
+        if (c == '>'){
+            bin_fasta_sequence(name, sequence, bin, file0, file1);
+
+            sequence.clear();
+            name.clear();
+
+            while (input_file.get(c)){
+                if (std::isspace(c)){
+                    // Check if this segment is phased, set flag accordingly
+                    auto result = phased_contigs.find(name);
+
+                    if (result != phased_contigs.end()){
+                        bin = int(result->second);
+                    }
+                    else{
+                        bin = 2;
+                    }
+                    break;
+                }
+                else {
+                    name += c;
+                }
+            }
+        }
+        else if (c != '\n'){
+            sequence += c;
+        }
+    }
+
+    bin_fasta_sequence(name, sequence, bin, file0, file1);
+}
+
+
 void assign_phases(
         path output_dir,
         path pat_ref_path,
         path mat_ref_path,
         path query_path,
         string required_prefix,
-        bool extract_fasta,
-        size_t n_threads
+        size_t n_threads,
+        bool extract_fasta
 ){
     create_directories(output_dir);
 
@@ -214,22 +276,27 @@ void assign_phases(
         double mat_identity = mat_result.get_identity();
         double pat_identity = pat_result.get_identity();
 
-        bool phase;
+        int phase = 2;
         string color;
         string primary_ref;
 
-        if (mat_identity > pat_identity) {
-            phase = 1;
-            color = "#" + c1;
-            primary_ref = mat_result.primary_ref;
+        if (mat_identity != 0 and pat_identity != 0){
+            if (mat_identity > pat_identity) {
+                phase = 1;
+                color = "#" + c1;
+                primary_ref = mat_result.primary_ref;
+            }
+            else{
+                phase = 0;
+                color = "#" + c0;
+                primary_ref = pat_result.primary_ref;
+            }
+
+            phased_contigs.emplace(name, phase);
         }
         else{
-            phase = 0;
-            color = "#" + c0;
-            primary_ref = pat_result.primary_ref;
+            color = "#708090";
         }
-
-        phased_contigs.emplace(name, phase);
 
         vector<string> s = {
                 name,
@@ -241,11 +308,15 @@ void assign_phases(
                 color};
 
         output_file << join(s, ',') << '\n';
-
     }
 
+    if (extract_fasta) {
+        path pat_output_fasta_path = output_dir / "pat_sequences.fasta";
+        path mat_output_fasta_path = output_dir / "mat_sequences.fasta";
 
-
+        bin_fasta_sequences(query_path, pat_output_fasta_path, mat_output_fasta_path, phased_contigs);
+    }
 }
+
 
 }
