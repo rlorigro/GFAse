@@ -118,6 +118,42 @@ void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_len
 }
 
 
+void for_entry_in_csv(path csv_path, const function<void(const vector<string>& tokens, size_t line)>& f){
+    ifstream file(csv_path);
+
+    if (not file.is_open() or not file.good()){
+        throw runtime_error("ERROR: could not read input file: " + csv_path.string());
+    }
+
+    char c;
+
+    size_t n_delimiters = 0;
+    int64_t n_lines = 0;
+
+    vector<string> tokens;
+
+    file.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    while (file.get(c)){
+        if (c == '\n'){
+            n_delimiters = 0;
+
+            f(tokens, n_lines);
+
+            tokens.resize(0);
+
+            n_lines++;
+        }
+        else if (c == ','){
+            n_delimiters++;
+            tokens.emplace_back();
+        }
+        else {
+            tokens.back() += c;
+        }
+    }
+}
+
 
 
 }

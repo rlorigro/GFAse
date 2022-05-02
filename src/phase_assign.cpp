@@ -125,7 +125,7 @@ void bin_fasta_sequence(string& name, string& sequence, int bin, ofstream& file0
 }
 
 
-void bin_fasta_sequences(path input_fasta_path, path output_pat_fasta_path, path output_mat_fasta_path, const unordered_map<string,bool>& phased_contigs){
+void bin_fasta_sequences(path input_fasta_path, path output_pat_fasta_path, path output_mat_fasta_path, const array <set <string>, 2>& phased_contigs){
     ifstream input_file(input_fasta_path);
     ofstream file0(output_pat_fasta_path);
     ofstream file1(output_mat_fasta_path);
@@ -147,10 +147,17 @@ void bin_fasta_sequences(path input_fasta_path, path output_pat_fasta_path, path
             while (input_file.get(c)){
                 if (std::isspace(c)){
                     // Check if this segment is phased, set flag accordingly
-                    auto result = phased_contigs.find(name);
+                    auto count_0 = phased_contigs[0].count(name);
+                    auto count_1 = phased_contigs[1].count(name);
 
-                    if (result != phased_contigs.end()){
-                        bin = int(result->second);
+                    if ((count_0 > 0) and (count_1 == 0)){
+                        bin = 0;
+                    }
+                    else if ((count_0 == 0) and (count_1 > 0)){
+                        bin = 1;
+                    }
+                    else if ((count_0 > 0) and (count_1 > 0)){
+                        throw runtime_error("ERROR: contig assigned phase 0 and phase 1: " + name);
                     }
                     else{
                         bin = 2;
@@ -261,7 +268,7 @@ void assign_phases(
     string header = {"name,length,phase,primary_ref,mat_identity,pat_identity,color"};
     output_file << header << '\n';
 
-    unordered_map<string,bool> phased_contigs;
+    array <set <string>, 2> phased_contigs;
 
     for (const auto& [name, length]: query_lengths){
         cerr << name << '\n';
@@ -295,7 +302,7 @@ void assign_phases(
                 primary_ref = pat_result.primary_ref;
             }
 
-            phased_contigs.emplace(name, phase);
+            phased_contigs[phase].emplace(name, phase);
         }
         else{
             color = "#708090";
@@ -319,6 +326,20 @@ void assign_phases(
 
         bin_fasta_sequences(query_path, pat_output_fasta_path, mat_output_fasta_path, phased_contigs);
     }
+}
+
+
+void evaluate_phasing(
+        path output_dir,
+        path contact_phase_csv,
+        path pat_ref_path,
+        path mat_ref_path,
+        path query_path,
+        string required_prefix,
+        size_t n_threads,
+        bool extract_fasta
+){
+//    TODO: finish doing set intersection on phase_csv and assigned phases from ref alignments
 }
 
 

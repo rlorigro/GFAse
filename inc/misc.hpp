@@ -62,6 +62,9 @@ path sam_to_sorted_bam(path sam_path, size_t n_threads, bool remove_sam=true);
 
 void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_lengths);
 
+void for_entry_in_csv(path csv_path, const function<void(vector<string>& tokens)>& f, size_t line);
+
+
 }
 
 

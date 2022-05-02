@@ -139,7 +139,7 @@ void parse_unpaired_bam_file(
 }
 
 
-void for_entry_in_csv(path csv_path, const function<void(string& name, bool phase)>& f){
+void for_entry_in_phase_csv(path csv_path, const function<void(string& name, bool phase)>& f){
     ifstream file(csv_path);
 
     if (not file.is_open() or not file.good()){
@@ -185,7 +185,7 @@ void for_entry_in_csv(path csv_path, const function<void(string& name, bool phas
 
 
 void parse_phase_csv(path csv_path, array <set <string>, 2>& phases){
-    for_entry_in_csv(csv_path, [&](string& name, bool phase){
+    for_entry_in_phase_csv(csv_path, [&](string& name, bool phase){
         phases[phase].emplace(name);
     });
 }
