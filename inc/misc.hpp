@@ -52,9 +52,9 @@ using std::map;
 
 namespace gfase{
 
-string join(vector <string> s, char delimiter=' ');
+string join(const vector <string>& s, char delimiter=' ');
 
-void run_command(string& argument_string);
+void run_command(const string& argument_string);
 
 path align(path output_dir, path ref_path, path query_path, size_t n_threads);
 
@@ -62,7 +62,7 @@ path sam_to_sorted_bam(path sam_path, size_t n_threads, bool remove_sam=true);
 
 void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_lengths);
 
-void for_entry_in_csv(path csv_path, const function<void(vector<string>& tokens)>& f, size_t line);
+void for_entry_in_csv(path csv_path, const function<void(const vector<string>& tokens, size_t line)>& f);
 
 
 }

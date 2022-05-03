@@ -52,6 +52,9 @@ int main(int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
+    array <set <string>, 2> phased_contigs;
+    map<string,size_t> query_lengths;
+
     assign_phases(
         output_dir,
         pat_ref_path,
@@ -59,6 +62,8 @@ int main(int argc, char* argv[]){
         query_path,
         required_prefix,
         n_threads,
+        phased_contigs,
+        query_lengths,
         true
     );
 

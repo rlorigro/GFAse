@@ -13,7 +13,21 @@ int main(){
 
     path output_dir = "test";
 
-    assign_phases(output_dir, pat_ref_path, mat_ref_path, query_path, "", 8, true);
+
+    array <set <string>, 2> phased_contigs;
+    map<string,size_t> query_lengths;
+
+    assign_phases(
+            output_dir,
+            pat_ref_path,
+            mat_ref_path,
+            query_path,
+            "",
+            4,
+            phased_contigs,
+            query_lengths,
+            true
+    );
 
     return 0;
 }

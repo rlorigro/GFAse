@@ -40,9 +40,22 @@ void assign_phases(
         path query_path,
         string required_prefix,
         size_t n_threads,
+        array <set <string>, 2>& phased_contigs,
+        map<string,size_t>& query_lengths,
         bool extract_fasta=false
 );
 
+
+void evaluate_phasing(
+        path output_dir,
+        path contact_phase_csv,
+        path pat_ref_path,
+        path mat_ref_path,
+        path query_path,
+        string required_prefix,
+        size_t n_threads,
+        bool extract_fasta
+);
 
 }
 

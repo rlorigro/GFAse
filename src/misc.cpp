@@ -5,7 +5,7 @@ using std::map;
 
 namespace gfase{
 
-string join(vector <string> s, char delimiter){
+string join(const vector <string>& s, char delimiter){
     string joined_string;
 
     for (size_t i=0; i<s.size(); i++){
@@ -21,7 +21,7 @@ string join(vector <string> s, char delimiter){
 }
 
 
-void run_command(string& command){
+void run_command(const string& command){
     int exit_code = system(command.c_str());
 
     if (exit_code != 0){
@@ -92,27 +92,28 @@ path sam_to_sorted_bam(path sam_path, size_t n_threads, bool remove_sam){
 void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_lengths){
     ifstream file(fasta_path);
 
+    auto iter = query_lengths.end();
+
     string name;
-    char c;
+    string line;
 
-    while (file.get(c)){
-        if (c == '>'){
-            name.clear();
-            while (file.get(c)){
-                if (std::isspace(c)){
-                    query_lengths.emplace(name,0);
-                    break;
-                }
-                else {
-                    name += c;
-                }
+    while (getline(file, line)){
+        if (line[0] == '>'){
+            // Trim any trailing tokens from the fasta header, keep only the name
+            name = line.substr(1, line.find_first_of(" \t\n") - 1);
+            cerr << name << '\n';
+
+            auto r = query_lengths.emplace(name,0);
+
+            if (r.second) {
+                iter = r.first;
             }
-
-            // Skip rest of the header line which may contain space-separated data
-            file.ignore(std::numeric_limits<streamsize>::max(), '\n');
+            else{
+                throw runtime_error("ERROR: failed to insert duplicate name into contig lengths: " + name);
+            }
         }
-        else if (c != '\n'){
-            query_lengths.at(name)++;
+        else {
+            iter->second += line.size() - (isspace(line.back()));
         }
     }
 }
@@ -128,20 +129,20 @@ void for_entry_in_csv(path csv_path, const function<void(const vector<string>& t
     char c;
 
     size_t n_delimiters = 0;
-    int64_t n_lines = 0;
+    size_t n_lines = 0;
 
-    vector<string> tokens;
-
-    file.ignore(numeric_limits<streamsize>::max(), '\n');
+    vector<string> empty_vector = {""};
+    vector<string> tokens = empty_vector;
 
     while (file.get(c)){
         if (c == '\n'){
             n_delimiters = 0;
 
-            f(tokens, n_lines);
+            if (tokens != empty_vector) {
+                f(tokens, n_lines);
+            }
 
-            tokens.resize(0);
-
+            tokens = empty_vector;
             n_lines++;
         }
         else if (c == ','){
@@ -151,6 +152,10 @@ void for_entry_in_csv(path csv_path, const function<void(const vector<string>& t
         else {
             tokens.back() += c;
         }
+    }
+
+    if (c != '\n' and tokens != empty_vector){
+        f(tokens, n_lines);
     }
 }
 
