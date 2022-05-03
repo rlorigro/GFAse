@@ -410,8 +410,18 @@ void evaluate_phasing(
             return;
         }
 
-        bool phase = stoi(tokens[1]);
+        bool phase;
+
+        try {
+            phase = stoi(tokens[1]);
+        }
+        catch (exception& e){
+            cerr << e.what() << '\n';
+            throw std::runtime_error("ERROR: tokens[1] cannot be parsed: " + tokens[0] + ' ' + tokens[1] + '\n');
+        }
+
         auto name = tokens[0];
+
 
         inferred_phases[phase].emplace(name);
     });
