@@ -101,7 +101,6 @@ void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_len
         if (line[0] == '>'){
             // Trim any trailing tokens from the fasta header, keep only the name
             name = line.substr(1, line.find_first_of(" \t\n") - 1);
-            cerr << name << '\n';
 
             auto r = query_lengths.emplace(name,0);
 
