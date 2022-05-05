@@ -87,8 +87,6 @@ void parse_bam_cigars(
     size_t l = 0;
     while (reader.GetNextAlignment(e) ) {
         if (e.IsPrimaryAlignment() and e.IsMapped()){
-            cerr << "BAM NAME " << e.Name << '\n';
-
             bool valid_prefix = true;
             if (not required_prefix.empty()){
                 for (size_t i=0; i<required_prefix.size(); i++){
@@ -118,8 +116,6 @@ void parse_bam_cigars(
 
 
 void bin_fasta_sequence(string& name, string& sequence, int bin, ofstream& file0, ofstream& file1){
-    cerr << name << ' ' << sequence.substr(0,min(sequence.size(),size_t(10))) << '\n';
-
     if (not sequence.empty()){
         if (bin == 0){
             file0 << '>' << name << '\n';
