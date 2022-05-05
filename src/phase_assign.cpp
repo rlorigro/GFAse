@@ -68,7 +68,12 @@ ostream& operator<<(ostream& o, const CigarSummary& c){
 }
 
 
-void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_summaries, const string& required_prefix){
+void parse_bam_cigars(
+        path bam_path,
+        unordered_map <string, array<CigarSummary,2> >& phased_cigar_summaries,
+        const string& required_prefix,
+        bool phase){
+
     BamReader reader;
 
     if (!reader.Open(bam_path) ) {
@@ -100,11 +105,11 @@ void parse_bam_cigars(path bam_path, unordered_map<string,CigarSummary>& cigar_s
 
             if (not e.IsSupplementary()){
                 auto& ref_name = reference_data.at(e.RefID).RefName;
-                cigar_summaries[e.Name].primary_ref = ref_name;
+                phased_cigar_summaries[e.Name][phase].primary_ref = ref_name;
             }
 
             for (auto& c: e.CigarData){
-                cigar_summaries[e.Name].update(c.Type, c.Length, 20);
+                phased_cigar_summaries[e.Name][phase].update(c.Type, c.Length, 20);
             }
         }
         l++;
@@ -191,6 +196,7 @@ void assign_phases(
         path query_path,
         string required_prefix,
         size_t n_threads,
+        unordered_map <string, array<CigarSummary,2> >& phased_cigar_summaries,
         array <set <string>, 2>& phased_contigs,
         map<string,size_t>& query_lengths,
         bool extract_fasta
@@ -215,9 +221,6 @@ void assign_phases(
             }
         }
     }
-
-    unordered_map<string,CigarSummary> pat_cigar_summaries;
-    unordered_map<string,CigarSummary> mat_cigar_summaries;
 
     get_query_lengths_from_fasta(query_path, query_lengths);
 
@@ -249,9 +252,8 @@ void assign_phases(
     // that it was unmapped in one or both of the reference haplotypes
     for (const auto& [name, length]: query_lengths){
         cerr << name << ' ' << length << '\n';
-        const CigarSummary c;
-        pat_cigar_summaries.emplace(name, c);
-        mat_cigar_summaries.emplace(name, c);
+        array<CigarSummary,2> c;
+        phased_cigar_summaries.emplace(name, c);
     }
 
     auto query_vs_pat_sam = align(output_dir, pat_ref_path, query_path, n_threads);
@@ -260,8 +262,8 @@ void assign_phases(
     auto query_vs_pat_bam = sam_to_sorted_bam(query_vs_pat_sam, n_threads);
     auto query_vs_mat_bam = sam_to_sorted_bam(query_vs_mat_sam, n_threads);
 
-    parse_bam_cigars(query_vs_pat_bam, pat_cigar_summaries, required_prefix);
-    parse_bam_cigars(query_vs_mat_bam, mat_cigar_summaries, required_prefix);
+    parse_bam_cigars(query_vs_pat_bam, phased_cigar_summaries, required_prefix, 0);
+    parse_bam_cigars(query_vs_mat_bam, phased_cigar_summaries, required_prefix, 1);
 
     path output_path = output_dir / "phase_assignments.csv";
     ofstream output_file(output_path);
@@ -273,20 +275,20 @@ void assign_phases(
     output_file << header << '\n';
 
     for (const auto& [name, length]: query_lengths){
-        cerr << name << '\n';
-        cerr << "pat" << '\n';
-        cerr << pat_cigar_summaries.at(name) << '\n';
-        cerr << "identity:" << '\t' << std::fixed << std::setprecision(6) << pat_cigar_summaries.at(name).get_identity() << '\n';
-        cerr << "mat" << '\n';
-        cerr << mat_cigar_summaries.at(name) << '\n';
-        cerr << "identity:" << '\t' << std::fixed << std::setprecision(6) << mat_cigar_summaries.at(name).get_identity() << '\n';
-        cerr << '\n';
-
-        auto& mat_result = mat_cigar_summaries.at(name);
-        auto& pat_result = pat_cigar_summaries.at(name);
+        auto& mat_result = phased_cigar_summaries.at(name)[0];
+        auto& pat_result = phased_cigar_summaries.at(name)[1];
 
         double mat_identity = mat_result.get_identity();
         double pat_identity = pat_result.get_identity();
+
+        cerr << name << '\n';
+        cerr << "pat" << '\n';
+        cerr << pat_result << '\n';
+        cerr << "identity:" << '\t' << std::fixed << std::setprecision(6) << phased_cigar_summaries.at(name)[0].get_identity() << '\n';
+        cerr << "mat" << '\n';
+        cerr << mat_result << '\n';
+        cerr << "identity:" << '\t' << std::fixed << std::setprecision(6) << phased_cigar_summaries.at(name)[1].get_identity() << '\n';
+        cerr << '\n';
 
         int phase = 2;
         string color;
@@ -358,22 +360,55 @@ void write_bandage_csv(
         const vector<string>& intersection_11,
         const vector<string>& intersection_01,
         const vector<string>& intersection_10,
+        const unordered_map <string, array<CigarSummary,2> >& phased_cigar_summaries,
         path output_path){
 
     ofstream file(output_path);
 
-    file << "Name" << ',' << "Set" << ',' << "Color" << '\n';
-    for (const auto& item: intersection_00){
-        file << item << ',' << "00" << ',' << '#' << rgb_to_hex(0.867,0.133,0.133) << '\n';     // Red
+    file << "Name" << ',' << "Set" << ',' << "RefName" << ',' << "Color" << '\n';
+    for (const auto& name: intersection_00){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[0].primary_ref;
+        }
+
+        file << name << ',' << "00" << ',' << ref << ',' << '#' << rgb_to_hex(0.867,0.133,0.133) << '\n';     // Red
     }
-    for (const auto& item: intersection_11){
-        file << item << ',' << "11" << ',' << '#' << rgb_to_hex(0.867,0.463,0.133) << '\n';     // Orange
+    for (const auto& name: intersection_11){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[0].primary_ref;
+        }
+
+        file << name << ',' << "11" << ',' << ref << ',' << '#' << rgb_to_hex(0.867,0.463,0.133) << '\n';     // Orange
     }
-    for (const auto& item: intersection_01){
-        file << item << ',' << "01" << ',' << '#' << rgb_to_hex(0.078,0.518,0.518) << '\n';     // Blue
+    for (const auto& name: intersection_01){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[1].primary_ref;
+        }
+
+        file << name << ',' << "01" << ',' << ref << ',' << '#' << rgb_to_hex(0.078,0.518,0.518) << '\n';     // Blue
     }
-    for (const auto& item: intersection_10){
-        file << item << ',' << "10" << ',' << '#' << rgb_to_hex(0.106,0.69,0.106) << '\n';      // Green
+    for (const auto& name: intersection_10){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[1].primary_ref;
+        }
+
+        file << name << ',' << "10" << ',' << ref << ',' << '#' << rgb_to_hex(0.106,0.69,0.106) << '\n';      // Green
     }
 }
 
@@ -401,8 +436,10 @@ void evaluate_phasing(
 ){
     map<string,size_t> query_lengths;
 
-    array <set <string>, 2> inferred_phases;
-    array <set <string>, 2> true_phases;
+    unordered_map <string, array<CigarSummary,2> > phased_cigar_summaries;
+
+    array <set<string>,2> inferred_phases;
+    array <set<string>,2> true_phases;
 
     for_entry_in_csv(contact_phase_csv, [&](const vector<string>& tokens, size_t line){
         // Skip header
@@ -422,7 +459,6 @@ void evaluate_phasing(
 
         auto name = tokens[0];
 
-
         inferred_phases[phase].emplace(name);
     });
 
@@ -433,6 +469,7 @@ void evaluate_phasing(
             query_path,
             required_prefix,
             n_threads,
+            phased_cigar_summaries,
             true_phases,
             query_lengths,
             extract_fasta);
@@ -464,7 +501,13 @@ void evaluate_phasing(
     cerr << '\t' << "01" << ' ' << intersection_01.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_01) << '\n';
     cerr << '\t' << "10" << ' ' << intersection_10.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_10) << '\n';
 
-    write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, output_dir / "phase_intersections.csv");
+
+    // TODO: annotate this csv with primary ref chromosome to make eval easier
+    // TODO: annotate this csv with primary ref chromosome to make eval easier
+    // TODO: annotate this csv with primary ref chromosome to make eval easier
+    // TODO: annotate this csv with primary ref chromosome to make eval easier
+
+    write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, phased_cigar_summaries, output_dir / "phase_intersections.csv");
 
 }
 

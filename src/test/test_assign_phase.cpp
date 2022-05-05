@@ -1,5 +1,6 @@
 #include "phase_assign.hpp"
 
+using gfase::CigarSummary;
 using gfase::assign_phases;
 
 
@@ -13,7 +14,7 @@ int main(){
 
     path output_dir = "test";
 
-
+    unordered_map <string, array<CigarSummary,2> > phased_cigar_summaries;
     array <set <string>, 2> phased_contigs;
     map<string,size_t> query_lengths;
 
@@ -24,6 +25,7 @@ int main(){
             query_path,
             "",
             4,
+            phased_cigar_summaries,
             phased_contigs,
             query_lengths,
             true

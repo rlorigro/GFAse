@@ -2,6 +2,7 @@
 #include "phase_assign.hpp"
 
 using CLI::App;
+using gfase::CigarSummary;
 using gfase::assign_phases;
 
 
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
+    unordered_map <string, array<CigarSummary,2> > phased_cigar_summaries;
     array <set <string>, 2> phased_contigs;
     map<string,size_t> query_lengths;
 
@@ -62,6 +64,7 @@ int main(int argc, char* argv[]){
         query_path,
         required_prefix,
         n_threads,
+        phased_cigar_summaries,
         phased_contigs,
         query_lengths,
         true

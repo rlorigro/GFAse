@@ -40,6 +40,7 @@ void assign_phases(
         path query_path,
         string required_prefix,
         size_t n_threads,
+        unordered_map <string, array<CigarSummary,2> >& phased_cigar_summaries,
         array <set <string>, 2>& phased_contigs,
         map<string,size_t>& query_lengths,
         bool extract_fasta=false
