@@ -50,6 +50,7 @@ set(SOURCES
         src/BinaryIO.cpp
         src/BinarySequence.cpp
         src/Bipartition.cpp
+        src/BubbleGraph.cpp
         src/Color.cpp
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp

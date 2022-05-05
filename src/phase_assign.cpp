@@ -275,8 +275,8 @@ void assign_phases(
     output_file << header << '\n';
 
     for (const auto& [name, length]: query_lengths){
-        auto& mat_result = phased_cigar_summaries.at(name)[0];
-        auto& pat_result = phased_cigar_summaries.at(name)[1];
+        auto& pat_result = phased_cigar_summaries.at(name)[0];
+        auto& mat_result = phased_cigar_summaries.at(name)[1];
 
         double mat_identity = mat_result.get_identity();
         double pat_identity = pat_result.get_identity();
@@ -500,12 +500,6 @@ void evaluate_phasing(
     cerr << '\t' << "11" << ' ' << intersection_11.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_11) << '\n';
     cerr << '\t' << "01" << ' ' << intersection_01.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_01) << '\n';
     cerr << '\t' << "10" << ' ' << intersection_10.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_10) << '\n';
-
-
-    // TODO: annotate this csv with primary ref chromosome to make eval easier
-    // TODO: annotate this csv with primary ref chromosome to make eval easier
-    // TODO: annotate this csv with primary ref chromosome to make eval easier
-    // TODO: annotate this csv with primary ref chromosome to make eval easier
 
     write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, phased_cigar_summaries, output_dir / "phase_intersections.csv");
 
