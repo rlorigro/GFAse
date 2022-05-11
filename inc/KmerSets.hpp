@@ -37,9 +37,6 @@ template <class T> class KmerSets {
         // < component,  [component_hap_path][parent_hap_index] >
         unordered_map<string, array <array <double,2>, 2> > component_map;
 
-        // Character to use to split the path names into {component_name, haplotype}
-        char path_delimiter;
-
         // Path to kmer parent files as input from command line
 		path paternal_kmer_fa_path;
 		path maternal_kmer_fa_path;
@@ -52,9 +49,14 @@ template <class T> class KmerSets {
         static const size_t paternal_index = 0;
 		static const size_t maternal_index = 1;
 
-	/// Methods ///
+        // Character to use to split the path names into {component_name, haplotype}
+        char path_delimiter;
+
+    /// Methods ///
 		KmerSets();
-		KmerSets(path paternal_kmer_fa_path_arg, path maternal_kmer_fa_path_args, char path_delimiter='c');
+
+        // TODO: remove dependency on "path delimiter" for finding bubbles
+		KmerSets(path paternal_kmer_fa_path_arg, path maternal_kmer_fa_path_args, char path_delimiter='.');
 		float get_size_of_kmer_file(path file_path);
 		void load_fasta_into_unordered_set(path file_path, sparse_hash_set<T>& s);
 		void increment_parental_kmer_count(string path_hap_string, T child_kmer);
@@ -76,7 +78,7 @@ template <class T> class KmerSets {
 
 
 template <class T> KmerSets<T>::KmerSets():
-        path_delimiter('-'),
+        path_delimiter('.'),
         num_paternal_kmers(0),
         num_maternal_kmers(0)
 {}

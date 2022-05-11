@@ -8,6 +8,7 @@
 #include "handle_to_gfa.hpp"
 #include "graph_utility.hpp"
 #include "Bipartition.hpp"
+#include "BubbleGraph.hpp"
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
 #include "KmerSets.hpp"
@@ -92,7 +93,33 @@ template <class T, size_t T2> void count_kmers(
 }
 
 
-void generate_ploidy_critera(
+void generate_ploidy_critera_from_bubble_bimap(
+        const PathHandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const unordered_map<string,string>& diploid_path_names,
+        unordered_set<nid_t>& diploid_nodes
+){
+
+    graph.for_each_handle([&](const handle_t& h){
+        auto name = id_map.get_name(graph.get_id(h));
+
+        if (diploid_path_names.find(name) == diploid_path_names.end()){
+            return true;
+        }
+
+        // Node names for haplotypes should match the paths that they were created from
+        auto id = id_map.get_id(name);
+
+        // Add diploid nodes to the set
+        diploid_nodes.emplace(id);
+
+        return true;
+    });
+
+}
+
+
+void generate_ploidy_critera_from_bubble_graph(
         const PathHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         const unordered_map<string,string>& diploid_path_names,
@@ -222,17 +249,39 @@ void merge_diploid_singletons(const unordered_map<string,string>& diploid_path_n
 }
 
 
-template <class T, size_t T2> void phase_chains(
+template <class T, size_t T2> void order_bubble(Bubble<string>& b, const KmerSets<FixedBinarySequence <T, T2> >& ks){
+    array <array <double, 2>, 2> matrix;
+
+    string component_name;
+    size_t haplotype_a;
+    size_t haplotype_b;
+
+    // TODO: stop using names entirely!!
+    // TODO: stop using names entirely!!
+    // TODO: stop using names entirely!!
+    tie(component_name, haplotype_a) = parse_path_string(b.first(), ks.path_delimiter);
+    tie(component_name, haplotype_b) = parse_path_string(b.second(), ks.path_delimiter);
+
+    // Fetch the kmer counts
+    ks.get_matrix(component_name, matrix);
+
+    // Forward score is the number of kmers supporting the orientation s.t. a == 0 and b == 1
+    // Flipped score is the number of kmers supporting the orientation s.t. a == 1 and b == 0
+    auto forward_score = matrix[haplotype_a][KmerSets<string>::paternal_index] + matrix[haplotype_b][KmerSets<string>::maternal_index];
+    auto flipped_score = matrix[haplotype_b][KmerSets<string>::paternal_index] + matrix[haplotype_a][KmerSets<string>::maternal_index];
+
+    if (flipped_score > forward_score){
+        b.flip();
+    }
+}
+
+
+void for_element_in_bubble_chain(
         Bipartition& chain_bipartition,
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
         const unordered_map<string,string>& diploid_path_names,
-        const KmerSets <FixedBinarySequence <T,T2> >& ks,
-        unordered_set<string>& paternal_node_names,
-        unordered_set<string>& maternal_node_names,
-        ofstream& provenance_csv_file,
-        string provenance_path_prefix,
-        char path_delimiter
+        const function<void(const vector<string>& node_names, size_t subgraph_index)>& f
 ){
 
     chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
@@ -242,8 +291,6 @@ template <class T, size_t T2> void phase_chains(
         if (partition == 1){
             return;
         }
-
-        array <array <double, 2>, 2> matrix;
 
         queue <set <handle_t> > q;
         set<nid_t> visited;
@@ -278,22 +325,23 @@ template <class T, size_t T2> void phase_chains(
             throw runtime_error("ERROR: chain has left tips and left edge nodes (edges to other subgraph): " + to_string(subgraph_index));
         }
 
-        path_handle_t maternal_path;
-        path_handle_t paternal_path;
+//        path_handle_t maternal_path;
+//        path_handle_t paternal_path;
 
+        // Initialize things for this chain
         if (not next_nodes.empty() and subgraph.get_node_count() > 1){
             q.emplace(next_nodes);
 
-            string path_prefix = provenance_path_prefix + '.' + to_string(subgraph_index);
-
-            string maternal_path_name = path_prefix + ".m";
-            string paternal_path_name = path_prefix + ".p";
-
-            maternal_path = graph.create_path_handle(maternal_path_name);
-            paternal_path = graph.create_path_handle(paternal_path_name);
-
-            paternal_node_names.emplace(paternal_path_name);
-            maternal_node_names.emplace(maternal_path_name);
+//            string path_prefix = provenance_path_prefix + '.' + to_string(subgraph_index);
+//
+//            string maternal_path_name = path_prefix + ".m";
+//            string paternal_path_name = path_prefix + ".p";
+//
+//            maternal_path = graph.create_path_handle(maternal_path_name);
+//            paternal_path = graph.create_path_handle(paternal_path_name);
+//
+//            phase_0_node_names.emplace(paternal_path_name);
+//            phase_1_node_names.emplace(maternal_path_name);
         }
 
         // Iterate each bubble or bridge and update the queue with the next nodes
@@ -311,9 +359,11 @@ template <class T, size_t T2> void phase_chains(
                     throw runtime_error("ERROR: haploid node in non-singleton chain is flagged as diploid: " + name);
                 }
                 else {
-                    // If it's a normal singleton just append it to both haplotype paths
-                    graph.append_step(maternal_path, node);
-                    graph.append_step(paternal_path, node);
+                    vector<string> n = {name};
+                    f(n, subgraph_index);
+//                    // If it's a normal singleton just append it to both haplotype paths
+//                    graph.append_step(maternal_path, node);
+//                    graph.append_step(paternal_path, node);
                 }
             }
             else if (nodes.size() == 2){
@@ -334,33 +384,21 @@ template <class T, size_t T2> void phase_chains(
                     throw runtime_error("ERROR: nodes in bubble are not labeled as diploid counterparts: " + result->second + "," + name_b);
                 }
 
-                string component_name;
-                size_t haplotype_a;
-                size_t haplotype_b;
+                vector<string> n = {name_a, name_b};
+                f(n, subgraph_index);
 
-                // TODO: stop using names entirely!!
-                // TODO: stop using names entirely!!
-                // TODO: stop using names entirely!!
-                tie(component_name, haplotype_a) = parse_path_string(name_a, path_delimiter);
-                tie(component_name, haplotype_b) = parse_path_string(name_b, path_delimiter);
-
-                // Fetch the kmer counts
-                ks.get_matrix(component_name, matrix);
-
-                // Forward score is the number of kmers supporting the orientation s.t. a == 0 and b == 1
-                // Flipped score is the number of kmers supporting the orientation s.t. a == 1 and b == 0
-                auto forward_score = matrix[haplotype_a][KmerSets<string>::paternal_index] + matrix[haplotype_b][KmerSets<string>::maternal_index];
-                auto flipped_score = matrix[haplotype_b][KmerSets<string>::paternal_index] + matrix[haplotype_a][KmerSets<string>::maternal_index];
-
-                // Choose the more supported orientation, defaulting to "forward orientation" if equal
-                if (forward_score >= flipped_score){
-                    graph.append_step(paternal_path, node_a);
-                    graph.append_step(maternal_path, node_b);
-                }
-                else{
-                    graph.append_step(maternal_path, node_a);
-                    graph.append_step(paternal_path, node_b);
-                }
+//                Bubble<string> b(name_a, name_b, 0);
+//                order_bubble(b);
+//
+//                // Choose the more supported orientation, defaulting to "forward orientation" if equal
+//                if (b.phase == 0){
+//                    graph.append_step(paternal_path, node_a);
+//                    graph.append_step(maternal_path, node_b);
+//                }
+//                else{
+//                    graph.append_step(maternal_path, node_a);
+//                    graph.append_step(paternal_path, node_b);
+//                }
             }
             else{
                 cerr << "ERROR for subgraph_index: " << subgraph_index << " with nodes: " << '\n';
@@ -392,7 +430,6 @@ template <class T, size_t T2> void phase_chains(
         }
     });
 
-    write_paths_to_csv(graph, id_map, provenance_csv_file);
     unzip(graph, id_map, false);
 }
 
@@ -488,7 +525,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
         // Generate criteria for diploid node BFS
         unordered_set<nid_t> diploid_nodes;
-        generate_ploidy_critera(cc_graph, cc_id_map, diploid_path_names, diploid_nodes);
+        generate_ploidy_critera_from_bubble_bimap(cc_graph, cc_id_map, diploid_path_names, diploid_nodes);
 
         Bipartition ploidy_bipartition(cc_graph, cc_id_map, diploid_nodes);
         ploidy_bipartition.partition();
@@ -537,17 +574,64 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
 
         string component_path_prefix = to_string(c);
-        phase_chains<T,T2>(
+
+        path_handle_t maternal_path;
+        path_handle_t paternal_path;
+
+        auto prev_subgraph_index = numeric_limits<size_t>::max();
+        for_element_in_bubble_chain(
                 chain_bipartition,
                 cc_graph,
                 cc_id_map,
                 diploid_path_names,
-                ks,
-                paternal_node_names,
-                maternal_node_names,
-                provenance_csv_file,
-                component_path_prefix,
-                path_delimiter);
+                [&](const vector<string>& node_names, size_t subgraph_index){
+
+            if (subgraph_index != prev_subgraph_index){
+                string path_prefix = component_path_prefix + '.' + to_string(subgraph_index);
+
+                string maternal_path_name = path_prefix + ".m";
+                string paternal_path_name = path_prefix + ".p";
+
+                maternal_path = cc_graph.create_path_handle(maternal_path_name);
+                paternal_path = cc_graph.create_path_handle(paternal_path_name);
+
+                paternal_node_names.emplace(paternal_path_name);
+                maternal_node_names.emplace(maternal_path_name);
+            }
+
+            // If there's only one node in the element, then it must be in-between bubbles
+            if (node_names.size() == 1){
+                auto node = cc_graph.get_handle(cc_id_map.get_id(node_names[0]));
+
+                cc_graph.append_step(maternal_path, node);
+                cc_graph.append_step(paternal_path, node);
+            }
+            // If there are 2 nodes then it must be a bubble
+            else{
+                auto& name_a = node_names[0];
+                auto& name_b = node_names[1];
+
+                Bubble<string> b(name_a, name_b, 0);
+                order_bubble(b, ks);
+
+                auto node_a = cc_graph.get_handle(cc_id_map.get_id(name_a));
+                auto node_b = cc_graph.get_handle(cc_id_map.get_id(name_b));
+
+                // Choose the more supported orientation, defaulting to "forward orientation" if equal
+                if (b.phase == 0){
+                    cc_graph.append_step(paternal_path, node_a);
+                    cc_graph.append_step(maternal_path, node_b);
+                }
+                else{
+                    cc_graph.append_step(maternal_path, node_a);
+                    cc_graph.append_step(paternal_path, node_b);
+                }
+            }
+
+            prev_subgraph_index = subgraph_index;
+        });
+
+        write_paths_to_csv(cc_graph, cc_id_map, provenance_csv_file);
 
         ofstream test_gfa_phased(filename_prefix + "phased.gfa");
         handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);

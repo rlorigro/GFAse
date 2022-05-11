@@ -1,4 +1,4 @@
-#include "phase_assign.hpp"
+#include "PhaseAssign.hpp"
 
 using gfase::CigarSummary;
 using gfase::assign_phases;

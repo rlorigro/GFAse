@@ -1,5 +1,5 @@
-#ifndef GFASE_PHASE_ASSIGN_HPP
-#define GFASE_PHASE_ASSIGN_HPP
+#ifndef GFASE_PHASEASSIGN_HPP
+#define GFASE_PHASEASSIGN_HPP
 
 #include "bamtools/api/BamReader.h"
 #include "IncrementalIdMap.hpp"
@@ -61,4 +61,4 @@ void evaluate_phasing(
 }
 
 
-#endif //GFASE_PHASE_ASSIGN_HPP
+#endif //GFASE_PHASEASSIGN_HPP

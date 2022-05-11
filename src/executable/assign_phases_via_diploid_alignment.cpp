@@ -1,5 +1,5 @@
 #include "CLI11.hpp"
-#include "phase_assign.hpp"
+#include "PhaseAssign.hpp"
 
 using CLI::App;
 using gfase::CigarSummary;

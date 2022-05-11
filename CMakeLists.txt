@@ -65,7 +65,7 @@ set(SOURCES
         src/MurmurHash3.cpp
 #        src/OverlapMap.cpp
         src/Phase.cpp
-        src/phase_assign.cpp
+        src/PhaseAssign.cpp
         src/Sam.cpp
         )
 
@@ -195,9 +195,9 @@ add_library(divsufsort SHARED IMPORTED)
 set_property(TARGET divsufsort
         PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.${LIB_SUFFIX})
 
-add_library(libhandlegraph STATIC IMPORTED)
+add_library(libhandlegraph SHARED IMPORTED)
 set_property(TARGET libhandlegraph
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libhandlegraph.a)
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libhandlegraph.${LIB_SUFFIX})
 
 add_library(libsdsl SHARED IMPORTED)
 set_property(TARGET libsdsl
@@ -438,6 +438,7 @@ set(TESTS
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
         test_set_intersection
+        test_segfault
 )
 
 foreach(FILENAME_PREFIX ${TESTS})

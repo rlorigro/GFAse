@@ -1,9 +1,10 @@
 #ifndef GFASE_BUBBLEGRAPH_HPP
 #define GFASE_BUBBLEGRAPH_HPP
 
+#include "bdsg/internal/hash_map.hpp"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
-#include "sparsepp/spp.h"
+//#include "sparsepp/spp.h"
 #include "misc.hpp"
 #include "Sam.hpp"
 
@@ -59,48 +60,48 @@ using std::set;
 
 namespace gfase {
 
-using paired_mappings_t = sparse_hash_map <string, array <set <SamElement>, 2> >;
-using unpaired_mappings_t = sparse_hash_map <string, set <SamElement> >;
-using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
+using paired_mappings_t = unordered_map <string, array <set <SamElement>, 2> >;
+using unpaired_mappings_t = unordered_map <string, set <SamElement> >;
+using contact_map_t = unordered_map <int32_t, unordered_map<int32_t, int32_t> >;
 
 
-class Bubble {
+template <class T> class Bubble {
 public:
-    array<int32_t, 2> ids;
+    array<T, 2> ids;
     bool phase;
 
     Bubble();
-    Bubble(int32_t id1, int32_t id2, bool phase);
+    Bubble(T id1, T id2, bool phase);
     void flip();
-    int32_t first() const;
-    int32_t second() const;
-    int32_t get(bool side) const;
-    int32_t is_first(int32_t id) const;
-    int32_t is_second(int32_t id) const;
+    T first() const;
+    T second() const;
+    T get(bool side) const;
+    T is_first(T id) const;
+    T is_second(T id) const;
 };
 
 
-Bubble::Bubble(int32_t id1, int32_t id2, bool phase) :
+template <class T> Bubble<T>::Bubble(T id1, T id2, bool phase) :
         ids({id1, id2}),
         phase(phase) {}
 
 
-Bubble::Bubble() :
+template <class T> Bubble<T>::Bubble() :
         ids({-1, -1}),
         phase(0) {}
 
 
-void Bubble::flip() {
+template <class T> void Bubble<T>::flip() {
     phase = not phase;
 }
 
 
-int32_t Bubble::first() const {
+template <class T> T Bubble<T>::first() const {
     return ids[0 + phase];
 }
 
 
-int32_t Bubble::second() const {
+template <class T> T Bubble<T>::second() const {
     return ids[1 - phase];
 }
 
@@ -110,12 +111,12 @@ int32_t Bubble::second() const {
 /// 1 0 1
 /// 0 0 0
 /// 1 1 0
-int32_t Bubble::get(bool side) const {
+template <class T> T Bubble<T>::get(bool side) const {
     return ids[side != phase];
 }
 
 
-int32_t Bubble::is_first(int32_t id) const {
+template <class T> T Bubble<T>::is_first(T id) const {
     if (get(id) == 0) {
         return true;
     } else {
@@ -124,7 +125,7 @@ int32_t Bubble::is_first(int32_t id) const {
 }
 
 
-int32_t Bubble::is_second(int32_t id) const {
+template <class T> T Bubble<T>::is_second(T id) const {
     if (get(id) == 1) {
         return true;
     } else {
@@ -135,24 +136,24 @@ int32_t Bubble::is_second(int32_t id) const {
 
 class BubbleGraph {
 public:
-    vector <Bubble> bubbles;
-    unordered_map <int32_t, int32_t> ref_id_to_bubble_id;
-    vector <vector<int32_t>> bubble_to_bubble;
-    unordered_set <pair<int32_t, int32_t>> bubble_pairs;
+    vector <Bubble <int32_t> > bubbles;
+    unordered_map <int32_t, int32_t> node_id_to_bubble_id;
+    vector <vector <int32_t> > bubble_to_bubble;
+    unordered_set <pair <int32_t, int32_t> > bubble_pairs;
 
     BubbleGraph();
     BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map);
     void write_bandage_csv(path output_path, const IncrementalIdMap <string>& id_map) const;
     void generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map);
     void generate_bubbles_from_shasta_names(IncrementalIdMap <string>& id_map);
-    void for_each_adjacent_bubble(int32_t b, const function<void(Bubble& bubble)>& f);
-    void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble& bubble)>& f) const;
-    void for_each_bubble_pair(const function<void(Bubble& b1, Bubble& b2)>& f);
-    void for_each_bubble_pair(const function<void(const Bubble& b1, const Bubble& b2)>& f) const;
+    void for_each_adjacent_bubble(int32_t b, const function<void(Bubble<int32_t>& bubble)>& f);
+    void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble<int32_t>& bubble)>& f) const;
+    void for_each_bubble_pair(const function<void(Bubble<int32_t>& b1, Bubble<int32_t>& b2)>& f);
+    void for_each_bubble_pair(const function<void(const Bubble<int32_t>& b1, const Bubble<int32_t>& b2)>& f) const;
     void get_phases(vector<bool>& bubble_phases) const;
     void set_phases(const vector<bool>& bubble_phases);
-    void at(size_t i, Bubble& b);
-    Bubble at(size_t i) const;
+    void at(size_t i, Bubble<int32_t>& b);
+    Bubble<int32_t> at(size_t i) const;
     void emplace(int32_t id1, int32_t id2, bool phase);
     int32_t find(int32_t id);
     void flip(size_t b);
@@ -162,7 +163,7 @@ public:
 
 BubbleGraph::BubbleGraph() :
         bubbles(),
-        ref_id_to_bubble_id(),
+        node_id_to_bubble_id(),
         bubble_to_bubble(),
         bubble_pairs() {}
 
@@ -170,7 +171,7 @@ BubbleGraph::BubbleGraph() :
 // Strictly adds ids to the id map if pairs (bubble sides) in the shasta convention (.0 or .1 suffix) are incomplete
 BubbleGraph::BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map) :
         bubbles(),
-        ref_id_to_bubble_id(),
+        node_id_to_bubble_id(),
         bubble_to_bubble(),
         bubble_pairs() {
     generate_bubbles_from_shasta_names(id_map);
@@ -215,28 +216,28 @@ void BubbleGraph::generate_bubble_adjacency_from_contact_map(const contact_map_t
 }
 
 
-void BubbleGraph::for_each_adjacent_bubble(int32_t b, const function<void(Bubble& bubble)>& f) {
+void BubbleGraph::for_each_adjacent_bubble(int32_t b, const function<void(Bubble<int32_t>& bubble)>& f) {
     for (auto& b_other: bubble_to_bubble[b]) {
         f(bubbles[b_other]);
     }
 }
 
 
-void BubbleGraph::for_each_adjacent_bubble(int32_t b, const function<void(const Bubble& bubble)>& f) const {
+void BubbleGraph::for_each_adjacent_bubble(int32_t b, const function<void(const Bubble<int32_t>& bubble)>& f) const {
     for (const auto& b_other: bubble_to_bubble[b]) {
         f(bubbles[b_other]);
     }
 }
 
 
-void BubbleGraph::for_each_bubble_pair(const function<void(Bubble& b0, Bubble& b1)>& f) {
+void BubbleGraph::for_each_bubble_pair(const function<void(Bubble<int32_t>& b0, Bubble<int32_t>& b1)>& f) {
     for (auto& p: bubble_pairs) {
         f(bubbles[p.first], bubbles[p.second]);
     }
 }
 
 
-void BubbleGraph::for_each_bubble_pair(const function<void(const Bubble& b0, const Bubble& b1)>& f) const {
+void BubbleGraph::for_each_bubble_pair(const function<void(const Bubble<int32_t>& b0, const Bubble<int32_t>& b1)>& f) const {
     for (const auto& p: bubble_pairs) {
         f(bubbles[p.first], bubbles[p.second]);
     }
@@ -263,8 +264,8 @@ void BubbleGraph::write_bandage_csv(path output_path, const IncrementalIdMap <st
 
 
 void BubbleGraph::emplace(int32_t id1, int32_t id2, bool phase) {
-    ref_id_to_bubble_id[id1] = int32_t(bubbles.size());
-    ref_id_to_bubble_id[id2] = int32_t(bubbles.size());
+    node_id_to_bubble_id[id1] = int32_t(bubbles.size());
+    node_id_to_bubble_id[id2] = int32_t(bubbles.size());
     bubbles.emplace_back(id1, id2, phase);
 }
 
@@ -296,18 +297,18 @@ size_t BubbleGraph::size() const {
 }
 
 
-void BubbleGraph::at(size_t i, Bubble& b) {
+void BubbleGraph::at(size_t i, Bubble<int32_t>& b) {
     b = bubbles.at(i);
 }
 
 
-Bubble BubbleGraph::at(size_t i) const {
+Bubble<int32_t> BubbleGraph::at(size_t i) const {
     return bubbles.at(i);
 }
 
 
 int32_t BubbleGraph::find(int32_t id) {
-    return ref_id_to_bubble_id.at(id);
+    return node_id_to_bubble_id.at(id);
 }
 
 
@@ -316,7 +317,7 @@ void BubbleGraph::flip(size_t b) {
 }
 
 
-void BubbleGraph::generate_bubbles_from_shasta_names(IncrementalIdMap <string>& id_map) {
+void BubbleGraph::generate_bubbles_from_shasta_names(IncrementalIdMap<string>& id_map) {
     unordered_set <int32_t> visited;
 
     for (auto&[name, id]: id_map.ids) {
@@ -376,7 +377,7 @@ int64_t compute_total_consistency_score(
 ){
     int64_t score = 0;
 
-    bubbles.for_each_bubble_pair([&](const Bubble& b0, const Bubble& b1){
+    bubbles.for_each_bubble_pair([&](const Bubble<int32_t>& b0, const Bubble<int32_t>& b1){
         auto id0 = b0.get(0);
         auto id1 = b0.get(1);
 
@@ -428,7 +429,7 @@ int64_t compute_consistency_score(
     auto id0 = bubble.get(0);
     auto id1 = bubble.get(1);
 
-    bubbles.for_each_adjacent_bubble(int32_t(bubble_index), [&](const Bubble& other_bubble){
+    bubbles.for_each_adjacent_bubble(int32_t(bubble_index), [&](const Bubble<int32_t>& other_bubble){
         auto other_id0 = other_bubble.get(0);
         auto other_id1 = other_bubble.get(1);
 
