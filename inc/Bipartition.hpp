@@ -2,6 +2,7 @@
 #define GFASE_BIPARTITION_HPP
 
 #include "IncrementalIdMap.hpp"
+#include "BubbleGraph.hpp"
 
 #include "sparsepp/spp.h"
 
@@ -53,7 +54,7 @@ public:
     bool get_partition_of_subgraph(const size_t subgraph_index) const;
     void for_each_subgraph(const function<void(const HandleGraph& subgraph, size_t subgraph_index, bool partition)>& f) const;
     void follow_subgraph_edges(size_t subgraph_index, bool go_left, const function<void(const handle_t& h)>& f);
-    void for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f);
+    void for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f) const;
     void for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f);
     nid_t get_id_of_parent_handle(const handle_t& h);
     nid_t get_id_of_parent_handle(const string& name);
@@ -68,6 +69,18 @@ public:
     void print() const;
     size_t size() const;
 };
+
+
+void generate_chain_critera(Bipartition& ploidy_bipartition, unordered_set<nid_t>& chain_nodes);
+
+void for_element_in_bubble_chain(
+        const Bipartition& chain_bipartition,
+        const HandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const BubbleGraph& bubble_graph,
+        const function<void(const vector<string>& node_names, size_t subgraph_index)>& f
+);
+
 
 }
 

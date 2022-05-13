@@ -17,8 +17,10 @@ using gfase::contact_map_t;
 
 using gfase::gfa_to_handle_graph;
 using gfase::IncrementalIdMap;
+using gfase::Bipartition;
 using gfase::BubbleGraph;
 using gfase::SamElement;
+using gfase::Bubble;
 
 using bdsg::HashGraph;
 
@@ -230,12 +232,13 @@ void write_contact_map(
 
 
 void write_config(
-        path output_path,
+        path output_dir,
         path sam_path,
         string required_prefix,
         int8_t min_mapq,
         size_t n_threads){
 
+    path output_path = output_dir / "config.csv";
     ofstream file(output_path);
 
     if (not file.is_open() or not file.good()){
@@ -244,12 +247,320 @@ void write_config(
 
     file << "sam_path" << ',' << sam_path << '\n';
     file << "required_prefix" << ',' << required_prefix << '\n';
-    file << "min_mapq" << ',' << min_mapq << '\n';
+    file << "min_mapq" << ',' << int(min_mapq) << '\n';
     file << "n_threads" << ',' << n_threads << '\n';
 }
 
 
-void phase_hic(path output_dir, path sam_path, string required_prefix, int8_t min_mapq, size_t n_threads){
+void generate_ploidy_criteria_from_bubble_graph(
+        const PathHandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const BubbleGraph& bubble_graph,
+        unordered_set<nid_t>& diploid_nodes
+){
+
+    bubble_graph.for_each_node_id([&](const int32_t id){
+        // Node names for haplotypes should match the paths that they were created from
+        auto name = id_map.get_name(id);
+
+        // Add diploid nodes to the set
+        diploid_nodes.emplace(id);
+
+        return true;
+    });
+}
+
+
+void merge_diploid_singletons(const BubbleGraph& bubble_graph, Bipartition& chain_bipartition){
+    unordered_set <pair <size_t,size_t> > to_be_merged;
+
+    chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+
+        // Look for phaseable subgraphs only (they contain at least one diploid node) and size == 1 (singleton)
+        if (chain_bipartition.get_partition_of_subgraph(subgraph_index) == 0 and chain_bipartition.get_subgraph_size(subgraph_index) == 1){
+            nid_t singleton_id;
+            string singleton_name;
+
+            chain_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h){
+                singleton_id = chain_bipartition.get_id_of_parent_handle(h);
+                singleton_name = chain_bipartition.get_name_of_parent_node(singleton_id);
+            });
+
+            // Find other diploid node and verify is also singleton
+            nid_t other_id = bubble_graph.get_other_side(int32_t(singleton_id));
+
+            auto other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
+
+            // Use a defined ordering of singleton pairs to keep track of which have been visited
+            to_be_merged.emplace(min(subgraph_index,other_subgraph_index), max(subgraph_index,other_subgraph_index));
+        }
+    });
+
+    for (auto& item: to_be_merged){
+        chain_bipartition.merge_subgraphs(item.first, item.second);
+    }
+}
+
+
+void write_chaining_info_to_file(
+        path output_dir,
+        const Bipartition& ploidy_bipartition,
+        const Bipartition& chain_bipartition,
+        const PathHandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const string& filename_prefix,
+        size_t component_index
+        ){
+
+    size_t c = component_index;
+
+    path file_path = output_dir / "components" / to_string(c) / (filename_prefix + ".gfa");
+    ofstream file(file_path);
+    handle_graph_to_gfa(graph, id_map, file);
+
+    path test_gfa_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph.gfa");
+    ofstream test_gfa_chain(test_gfa_chain_path);
+
+    if (not test_gfa_chain.is_open() or not test_gfa_chain.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_gfa_chain_path.string());
+    }
+    handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
+
+    path test_csv_meta_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph.csv");
+    ofstream test_csv_meta_chain(test_csv_meta_chain_path);
+
+    if (not test_csv_meta_chain.is_open() or not test_csv_meta_chain.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_csv_meta_chain_path.string());
+    }
+    chain_bipartition.write_meta_graph_csv(test_csv_meta_chain);
+
+    path test_csv_parent_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_parent_graph.csv");
+    ofstream test_csv_parent_chain(test_csv_parent_chain_path);
+
+    if (not test_csv_parent_chain.is_open() or not test_csv_parent_chain.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_csv_parent_chain_path.string());
+    }
+    chain_bipartition.write_parent_graph_csv(test_csv_parent_chain);
+
+    path test_gfa_chain_merged_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph_merged.gfa");
+    ofstream test_gfa_chain_merged(test_gfa_chain_merged_path);
+
+    if (not test_gfa_chain_merged.is_open() or not test_gfa_chain_merged.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_gfa_chain_merged_path.string());
+    }
+    handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged);
+
+    path test_csv_meta_chain_merged_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph_merged.csv");
+    ofstream test_csv_meta_chain_merged(test_csv_meta_chain_merged_path);
+
+    if (not test_csv_meta_chain_merged.is_open() or not test_csv_meta_chain_merged.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_csv_meta_chain_merged_path.string());
+    }
+    chain_bipartition.write_meta_graph_csv(test_csv_meta_chain_merged);
+
+    path test_csv_parent_chain_merged_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_parent_graph_merged.csv");
+    ofstream test_csv_parent_chain_merged(test_csv_parent_chain_merged_path);
+
+    if (not test_csv_parent_chain_merged.is_open() or not test_csv_parent_chain_merged.good()){
+        throw runtime_error("ERROR: could not write to file: " + test_csv_parent_chain_merged_path.string());
+    }
+    chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
+}
+
+
+void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const BubbleGraph& bubble_graph, path output_dir){
+    HashGraph graph;
+
+    // When assigning IDs to new nodes in the graph, gfa_to_handle should reuse existing ones, so there
+    // will be no conflicts in the BubbleGraph IDs and the graph IDs (as long as id_map is 1-based and size_t)
+    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+
+    vector<HashGraph> connected_components;
+    vector <IncrementalIdMap<string> > connected_component_ids;
+
+    cerr << "Finding connected components..." << '\n';
+
+    split_connected_components(graph, id_map, connected_components, true);
+
+    for (size_t c=0; c<connected_components.size(); c++){
+        unzip(connected_components[c], connected_component_ids[c], false);
+
+        auto& cc_graph = connected_components[c];
+
+        // Generate criteria for diploid node BFS
+        unordered_set<nid_t> diploid_nodes;
+        generate_ploidy_criteria_from_bubble_graph(cc_graph, id_map, bubble_graph, diploid_nodes);
+
+        Bipartition ploidy_bipartition(cc_graph, id_map, diploid_nodes);
+        ploidy_bipartition.partition();
+
+        // Generate criteria for node-chaining BFS
+        unordered_set<nid_t> chain_nodes;
+        generate_chain_critera(ploidy_bipartition, chain_nodes);
+
+        Bipartition chain_bipartition(cc_graph, id_map, chain_nodes);
+        chain_bipartition.partition();
+
+        create_directories(output_dir / "components" / to_string(c));
+
+        unordered_set<string> phase_0_node_names;
+        unordered_set<string> phase_1_node_names;
+
+        merge_diploid_singletons(bubble_graph, chain_bipartition);
+
+        string filename_prefix = "component_" + to_string(c) + "_";
+
+        path test_gfa_meta_path = output_dir / "components" / to_string(c) / (filename_prefix + "ploidy_metagraph.gfa");
+        ofstream test_gfa_meta(test_gfa_meta_path);
+
+        if (not test_gfa_meta.is_open() or not test_gfa_meta.good()){
+            throw runtime_error("ERROR: could not write to file: " + test_gfa_meta_path.string());
+        }
+        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
+
+        path test_csv_meta_ploidy_path = output_dir / "components" / to_string(c) / (filename_prefix + "ploidy_metagraph.csv");
+        ofstream test_csv_meta_ploidy(test_csv_meta_ploidy_path);
+
+        if (not test_csv_meta_ploidy.is_open() or not test_csv_meta_ploidy.good()){
+            throw runtime_error("ERROR: could not write to file: " + test_csv_meta_ploidy_path.string());
+        }
+        ploidy_bipartition.write_meta_graph_csv(test_csv_meta_ploidy);
+
+        path test_csv_parent_ploidy_path = output_dir / "components" / to_string(c) / (filename_prefix + "ploidy_parent_graph.csv");
+        ofstream test_csv_parent_ploidy(test_csv_parent_ploidy_path);
+
+        if (not test_csv_parent_ploidy.is_open() or not test_csv_parent_ploidy.good()){
+            throw runtime_error("ERROR: could not write to file: " + test_csv_parent_ploidy_path.string());
+        }
+        ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
+
+        write_chaining_info_to_file(output_dir, ploidy_bipartition, chain_bipartition, cc_graph, id_map, filename_prefix, c);
+
+        path_handle_t phase_0_path;
+        path_handle_t phase_1_path;
+
+        ofstream maternal_fasta(output_dir / "maternal.fasta");
+        ofstream paternal_fasta(output_dir / "paternal.fasta");
+        ofstream unphased_initial_fasta(output_dir / "unphased_initial.fasta");
+        ofstream unphased_fasta(output_dir / "unphased.fasta");
+
+        path provenance_output_path = "phase_chains.csv";
+        ofstream provenance_csv_file(provenance_output_path);
+
+        if (not (maternal_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        }
+
+        if (not (paternal_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        }
+
+        if (not (unphased_initial_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        }
+
+        if (not (unphased_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        }
+
+        if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        }
+
+        provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
+
+        vector <vector <handle_t> > unphased_handles_per_component(connected_components.size());
+
+        string component_path_prefix = to_string(c);
+        auto prev_subgraph_index = numeric_limits<size_t>::max();
+        for_element_in_bubble_chain(
+                chain_bipartition,
+                cc_graph,
+                id_map,
+                bubble_graph,
+                [&](const vector<string>& node_names, size_t subgraph_index){
+
+                    if (subgraph_index != prev_subgraph_index){
+                        string path_prefix = component_path_prefix + '.' + to_string(subgraph_index);
+
+                        string phase_0_path_name = path_prefix + ".0";
+                        string phase_1_path_name = path_prefix + ".1";
+
+                        phase_0_path = cc_graph.create_path_handle(phase_0_path_name);
+                        phase_1_path = cc_graph.create_path_handle(phase_1_path_name);
+
+                        phase_0_node_names.emplace(phase_0_path_name);
+                        phase_1_node_names.emplace(phase_1_path_name);
+                    }
+
+                    // If there's only one node in the element, then it must be in-between bubbles
+                    if (node_names.size() == 1){
+                        auto node = cc_graph.get_handle(id_map.get_id(node_names[0]));
+
+                        cc_graph.append_step(phase_0_path, node);
+                        cc_graph.append_step(phase_1_path, node);
+                    }
+                        // If there are 2 nodes then it must be a bubble
+                    else{
+                        auto& name_a = node_names[0];
+                        auto& name_b = node_names[1];
+
+                        auto id_a = id_map.get_id(name_a);
+                        auto id_b = id_map.get_id(name_b);
+
+                        auto b = bubble_graph.get_bubble_of_node(int32_t(id_a));
+
+                        auto node_a = cc_graph.get_handle(id_a);
+                        auto node_b = cc_graph.get_handle(id_b);
+
+                        // Choose the more supported orientation, defaulting to "forward orientation" if equal
+                        if (b.phase == 0){
+                            cc_graph.append_step(phase_0_path, node_a);
+                            cc_graph.append_step(phase_1_path, node_b);
+                        }
+                        else{
+                            cc_graph.append_step(phase_1_path, node_a);
+                            cc_graph.append_step(phase_0_path, node_b);
+                        }
+                    }
+
+                    prev_subgraph_index = subgraph_index;
+                });
+
+        unzip(cc_graph, id_map, false);
+        write_paths_to_csv(cc_graph, id_map, provenance_csv_file);
+
+        path test_gfa_phased_path = output_dir / "components" / to_string(c) / (filename_prefix + "phased.gfa");
+        ofstream test_gfa_phased(test_gfa_phased_path);
+        if (not test_gfa_phased.is_open() or not test_gfa_phased.good()){
+            throw runtime_error("ERROR: could not write to file: " + test_gfa_phased_path.string());
+        }
+
+        handle_graph_to_gfa(cc_graph, id_map, test_gfa_phased);
+
+        cc_graph.for_each_handle([&](const handle_t& h){
+            auto id = cc_graph.get_id(h);
+            auto name = id_map.get_name(id);
+
+            if (phase_0_node_names.count(name) > 0){
+                maternal_fasta << '>' << name << '\n';
+                maternal_fasta << cc_graph.get_sequence(h) << '\n';
+            }
+            else if (phase_1_node_names.count(name) > 0){
+                paternal_fasta << '>' << name << '\n';
+                paternal_fasta << cc_graph.get_sequence(h) << '\n';
+            }
+            else {
+                unphased_initial_fasta << '>' << name << '\n';
+                unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
+                unphased_handles_per_component[c].emplace_back(h);
+            }
+        });
+    }
+}
+
+
+void phase_hic(path output_dir, path sam_path, path gfa_path, string required_prefix, int8_t min_mapq, size_t n_threads){
     if (exists(output_dir)){
         throw runtime_error("ERROR: output directory exists already");
     }
@@ -257,8 +568,10 @@ void phase_hic(path output_dir, path sam_path, string required_prefix, int8_t mi
         create_directories(output_dir);
     }
 
+    write_config(output_dir, sam_path, required_prefix, min_mapq, n_threads);
+
     // Id-to-name bimap for reference contigs
-    IncrementalIdMap<string> id_map(true);
+    IncrementalIdMap<string> id_map(false);
 
     // TODO: Load GFA first, and find a method for identifying haplotypic bubbles
     // TODO: in other words, stop relying on shasta conventions
@@ -304,118 +617,16 @@ void phase_hic(path output_dir, path sam_path, string required_prefix, int8_t mi
 
     write_contact_map(contacts_output_path, contact_map, id_map);
     bubble_graph.write_bandage_csv(phases_output_path, id_map);
-}
 
-
-void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const BubbleGraph& bubble_graph){
-    HashGraph graph;
-
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
-
-    vector<HashGraph> connected_components;
-    vector <IncrementalIdMap<string> > connected_component_ids;
-
-    cerr << "Finding connected components..." << '\n';
-
-    split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
-
-//    for (size_t c=0; c<connected_components.size(); c++){
-//        unzip(connected_components[c], connected_component_ids[c], false);
-//
-//        auto& cc_graph = connected_components[c];
-//        auto& cc_id_map = connected_component_ids[c];
-//
-//        // Generate criteria for diploid node BFS
-//        unordered_set<nid_t> diploid_nodes;
-//        generate_ploidy_critera(cc_graph, cc_id_map, diploid_names, diploid_nodes);
-//
-//        Bipartition ploidy_bipartition(cc_graph, cc_id_map, diploid_nodes);
-//        ploidy_bipartition.partition();
-//
-//        // Generate criteria for node-chaining BFS
-//        unordered_set<nid_t> chain_nodes;
-//        generate_chain_critera(ploidy_bipartition, chain_nodes);
-//
-//        Bipartition chain_bipartition(cc_graph, cc_id_map, chain_nodes);
-//        chain_bipartition.partition();
-//
-//        string filename_prefix = "component_" + to_string(c) + "_";
-//        ofstream file(filename_prefix + ".gfa");
-//        handle_graph_to_gfa(connected_components[c], connected_component_ids[c], file);
-//
-//        ofstream test_gfa_meta(filename_prefix + "ploidy_metagraph.gfa");
-//        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
-//
-//        ofstream test_csv_meta_ploidy(filename_prefix + "ploidy_metagraph.csv");
-//        ploidy_bipartition.write_meta_graph_csv(test_csv_meta_ploidy);
-//
-//        ofstream test_csv_parent_ploidy(filename_prefix + "ploidy_parent_graph.csv");
-//        ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
-//
-//        ofstream test_gfa_chain(filename_prefix + "chain_metagraph.gfa");
-//        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
-//
-//        ofstream test_csv_meta_chain(filename_prefix + "chain_metagraph.csv");
-//        chain_bipartition.write_meta_graph_csv(test_csv_meta_chain);
-//
-//        ofstream test_csv_parent_chain(filename_prefix + "chain_parent_graph.csv");
-//        chain_bipartition.write_parent_graph_csv(test_csv_parent_chain);
-//
-//        unordered_set<string> paternal_node_names;
-//        unordered_set<string> maternal_node_names;
-//
-//        merge_diploid_singletons(diploid_names, chain_bipartition);
-//
-//        ofstream test_gfa_chain_merged(filename_prefix + "chain_metagraph_merged.gfa");
-//        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged);
-//
-//        ofstream test_csv_meta_chain_merged(filename_prefix + "chain_metagraph_merged.csv");
-//        chain_bipartition.write_meta_graph_csv(test_csv_meta_chain_merged);
-//
-//        ofstream test_csv_parent_chain_merged(filename_prefix + "chain_parent_graph_merged.csv");
-//        chain_bipartition.write_parent_graph_csv(test_csv_parent_chain_merged);
-//
-//        string component_path_prefix = to_string(c);
-//        phase_chains<T,T2>(
-//                chain_bipartition,
-//                cc_graph,
-//                cc_id_map,
-//                diploid_path_names,
-//                ks,
-//                paternal_node_names,
-//                maternal_node_names,
-//                provenance_csv_file,
-//                component_path_prefix,
-//                path_delimiter);
-//
-//        ofstream test_gfa_phased(filename_prefix + "phased.gfa");
-//        handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
-//
-//        cc_graph.for_each_handle([&](const handle_t& h){
-//            auto id = cc_graph.get_id(h);
-//            auto name = cc_id_map.get_name(id);
-//
-//            if (maternal_node_names.count(name) > 0){
-//                maternal_fasta << '>' << name << '\n';
-//                maternal_fasta << cc_graph.get_sequence(h) << '\n';
-//            }
-//            else if (paternal_node_names.count(name) > 0){
-//                paternal_fasta << '>' << name << '\n';
-//                paternal_fasta << cc_graph.get_sequence(h) << '\n';
-//            }
-//            else {
-//                unphased_initial_fasta << '>' << name << '\n';
-//                unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
-//                unphased_handles_per_component[c].emplace_back(h);
-//            }
-//        });
-//    }
-
+    if (not gfa_path.empty()){
+        chain_phased_gfa(gfa_path, id_map, bubble_graph, output_dir);
+    }
 }
 
 
 int main (int argc, char* argv[]){
     path sam_path;
+    path gfa_path;
     path output_dir;
     string required_prefix;
     int8_t min_mapq = 0;
@@ -428,6 +639,11 @@ int main (int argc, char* argv[]){
             sam_path,
             "Path to SAM or BAM containing filtered, paired HiC reads")
             ->required();
+
+    app.add_option(
+            "-g,--gfa",
+            gfa_path,
+            "Path to GFA containing assembly graph to be phased");
 
     app.add_option(
             "-o,--output_dir",
@@ -452,7 +668,7 @@ int main (int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
-    phase_hic(output_dir, sam_path, required_prefix, min_mapq, n_threads);
+    phase_hic(output_dir, sam_path, gfa_path, required_prefix, min_mapq, n_threads);
 
     return 0;
 }

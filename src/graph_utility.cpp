@@ -491,6 +491,98 @@ void split_connected_components(
 }
 
 
+void split_connected_components(
+        MutablePathDeletableHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        bool delete_visited_components) {
+
+    unordered_set<nid_t> all_nodes;
+
+    graph.for_each_handle([&](const handle_t& h) {
+        auto n = graph.get_id(h);
+        all_nodes.emplace(n);
+    });
+
+    while (not all_nodes.empty()) {
+        graphs.emplace_back();
+
+        unordered_set<string> paths_to_be_copied;
+        unordered_set<nid_t> to_be_deleted;
+
+        auto start_node = *all_nodes.begin();
+
+        // Duplicate all the nodes
+        for_node_in_bfs(graph, start_node, [&](const handle_t& h) {
+            auto s = graph.get_sequence(h);
+            nid_t id = graph.get_id(h);
+
+            // Reuse the ID from the source graph, force the new graph to have the same ID
+            assert(not graphs.back().has_node(id));
+            graphs.back().create_handle(s, id);
+
+            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
+                paths_to_be_copied.emplace(graph.get_path_name(graph.get_path_handle_of_step(s)));
+            });
+
+            if (delete_visited_components) {
+                to_be_deleted.emplace(id);
+            }
+
+            if (id != start_node) {
+                all_nodes.erase(id);
+            }
+        });
+
+        // Duplicate all the edges
+        for_edge_in_bfs(graph, start_node, [&](const handle_t& handle_a, const handle_t& handle_b) {
+            nid_t id_a = graph.get_id(handle_a);
+            nid_t id_b = graph.get_id(handle_b);
+
+            bool reversal_a = graph.get_is_reverse(handle_a);
+            bool reversal_b = graph.get_is_reverse(handle_b);
+
+            auto other_handle_a = graphs.back().get_handle(id_a, reversal_a);
+            auto other_handle_b = graphs.back().get_handle(id_b, reversal_b);
+
+            assert(not graphs.back().has_edge(other_handle_a, other_handle_b));
+            graphs.back().create_edge(other_handle_a, other_handle_b);
+        });
+
+        // Duplicate all the paths
+        for (auto& path_name: paths_to_be_copied){
+            auto p = graph.get_path_handle(path_name);
+
+            assert(not graphs.back().has_path(path_name));
+            auto other_p = graphs.back().create_path_handle(path_name);
+
+            graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+                auto h = graph.get_handle_of_step(s);
+
+                nid_t id = graph.get_id(h);
+
+                auto other_h = graph.get_handle(id, graph.get_is_reverse(h));
+
+                graphs.back().append_step(other_p, other_h);
+            });
+        }
+
+        if (graphs.back().get_node_count() == 0){
+            throw runtime_error("connected component with start name " + id_map.get_name(start_node) + " creates empty graph");
+        }
+
+        all_nodes.erase(start_node);
+
+        if (delete_visited_components) {
+            for (auto& n: to_be_deleted) {
+                auto h = graph.get_handle(n);
+                graph.destroy_handle(h);
+            }
+        }
+    }
+}
+
+
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
@@ -809,7 +901,7 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         });
 
         // Label the new haplotype node using a path_name to indicate which path it is derived from
-        // TODO: track provenance, update id_map?
+        // TODO: track provenance?
         auto haplotype_path_handle = graph.create_path_handle(haplotype_path_name);
         graph.append_step(haplotype_path_handle, haplotype_handle);
     }

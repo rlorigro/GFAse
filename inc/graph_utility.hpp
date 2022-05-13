@@ -94,6 +94,12 @@ void split_connected_components(
         const unordered_set<nid_t>& do_not_visit,
         bool delete_visited_components);
 
+void split_connected_components(
+        MutablePathDeletableHandleGraph& graph,
+        IncrementalIdMap<string>& id_map,
+        vector<HashGraph>& graphs,
+        bool delete_visited_components);
+
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,

@@ -192,7 +192,7 @@ void Bipartition::follow_subgraph_edges(size_t subgraph_index, bool go_left, con
 }
 
 
-void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f){
+void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f) const{
     auto n = nid_t(subgraph_index);
     auto h = metagraph.get_handle(n, false);
 
@@ -332,6 +332,200 @@ void Bipartition::write_meta_graph_csv(ostream& file) const{
     });
 
     file << std::flush;
+}
+
+
+void generate_chain_critera(
+        Bipartition& ploidy_bipartition,
+        unordered_set<nid_t>& chain_nodes
+){
+    ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        // Find singletons
+        if (subgraph.get_node_count() == 1){
+            if (partition == 0){
+                subgraph.for_each_handle([&](const handle_t& h){
+                    chain_nodes.emplace(subgraph.get_id(h));
+                });
+            }
+            else{
+                // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
+                // subgraphs, by doing a two-edge walk right/left and left/right
+                unordered_set<size_t> second_degree_neighbors;
+
+                // Make sure it isn't possible to visit more than 2 phased bubble sides from this unphased node
+                unordered_set<size_t> left_first_degree_neighbors;
+                unordered_set<size_t> right_first_degree_neighbors;
+
+                ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
+                    auto id = ploidy_bipartition.get_id(h);
+                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
+
+                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
+                        left_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                    }
+
+                    ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
+                        auto id2 = ploidy_bipartition.get_id(h2);
+                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
+                        second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                    });
+                });
+
+                ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
+                    auto id = ploidy_bipartition.get_id(h);
+                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
+
+                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
+                        right_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                    }
+
+                    ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
+                        auto id2 = ploidy_bipartition.get_id(h2);
+                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
+                        second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                    });
+                });
+
+                // If there are no second degree neighbors, this unphased subgraph passes
+                if (second_degree_neighbors.size() == 1 and right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3){
+                    ploidy_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h) {
+                        chain_nodes.emplace(subgraph.get_id(h));
+                    });
+                }
+            }
+        }
+        else if(subgraph.get_node_count() == 0){
+            throw runtime_error("ERROR: subgraph in metagraph contains no nodes: " + to_string(subgraph_index));
+        }
+    });
+}
+
+
+void for_element_in_bubble_chain(
+        const Bipartition& chain_bipartition,
+        const HandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const BubbleGraph& bubble_graph,
+        const function<void(const vector<string>& node_names, size_t subgraph_index)>& f
+){
+
+    chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        cerr << subgraph_index << '\n';
+
+        // Skip unphased regions for now
+        if (partition == 1){
+            return;
+        }
+
+        queue <set <handle_t> > q;
+        set<nid_t> visited;
+        set<handle_t> next_nodes;
+
+        // Chain might terminate in an edge to another subgraph or in a dead end ("tip") so both need to be searched for
+        set<handle_t> left_tips;
+        set<handle_t> left_edge_nodes;
+
+        // Find tips
+        subgraph.for_each_handle([&](const handle_t& h){
+            // Check the parent graph for edges
+            if (graph.get_degree(h,true) == 0){
+                left_tips.emplace(h);
+            }
+        });
+
+        // Find edges to other subgraphs
+        chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
+            left_edge_nodes.emplace(h);
+            cerr << "queuing start node: " << id_map.get_name(graph.get_id(h)) << (graph.get_is_reverse(h) ? '-' : '+') << '\n';
+        });
+
+        // Make sure there are not both tips and edges
+        if (left_tips.empty() and not left_edge_nodes.empty()){
+            next_nodes = left_edge_nodes;
+        }
+        else if (not left_tips.empty() and left_edge_nodes.empty()){
+            next_nodes = left_tips;
+        }
+        else if (not left_tips.empty() and not left_edge_nodes.empty()){
+            throw runtime_error("ERROR: chain has left tips and left edge nodes (edges to other subgraph): " + to_string(subgraph_index));
+        }
+
+        // Initialize things for this chain
+        if (not next_nodes.empty() and subgraph.get_node_count() > 1){
+            q.emplace(next_nodes);
+        }
+
+        // Iterate each bubble or bridge and update the queue with the next nodes
+        while(not q.empty()){
+            auto& nodes = q.front();
+
+            if (nodes.size() == 1){
+                auto node = *nodes.begin();
+                auto id = subgraph.get_id(node);
+
+                // Verify not diploid by name
+                auto name = id_map.get_name(id);
+
+                // Single node elements in a chain should not be flagged as diploid
+                if (bubble_graph.node_is_bubble(int32_t(id))){
+                    throw runtime_error("ERROR: non-bubble in chain is flagged as diploid: " + name);
+                }
+                else {
+                    vector<string> n = {name};
+                    f(n, subgraph_index);
+                }
+            }
+            else if (nodes.size() == 2){
+                // Verify nodes are diploid counterparts to one another
+                auto& node_a = *nodes.begin();
+                auto& node_b = *(++nodes.begin());
+
+                auto id_a = subgraph.get_id(node_a);
+                auto id_b = subgraph.get_id(node_b);
+
+                auto name_a = id_map.get_name(id_a);
+                auto name_b = id_map.get_name(id_b);
+
+                if (not bubble_graph.node_is_bubble(int32_t(id_a))){
+                    throw runtime_error("ERROR: non diploid node in bubble of bubble chain: " + name_a);
+                }
+
+                if (bubble_graph.get_other_side(int32_t(id_a)) != id_b){
+                    throw runtime_error("ERROR: nodes in bubble are not labeled as diploid counterparts: " + name_a + "," + name_b);
+                }
+
+                vector<string> n = {name_a, name_b};
+                f(n, subgraph_index);
+            }
+            else{
+                cerr << "ERROR for subgraph_index: " << subgraph_index << " with nodes: " << '\n';
+                for (auto& h: nodes){
+                    cerr << '\t' << id_map.get_name(graph.get_id(h)) << '\n';
+                }
+                throw runtime_error("ERROR: diploid chain does not have 1 or 2 nodes in single position in chain");
+            }
+
+            // Find whatever comes next (if anything)
+            next_nodes.clear();
+            for (auto& node: nodes) {
+                subgraph.follow_edges(node, false, [&](const handle_t& h){
+                    auto h_id = subgraph.get_id(h);
+
+                    // Avoid adding self-looped or reversing nodes more than once to the queue
+                    if (visited.count(h_id) == 0) {
+                        next_nodes.emplace(h);
+                        visited.emplace(h_id);
+                    }
+                });
+            }
+
+            if (not next_nodes.empty()){
+                q.emplace(next_nodes);
+            }
+
+            q.pop();
+        }
+    });
 }
 
 

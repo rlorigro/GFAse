@@ -277,6 +277,10 @@ def main(input_paths, output_dir, genome_size, color_indexes):
 
     fig_path = os.path.join(output_dir, "ngx.png")
     pyplot.savefig(fig_path, dpi=200)
+
+    fig_path = os.path.join(output_dir, "ngx.pdf")
+    pyplot.savefig(fig_path, dpi=200)
+
     pyplot.close()
 
 
