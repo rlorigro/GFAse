@@ -384,6 +384,39 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
 
     cerr << "Chaining phased bubbles..." << '\n';
 
+    path phase_0_fasta_path = output_dir / "phase_0.fasta";
+    ofstream phase_0_fasta(phase_0_fasta_path);
+    path phase_1_fasta_path = output_dir / "phase_1.fasta";
+    ofstream phase_1_fasta(phase_1_fasta_path);
+    path unphased_initial_fasta_path = output_dir / "unphased_initial.fasta";
+    ofstream unphased_initial_fasta(unphased_initial_fasta_path);
+    path unphased_fasta_path = output_dir / "unphased.fasta";
+    ofstream unphased_fasta(unphased_fasta_path);
+    path provenance_csv_file_path = output_dir / "phase_chains.csv";
+    ofstream provenance_csv_file(provenance_csv_file_path);
+
+    if (not (phase_0_fasta.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
+    }
+
+    if (not (phase_1_fasta.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
+    }
+
+    if (not (unphased_initial_fasta.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
+    }
+
+    if (not (unphased_fasta.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
+    }
+
+    if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
+        throw runtime_error("ERROR: file could not be written: " + provenance_csv_file_path.string());
+    }
+
+    provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
+
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
 
@@ -440,39 +473,6 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
 
         path_handle_t phase_0_path;
         path_handle_t phase_1_path;
-
-        path phase_0_fasta_path = output_dir / "phase_0.fasta";
-        ofstream phase_0_fasta(phase_0_fasta_path);
-        path phase_1_fasta_path = output_dir / "phase_1.fasta";
-        ofstream phase_1_fasta(phase_1_fasta_path);
-        path unphased_initial_fasta_path = output_dir / "unphased_initial.fasta";
-        ofstream unphased_initial_fasta(unphased_initial_fasta_path);
-        path unphased_fasta_path = output_dir / "unphased.fasta";
-        ofstream unphased_fasta(unphased_fasta_path);
-        path provenance_csv_file_path = output_dir / "phase_chains.csv";
-        ofstream provenance_csv_file(provenance_csv_file_path);
-
-        if (not (phase_0_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
-        }
-
-        if (not (phase_1_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
-        }
-
-        if (not (unphased_initial_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
-        }
-
-        if (not (unphased_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
-        }
-
-        if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_csv_file_path.string());
-        }
-
-        provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
         vector <vector <handle_t> > unphased_handles_per_component(connected_components.size());
 
