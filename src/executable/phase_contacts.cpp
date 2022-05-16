@@ -547,15 +547,20 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
             auto id = cc_graph.get_id(h);
             auto name = id_map.get_name(id);
 
+            cerr << c << ' ' << id << ' ' << name;
+
             if (phase_0_node_names.count(name) > 0){
+                cerr << ' ' << '0' << '\n';
                 phase_0_fasta << '>' << name << '\n';
                 phase_0_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else if (phase_1_node_names.count(name) > 0){
+                cerr << ' ' << '1' << '\n';
                 phase_1_fasta << '>' << name << '\n';
                 phase_1_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
+                cerr << ' ' << "unphased" << '\n';
                 unphased_initial_fasta << '>' << name << '\n';
                 unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
                 unphased_handles_per_component[c].emplace_back(h);
