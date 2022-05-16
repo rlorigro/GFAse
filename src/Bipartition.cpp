@@ -410,8 +410,6 @@ void for_element_in_bubble_chain(
 ){
 
     chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-        cerr << subgraph_index << '\n';
-
         // Skip unphased regions for now
         if (partition == 1){
             return;
@@ -436,7 +434,7 @@ void for_element_in_bubble_chain(
         // Find edges to other subgraphs
         chain_bipartition.for_each_boundary_node_in_subgraph(subgraph_index, true, [&](const handle_t& h){
             left_edge_nodes.emplace(h);
-            cerr << "queuing start node: " << id_map.get_name(graph.get_id(h)) << (graph.get_is_reverse(h) ? '-' : '+') << '\n';
+//            cerr << "queuing start node: " << id_map.get_name(graph.get_id(h)) << (graph.get_is_reverse(h) ? '-' : '+') << '\n';
         });
 
         // Make sure there are not both tips and edges

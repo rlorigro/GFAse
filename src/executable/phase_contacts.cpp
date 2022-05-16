@@ -588,6 +588,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
 
+    cerr << "Loading alignments..." << '\n';
+
     if (sam_path.extension() == ".sam") {
         parse_unpaired_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
     }
@@ -600,8 +602,12 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     remove_singleton_reads(mappings);
 
+    cerr << "Generating contact map..." << '\n';
+
     // Build the contact map by iterating sets of alignments and creating edges in an all-by-all fashion within sets
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
+
+    cerr << "Constructing bubble graph..." << '\n';
 
     // TODO: replace name-based bubble finding with sketch or alignment-based
     // To keep track of pairs of segments which exist in diploid bubbles
@@ -616,6 +622,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
     string suffix3 = "s" + to_string(int(score));
+
+    cerr << "Writing phasing results to disk... " << '\n';
 
     path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
