@@ -382,6 +382,8 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
 
     split_connected_components(graph, id_map, connected_components, true);
 
+    cerr << "Chaining phased bubbles..." << '\n';
+
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
 
@@ -439,32 +441,35 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
         path_handle_t phase_0_path;
         path_handle_t phase_1_path;
 
-        ofstream maternal_fasta(output_dir / "maternal.fasta");
-        ofstream paternal_fasta(output_dir / "paternal.fasta");
-        ofstream unphased_initial_fasta(output_dir / "unphased_initial.fasta");
-        ofstream unphased_fasta(output_dir / "unphased.fasta");
+        path phase_0_fasta_path = output_dir / "phase_0.fasta";
+        ofstream phase_0_fasta(phase_0_fasta_path);
+        path phase_1_fasta_path = output_dir / "phase_1.fasta";
+        ofstream phase_1_fasta(phase_1_fasta_path);
+        path unphased_initial_fasta_path = output_dir / "unphased_initial.fasta";
+        ofstream unphased_initial_fasta(unphased_initial_fasta_path);
+        path unphased_fasta_path = output_dir / "unphased.fasta";
+        ofstream unphased_fasta(unphased_fasta_path);
+        path provenance_csv_file_path = output_dir / "phase_chains.csv";
+        ofstream provenance_csv_file(provenance_csv_file_path);
 
-        path provenance_output_path = "phase_chains.csv";
-        ofstream provenance_csv_file(provenance_output_path);
-
-        if (not (maternal_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        if (not (phase_0_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
         }
 
-        if (not (paternal_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+        if (not (phase_1_fasta.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
         }
 
         if (not (unphased_initial_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+            throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
         }
 
         if (not (unphased_fasta.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+            throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
         }
 
         if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
-            throw runtime_error("ERROR: file could not be written: " + provenance_output_path.string());
+            throw runtime_error("ERROR: file could not be written: " + provenance_csv_file_path.string());
         }
 
         provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
@@ -500,7 +505,7 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
                         cc_graph.append_step(phase_0_path, node);
                         cc_graph.append_step(phase_1_path, node);
                     }
-                        // If there are 2 nodes then it must be a bubble
+                    // If there are 2 nodes then it must be a bubble
                     else{
                         auto& name_a = node_names[0];
                         auto& name_b = node_names[1];
@@ -543,12 +548,12 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
             auto name = id_map.get_name(id);
 
             if (phase_0_node_names.count(name) > 0){
-                maternal_fasta << '>' << name << '\n';
-                maternal_fasta << cc_graph.get_sequence(h) << '\n';
+                phase_0_fasta << '>' << name << '\n';
+                phase_0_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else if (phase_1_node_names.count(name) > 0){
-                paternal_fasta << '>' << name << '\n';
-                paternal_fasta << cc_graph.get_sequence(h) << '\n';
+                phase_1_fasta << '>' << name << '\n';
+                phase_1_fasta << cc_graph.get_sequence(h) << '\n';
             }
             else {
                 unphased_initial_fasta << '>' << name << '\n';
@@ -595,9 +600,10 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     remove_singleton_reads(mappings);
 
-    // Build the contact map by iterating the pairs and creating edges in an all-by-all fashion between pairs
+    // Build the contact map by iterating sets of alignments and creating edges in an all-by-all fashion within sets
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
 
+    // TODO: replace name-based bubble finding with sketch or alignment-based
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph(id_map, contact_map);
 
