@@ -464,7 +464,7 @@ set(EXECUTABLES
         create_bandage_path_color_table
         extract_haplotype_kmers
         evaluate_phasing
-#        find_overlapping_alignments
+        find_bubbles
         get_mapq_distribution_from_sam
         get_degree_stats
         get_path_lengths
