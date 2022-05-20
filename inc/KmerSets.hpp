@@ -78,16 +78,16 @@ template <class T> class KmerSets {
 
 
 template <class T> KmerSets<T>::KmerSets():
-        path_delimiter('.'),
         num_paternal_kmers(0),
-        num_maternal_kmers(0)
+        num_maternal_kmers(0),
+        path_delimiter('.')
 {}
 
 
 template <class T> KmerSets<T>::KmerSets(path paternal_kmer_fa_path, path maternal_kmer_fa_path, char path_delimiter):
-        path_delimiter(path_delimiter),
         paternal_kmer_fa_path(paternal_kmer_fa_path),
-        maternal_kmer_fa_path(maternal_kmer_fa_path)
+        maternal_kmer_fa_path(maternal_kmer_fa_path),
+        path_delimiter(path_delimiter)
 {
     // Test files for hap1 and hap2 parents
     ifstream h1_test_stream(this->paternal_kmer_fa_path);
