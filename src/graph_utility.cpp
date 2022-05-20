@@ -597,7 +597,7 @@ void write_connected_components_to_gfas(
 
     size_t i = 0;
     while (not all_nodes.empty()) {
-        cerr << "NEW CONNECTED COMPONENT" << '\n';
+//        cerr << "NEW CONNECTED COMPONENT" << '\n';
         string filename_prefix = output_directory / ("component_" + to_string(i));
         ofstream file(filename_prefix + ".gfa");
 
@@ -882,7 +882,7 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         auto name = graph.get_path_name(p);
         string haplotype_path_name = name + temporary_suffix;
 
-        cerr << haplotype_path_name << '\n';
+//        cerr << haplotype_path_name << '\n';
 
         auto new_id = id_map.insert(name);
         handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);

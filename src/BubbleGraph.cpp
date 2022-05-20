@@ -485,7 +485,7 @@ void random_phase_search(
             bubbles.set_phases(best_phases);
         }
 
-        cerr << m << ' ' << best_score << ' ' << total_score << std::flush << '\n';
+//        cerr << m << ' ' << best_score << ' ' << total_score << std::flush << '\n';
         phase_mutex.unlock();
 
         m = job_index.fetch_add(1);

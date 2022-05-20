@@ -7,6 +7,7 @@
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
 //#include "sparsepp/spp.h"
+#include "Timer.hpp"
 #include "CLI11.hpp"
 #include "Sam.hpp"
 
@@ -21,6 +22,7 @@ using gfase::Bipartition;
 using gfase::BubbleGraph;
 using gfase::SamElement;
 using gfase::Bubble;
+using gfase::Timer;
 
 using bdsg::HashGraph;
 
@@ -573,6 +575,8 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
 
 
 void phase_hic(path output_dir, path sam_path, path gfa_path, string required_prefix, int8_t min_mapq, size_t n_threads){
+    Timer t;
+
     if (exists(output_dir)){
         throw runtime_error("ERROR: output directory exists already");
     }
@@ -595,7 +599,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
 
-    cerr << "Loading alignments..." << '\n';
+    cerr << t << "Loading alignments..." << '\n';
 
     if (sam_path.extension() == ".sam") {
         parse_unpaired_sam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
@@ -609,18 +613,18 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     remove_singleton_reads(mappings);
 
-    cerr << "Generating contact map..." << '\n';
+    cerr << t << "Generating contact map..." << '\n';
 
     // Build the contact map by iterating sets of alignments and creating edges in an all-by-all fashion within sets
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
 
-    cerr << "Constructing bubble graph..." << '\n';
+    cerr << t << "Constructing bubble graph..." << '\n';
 
     // TODO: replace name-based bubble finding with sketch or alignment-based
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph(id_map, contact_map);
 
-    cerr << "Phasing " << bubble_graph.size() << " bubbles" << '\n';
+    cerr << t << "Phasing " << bubble_graph.size() << " bubbles" << '\n';
 
     phase_contacts(contact_map, id_map, bubble_graph, n_threads);
 
@@ -630,7 +634,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     string suffix2 = "m" + to_string(int(min_mapq));
     string suffix3 = "s" + to_string(int(score));
 
-    cerr << "Writing phasing results to disk... " << '\n';
+    cerr << t << "Writing phasing results to disk... " << '\n';
 
     path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
@@ -642,6 +646,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     if (not gfa_path.empty()){
         chain_phased_gfa(gfa_path, id_map, bubble_graph, output_dir);
     }
+
+    cerr << t << "Done" << '\n';
 }
 
 

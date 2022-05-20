@@ -67,6 +67,7 @@ set(SOURCES
         src/Phase.cpp
         src/PhaseAssign.cpp
         src/Sam.cpp
+        src/Timer.cpp
         )
 
 
@@ -438,6 +439,7 @@ set(TESTS
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
         test_set_intersection
+        test_timer
 )
 
 foreach(FILENAME_PREFIX ${TESTS})
