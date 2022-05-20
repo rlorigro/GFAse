@@ -280,6 +280,42 @@ void BubbleGraph::generate_bubbles_from_shasta_names(IncrementalIdMap<string>& i
 }
 
 
+void BubbleGraph::add_bubble(int32_t node_id_a, int32_t node_id_b){
+    if (node_id_to_bubble_id.count(node_id_a) != 0){
+        throw runtime_error("ERROR: cannot add node id to bubble graph twice: " + to_string(node_id_a));
+    }
+    if (node_id_to_bubble_id.count(node_id_b) != 0){
+        throw runtime_error("ERROR: cannot add node id to bubble graph twice: " + to_string(node_id_b));
+    }
+
+    emplace(node_id_a, node_id_b, 0);
+}
+
+
+int32_t BubbleGraph::try_add_bubble(int32_t node_id_a, int32_t node_id_b){
+    auto a_result = node_id_to_bubble_id.find(node_id_a);
+    auto b_result = node_id_to_bubble_id.find(node_id_b);
+
+    bool a_found = a_result != node_id_to_bubble_id.end();
+    bool b_found = b_result != node_id_to_bubble_id.end();
+
+    int32_t bubble_id = -1;
+
+    if (not a_found and not b_found){
+        bubble_id = int32_t(bubbles.size());
+        emplace(node_id_a, node_id_b, 0);
+    }
+    else if (a_found and b_found){
+        bubble_id = a_result->second;
+    }
+    else{
+        throw runtime_error("ERROR: attempt to create bubble with 1 of 2 IDs that belongs to another bubble: " + (a_found ? to_string(node_id_a) : to_string(node_id_b)));
+    }
+
+    return bubble_id;
+}
+
+
 void generate_adjacency_matrix(
         const BubbleGraph& bubbles,
         const contact_map_t& contact_map,

@@ -129,10 +129,10 @@ void parse_unpaired_bam_file(
 
     auto reference_data = reader.GetReferenceData();
 
-    BamAlignment e;
+    BamAlignment a;
     size_t l = 0;
 
-    while (reader.GetNextAlignment(e) ) {
+    while (reader.GetNextAlignment(a) ) {
 //        cerr << "e.Name" << ' ' << e.Name << '\n';
 //        cerr << "e.RefID" << ' ' << e.RefID << '\n';
 //        cerr << "int32_t(l)" << ' ' << int32_t(l) << '\n';
@@ -140,7 +140,12 @@ void parse_unpaired_bam_file(
 //        cerr << "int8_t(e.MapQuality)" << ' ' << int(e.MapQuality) << '\n';
 //        cerr << '\n';
 
-        auto& ref_name = reference_data.at(e.RefID).RefName;
+        // No information about reference contig, this alignment is unusable
+        if (a.RefID < 0 or a.RefID > reference_data.size()){
+            continue;
+        }
+
+        auto& ref_name = reference_data.at(a.RefID).RefName;
 
         bool valid_prefix = true;
         if (not required_prefix.empty()){
@@ -155,9 +160,9 @@ void parse_unpaired_bam_file(
         if (valid_prefix) {
             id_map.try_insert(ref_name);
 
-            if (e.MapQuality >= min_mapq and e.IsPrimaryAlignment()) {
-                SamElement s(e.Name, ref_name, int32_t(l), int16_t(e.AlignmentFlag), int8_t(e.MapQuality));
-                mappings[e.Name].emplace(s);
+            if (a.MapQuality >= min_mapq and a.IsPrimaryAlignment()) {
+                SamElement s(a.Name, ref_name, int32_t(l), int16_t(a.AlignmentFlag), int8_t(a.MapQuality));
+                mappings[a.Name].emplace(s);
             }
         }
 
@@ -513,20 +518,22 @@ void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const Bub
                         auto id_a = id_map.get_id(name_a);
                         auto id_b = id_map.get_id(name_b);
 
-                        auto b = bubble_graph.get_bubble_of_node(int32_t(id_a));
-
-                        auto node_a = cc_graph.get_handle(id_a);
-                        auto node_b = cc_graph.get_handle(id_b);
-
-                        // Choose the more supported orientation, defaulting to "forward orientation" if equal
-                        if (b.phase == 0){
-                            cc_graph.append_step(phase_0_path, node_a);
-                            cc_graph.append_step(phase_1_path, node_b);
+                        if (bubble_graph.find_bubble_id_of_node(int32_t(id_a)) != bubble_graph.find_bubble_id_of_node(int32_t(id_b))){
+                            throw runtime_error("ERROR: nodes in diploid portion of chain are not of same bubble in bubble graph: " + (name_a + ',' + name_b));
                         }
-                        else{
-                            cc_graph.append_step(phase_1_path, node_a);
-                            cc_graph.append_step(phase_0_path, node_b);
-                        }
+
+                        // Only need one id to reach the corresponding bubble
+                        auto bubble = bubble_graph.get_bubble_of_node(int32_t(id_a));
+
+                        nid_t id_0 = bubble.first();
+                        nid_t id_1 = bubble.second();
+
+                        auto node_0 = cc_graph.get_handle(id_0);
+                        auto node_1 = cc_graph.get_handle(id_1);
+
+                        // Choose orientation supported by hi-c linkage (decided already, during phasing)
+                        cc_graph.append_step(phase_0_path, node_0);
+                        cc_graph.append_step(phase_1_path, node_1);
                     }
 
                     prev_subgraph_index = subgraph_index;

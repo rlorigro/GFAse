@@ -44,6 +44,7 @@ public:
     T get_other(T id) const;
     T is_first(T id) const;
     T is_second(T id) const;
+    bool contains_id(T id) const;
 };
 
 
@@ -102,7 +103,7 @@ template <class T> T Bubble<T>::get(bool side) const {
 
 
 template <class T> T Bubble<T>::is_first(T id) const {
-    if (get(id) == 0) {
+    if (get(0) == id) {
         return true;
     } else {
         return false;
@@ -111,11 +112,26 @@ template <class T> T Bubble<T>::is_first(T id) const {
 
 
 template <class T> T Bubble<T>::is_second(T id) const {
-    if (get(id) == 1) {
+    if (get(1) == id) {
         return true;
     } else {
         return false;
     }
+}
+
+
+template <class T> bool Bubble<T>::contains_id(T id) const {
+    bool success = false;
+
+    if (get(id) == 0) {
+        success = true;
+    }
+
+    if (get(id) == 1) {
+        success = true;
+    }
+
+    return success;
 }
 
 
@@ -127,7 +143,10 @@ private:
     vector <vector <int32_t> > bubble_to_bubble;
 
     // Additional storage of edges so that they can be iterated quickly/uniquely
+    // TODO: understand warning associated with realloc of pair type in sparsepp::sparse_hash_set
     sparse_hash_set <pair <int32_t, int32_t> > bubble_edges;
+
+    void emplace(int32_t id1, int32_t id2, bool phase);
 
 public:
     BubbleGraph();
@@ -139,12 +158,13 @@ public:
     void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble<int32_t>& bubble)>& f) const;
     void for_each_bubble_edge(const function<void(Bubble<int32_t>& b1, Bubble<int32_t>& b2)>& f);
     void for_each_bubble_edge(const function<void(const Bubble<int32_t>& b1, const Bubble<int32_t>& b2)>& f) const;
+    void add_bubble(int32_t node_id_a, int32_t node_id_b);
+    int32_t try_add_bubble(int32_t node_id_a, int32_t node_id_b);
     void get_phases(vector<bool>& bubble_phases) const;
     void set_phases(const vector<bool>& bubble_phases);
     void at(size_t i, Bubble<int32_t>& b);
     Bubble<int32_t> at(size_t i) const;
     void for_each_node_id(const function<void(const int32_t id)>& f) const;
-    void emplace(int32_t id1, int32_t id2, bool phase);
     Bubble<int32_t> get_bubble_of_node(int32_t node_id) const;
     int32_t find_bubble_id_of_node(int32_t node_id) const;
     int32_t get_other_side(int32_t node_id) const;
