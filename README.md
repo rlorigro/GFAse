@@ -38,7 +38,7 @@ A BAM file containing alignments of Hi-C data to the assembly contigs is require
 -t 46
 ```
 
-![image](https://user-images.githubusercontent.com/28764332/169711633-7fff24b7-68e7-4b2b-89ea-1459ee964ede.png)
+![image](https://user-images.githubusercontent.com/28764332/169711948-651feac3-2f53-4a71-9608-913a09b215b4.png)
 Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>2) will save loading time. 
 
 
@@ -51,6 +51,8 @@ A list of unique parental (separated into maternal/paternal fastas) kmers is req
 -m /home/ubuntu/data/human/kmer/hg04.54_61.unique.k31.fa \
 -k 31
 ```
+![image](https://user-images.githubusercontent.com/28764332/169711827-7f84d3c6-51e8-465d-9620-f2da047a15a1.png)
+
 
 ## Example output
 
