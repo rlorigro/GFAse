@@ -66,6 +66,6 @@ The plot below shows phase assignment of bubbles w.r.t. a diploid reference alig
 A recent ultra-long nanopore Shasta assembly with high phase-block contiguity after k-mer phasing (NG50 = 33.1Mbp)
 ![HG002_UL_Shasta_Phased_maternal_ideogram](https://user-images.githubusercontent.com/28764332/169709071-0d3696c2-8ffb-4cbd-b7af-4dd73ad83734.png)
 
-Three examples of shifts in NGx in Shasta assemblies after applying GFAse with k-mers. Note that initial contiguity is not necessarily a predictor of phased contiguity.
+Three examples of shifts in NGx in Shasta assemblies after applying GFAse with k-mers. Note that initial phased contiguity in Shasta is not necessarily a predictor of phased contiguity after GFAse.
 ![image](https://user-images.githubusercontent.com/28764332/169709283-db012bc4-5fc7-4eee-9901-59fe83293fd6.png)
 
