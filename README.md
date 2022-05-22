@@ -38,7 +38,8 @@ A BAM file containing alignments of Hi-C data to the assembly contigs is require
 -t 46
 ```
 
-![image](https://user-images.githubusercontent.com/28764332/169709430-4bac6bbd-441a-4cf6-91cb-a54041679a81.png)
+![image](https://user-images.githubusercontent.com/28764332/169711633-7fff24b7-68e7-4b2b-89ea-1459ee964ede.png)
+Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>2) will save loading time. 
 
 
 ### Phase with parental k-mers
