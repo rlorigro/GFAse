@@ -31,6 +31,10 @@ using std::cout;
 using std::cerr;
 
 
+void for_each_two_hop_neighbor(){
+
+}
+
 
 void find_bubbles_in_gfa(path output_dir, path gfa_path){
     if (exists(output_dir)){
@@ -50,11 +54,10 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
     graph.for_each_handle([&](const handle_t& h0) {
         auto id0 = graph.get_id(h0);
 
-        // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
-        // subgraphs, by doing a two-edge walk right/left and left/right
-        unordered_set<nid_t> second_degree_neighbors;
+        // Do a two-edge walk right/left and left/right
+        unordered_set<nid_t> left_second_degree_neighbors;
+        unordered_set<nid_t> right_second_degree_neighbors;
 
-        // Make sure it isn't possible to visit more than 2 phased bubble sides from this unphased node
         unordered_set<nid_t> left_first_degree_neighbors;
         unordered_set<nid_t> right_first_degree_neighbors;
 
@@ -66,7 +69,7 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
                 auto id2 = graph.get_id(h2);
 
                 if (id0 != id2) {
-                    second_degree_neighbors.emplace(id2);
+                    left_second_degree_neighbors.emplace(id2);
                 }
             });
         });
@@ -79,23 +82,52 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
                 auto id2 = graph.get_id(h2);
 
                 if (id0 != id2) {
-                    second_degree_neighbors.emplace(id2);
+                    right_second_degree_neighbors.emplace(id2);
                 }
             });
         });
 
-        int32_t result = -1;
-
-        // If there are no second degree neighbors, this unphased subgraph passes
-        if (second_degree_neighbors.size() == 1 and right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3){
-            auto id_a = graph.get_id(h0);
-            auto id_b = graph.get_id(graph.get_handle(*second_degree_neighbors.begin()));
-
-            result = bubble_graph.try_add_bubble(int32_t(id_a), int32_t(id_b));
+        cerr << '\n';
+        cerr << "left" << '\n';
+        for (auto& id: left_first_degree_neighbors){
+            cerr << id << ' ' << id_map.get_name(id) << '\n';
+        }
+        cerr << "right" << '\n';
+        for (auto& id: right_first_degree_neighbors){
+            cerr << id << ' ' << id_map.get_name(id) << '\n';
+        }
+        cerr << "left-right neighbors" << '\n';
+        for (auto& id: left_second_degree_neighbors){
+            cerr << id << ' ' << id_map.get_name(id) << '\n';
+        }
+        cerr << "right-left neighbors" << '\n';
+        for (auto& id: right_second_degree_neighbors){
+            cerr << id << ' ' << id_map.get_name(id) << '\n';
         }
 
-        cerr << id_map.get_name(graph.get_id(h0)) << ' ' <<  left_first_degree_neighbors.size() << ' ' <<  right_first_degree_neighbors.size() << ' ' << second_degree_neighbors.size() << ' ' << result << '\n';
+        int32_t result = -1;
 
+        bool is_symmetrical_bubble = (right_second_degree_neighbors == left_second_degree_neighbors);
+        bool is_diploid_bubble = (right_second_degree_neighbors.size() == 1);
+        bool is_chainable = (right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3);
+
+        // If there are no second degree neighbors, this unphased subgraph passes
+        if (is_symmetrical_bubble and is_diploid_bubble and is_chainable){
+            auto id_a = graph.get_id(h0);
+            auto id_b = graph.get_id(graph.get_handle(*left_second_degree_neighbors.begin()));
+
+            try {
+                result = bubble_graph.try_add_bubble(int32_t(id_a), int32_t(id_b));
+            }
+            catch (exception& e){
+                cerr << e.what() << '\n';
+                cerr << "a: " << id_a << ',' << id_map.get_name(id_b) << '\n';
+                cerr << "b: " << id_b << ',' << id_map.get_name(id_b) << '\n';
+                throw runtime_error("");
+            }
+        }
+
+        cerr << id_map.get_name(graph.get_id(h0)) << ' ' <<  left_first_degree_neighbors.size() << ' ' <<  right_first_degree_neighbors.size() << ' ' << left_second_degree_neighbors.size() << ' ' << right_second_degree_neighbors.size() << ' ' << result << '\n';
     });
 
     path output_path = output_dir / "bubbles.csv";
