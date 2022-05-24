@@ -1,10 +1,14 @@
 #include "Filesystem.hpp"
+#include "BamReader.h"
 #include "CLI11.hpp"
 #include "Sam.hpp"
 
 using gfase::for_element_in_sam_file;
-using ghc::filesystem::path;
 using gfase::SamElement;
+
+using BamTools::BamReader;
+using BamTools::BamAlignment;
+using ghc::filesystem::path;
 using CLI::App;
 
 #include <stdexcept>
@@ -22,11 +26,37 @@ using std::map;
 void get_mapq_distribution(path sam_path){
     map<int8_t,size_t> distribution;
 
-    for_element_in_sam_file(sam_path, [&](SamElement& e){
-        if (not e.is_not_primary()) {
-            distribution[e.mapq]++;
+    if (sam_path.extension() == ".sam") {
+        for_element_in_sam_file(sam_path, [&](SamElement& e) {
+            if (not e.is_not_primary()) {
+                distribution[e.mapq]++;
+            }
+        });
+    }
+    else if (sam_path.extension() == ".bam"){
+        BamReader reader;
+
+        if (!reader.Open(sam_path) ) {
+            throw std::runtime_error("ERROR: could not read BAM file: " + sam_path.string());
         }
-    });
+
+        BamAlignment a;
+        size_t l = 0;
+
+        while (reader.GetNextAlignment(a) ) {
+            // No information about reference contig, this alignment is unusable
+            if (a.RefID < 0){
+                continue;
+            }
+
+            distribution[int8_t(a.MapQuality)]++;
+
+            l++;
+        }
+    }
+    else{
+        throw runtime_error("ERROR: file format not bam or sam: " + sam_path.string());
+    }
 
     path output_path = sam_path;
     output_path.replace_extension("mapq_distribution.csv");
