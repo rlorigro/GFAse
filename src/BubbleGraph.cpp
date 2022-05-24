@@ -1,4 +1,5 @@
 #include "BubbleGraph.hpp"
+#include "handle_graph.hpp"
 #include "bdsg/internal/hash_map.hpp"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
@@ -10,6 +11,9 @@ using gfase::for_element_in_sam_file;
 using gfase::IncrementalIdMap;
 using gfase::SamElement;
 
+using handlegraph::HandleGraph;
+using handlegraph::handle_t;
+using handlegraph::nid_t;
 using ghc::filesystem::path;
 using spp::sparse_hash_map;
 
@@ -83,6 +87,61 @@ void BubbleGraph::for_each_node_id(const function<void(const int32_t id)>& f) co
     for (const auto& [node_id, bubble_id]: node_id_to_bubble_id){
         f(node_id);
     }
+}
+
+
+void BubbleGraph::generate_diploid_symmetrical_bubbles_from_graph(const HandleGraph& graph){
+    graph.for_each_handle([&](const handle_t& h0) {
+        auto id0 = graph.get_id(h0);
+
+        // Do a two-edge walk right/left and left/right
+        unordered_set<nid_t> left_second_degree_neighbors;
+        unordered_set<nid_t> right_second_degree_neighbors;
+
+        unordered_set<nid_t> left_first_degree_neighbors;
+        unordered_set<nid_t> right_first_degree_neighbors;
+
+        graph.follow_edges(h0, true, [&](const handle_t& h1){
+            auto id1 = graph.get_id(h1);
+            left_first_degree_neighbors.emplace(id1);
+
+            graph.follow_edges(h1, false, [&](const handle_t& h2){
+                auto id2 = graph.get_id(h2);
+
+                if (id0 != id2) {
+                    left_second_degree_neighbors.emplace(id2);
+                }
+            });
+        });
+
+        graph.follow_edges(h0, false, [&](const handle_t& h1){
+            auto id1 = graph.get_id(h1);
+            right_first_degree_neighbors.emplace(id1);
+
+            graph.follow_edges(h1, true, [&](const handle_t& h2){
+                auto id2 = graph.get_id(h2);
+
+                if (id0 != id2) {
+                    right_second_degree_neighbors.emplace(id2);
+                }
+            });
+        });
+
+        int32_t result = -1;
+
+        bool is_symmetrical_bubble = (right_second_degree_neighbors == left_second_degree_neighbors);
+        bool is_diploid_bubble = (right_second_degree_neighbors.size() == 1);
+        bool is_chainable = (right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3);
+
+        // If there are no second degree neighbors, this unphased subgraph passes
+        if (is_symmetrical_bubble and is_diploid_bubble and is_chainable){
+            auto id_a = graph.get_id(h0);
+            auto id_b = graph.get_id(graph.get_handle(*left_second_degree_neighbors.begin()));
+
+            result = try_add_bubble(int32_t(id_a), int32_t(id_b));
+        }
+    });
+
 }
 
 

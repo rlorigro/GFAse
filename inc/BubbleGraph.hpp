@@ -149,27 +149,40 @@ private:
     void emplace(int32_t id1, int32_t id2, bool phase);
 
 public:
+    // Constructors and constructor-helpers
     BubbleGraph();
     BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map);
-    void write_bandage_csv(path output_path, const IncrementalIdMap <string>& id_map) const;
     void generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map);
     void generate_bubbles_from_shasta_names(IncrementalIdMap <string>& id_map);
+    void generate_diploid_symmetrical_bubbles_from_graph(const HandleGraph& graph);
+
+    // Iterating contents
     void for_each_adjacent_bubble(int32_t b, const function<void(Bubble<int32_t>& bubble)>& f);
     void for_each_adjacent_bubble(int32_t b, const function<void(const Bubble<int32_t>& bubble)>& f) const;
     void for_each_bubble_edge(const function<void(Bubble<int32_t>& b1, Bubble<int32_t>& b2)>& f);
     void for_each_bubble_edge(const function<void(const Bubble<int32_t>& b1, const Bubble<int32_t>& b2)>& f) const;
+    void for_each_node_id(const function<void(const int32_t id)>& f) const;
+
+    // Building bubbles
     void add_bubble(int32_t node_id_a, int32_t node_id_b);
     int32_t try_add_bubble(int32_t node_id_a, int32_t node_id_b);
-    void get_phases(vector<bool>& bubble_phases) const;
-    void set_phases(const vector<bool>& bubble_phases);
+
+    // Accessing and finding
     void at(size_t i, Bubble<int32_t>& b);
     Bubble<int32_t> at(size_t i) const;
-    void for_each_node_id(const function<void(const int32_t id)>& f) const;
     Bubble<int32_t> get_bubble_of_node(int32_t node_id) const;
     int32_t find_bubble_id_of_node(int32_t node_id) const;
-    int32_t get_other_side(int32_t node_id) const;
     bool node_is_bubble(int32_t node_id) const;
+    int32_t get_other_side(int32_t node_id) const;
+
+    // Phasing
+    void get_phases(vector<bool>& bubble_phases) const;
+    void set_phases(const vector<bool>& bubble_phases);
     void flip(size_t b);
+
+    // IO
+    void write_bandage_csv(path output_path, const IncrementalIdMap <string>& id_map) const;
+
     size_t size() const;
 };
 
