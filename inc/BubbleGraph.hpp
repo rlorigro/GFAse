@@ -4,9 +4,11 @@
 #include "IncrementalIdMap.hpp"
 #include "sparsepp/spp.h"
 #include "Sam.hpp"
+#include "handle_graph.hpp"
 
 using spp::sparse_hash_map;
 using spp::sparse_hash_set;
+using handlegraph::HandleGraph;
 
 #include <utility>
 #include <vector>
@@ -152,6 +154,7 @@ public:
     // Constructors and constructor-helpers
     BubbleGraph();
     BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map);
+    BubbleGraph(HandleGraph& graph, const contact_map_t& contact_map);
     void generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map);
     void generate_bubbles_from_shasta_names(IncrementalIdMap <string>& id_map);
     void generate_diploid_symmetrical_bubbles_from_graph(const HandleGraph& graph);

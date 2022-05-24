@@ -375,12 +375,7 @@ void write_chaining_info_to_file(
 }
 
 
-void chain_phased_gfa(path gfa_path, IncrementalIdMap<string>& id_map, const BubbleGraph& bubble_graph, path output_dir){
-    HashGraph graph;
-
-    // When assigning IDs to new nodes in the graph, gfa_to_handle should reuse existing ones, so there
-    // will be no conflicts in the BubbleGraph IDs and the graph IDs (as long as id_map is 1-based and size_t)
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, const BubbleGraph& bubble_graph, path output_dir){
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
@@ -618,11 +613,28 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     // Build the contact map by iterating sets of alignments and creating edges in an all-by-all fashion within sets
     generate_contact_map_from_mappings(mappings, id_map, contact_map);
 
-    cerr << t << "Constructing bubble graph..." << '\n';
+    HashGraph graph;
 
-    // TODO: replace name-based bubble finding with sketch or alignment-based
     // To keep track of pairs of segments which exist in diploid bubbles
-    BubbleGraph bubble_graph(id_map, contact_map);
+    BubbleGraph bubble_graph;
+
+    if (gfa_path.empty()) {
+        cerr << t << "Constructing bubble graph..." << '\n';
+
+        // Initialize using shasta naming convention
+        bubble_graph = BubbleGraph(id_map, contact_map);
+    }
+    else{
+        cerr << t << "GFA provided - Loading graph..." << '\n';
+
+        // Construct graph from GFA
+        gfa_to_handle_graph(graph, id_map, gfa_path, false);
+
+        cerr << t << "Constructing bubble graph..." << '\n';
+
+        // Initialize using graph topology to find bubbles from scratch
+        bubble_graph = BubbleGraph(graph, contact_map);
+    }
 
     cerr << t << "Phasing " << bubble_graph.size() << " bubbles" << '\n';
 
@@ -634,7 +646,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     string suffix2 = "m" + to_string(int(min_mapq));
     string suffix3 = "s" + to_string(int(score));
 
-    cerr << t << "Writing phasing results to disk... " << '\n';
+    cerr << t << "Writing phasing results to file... " << '\n';
 
     path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
@@ -644,7 +656,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     bubble_graph.write_bandage_csv(phases_output_path, id_map);
 
     if (not gfa_path.empty()){
-        chain_phased_gfa(gfa_path, id_map, bubble_graph, output_dir);
+        chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
     }
 
     cerr << t << "Done" << '\n';

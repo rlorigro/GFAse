@@ -1,5 +1,4 @@
 #include "BubbleGraph.hpp"
-#include "handle_graph.hpp"
 #include "bdsg/internal/hash_map.hpp"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
@@ -11,7 +10,6 @@ using gfase::for_element_in_sam_file;
 using gfase::IncrementalIdMap;
 using gfase::SamElement;
 
-using handlegraph::HandleGraph;
 using handlegraph::handle_t;
 using handlegraph::nid_t;
 using ghc::filesystem::path;
@@ -83,6 +81,17 @@ BubbleGraph::BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& 
 }
 
 
+// Strictly adds ids to the id map if pairs (bubble sides) in the shasta convention (.0 or .1 suffix) are incomplete
+BubbleGraph::BubbleGraph(HandleGraph& graph, const contact_map_t& contact_map) :
+        bubbles(),
+        node_id_to_bubble_id(),
+        bubble_to_bubble(),
+        bubble_edges() {
+    generate_diploid_symmetrical_bubbles_from_graph(graph);
+    generate_bubble_adjacency_from_contact_map(contact_map);
+}
+
+
 void BubbleGraph::for_each_node_id(const function<void(const int32_t id)>& f) const{
     for (const auto& [node_id, bubble_id]: node_id_to_bubble_id){
         f(node_id);
@@ -134,7 +143,7 @@ void BubbleGraph::generate_diploid_symmetrical_bubbles_from_graph(const HandleGr
         bool is_chainable = (right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3);
 
         // If there are no second degree neighbors, this unphased subgraph passes
-        if (is_symmetrical_bubble and is_diploid_bubble and is_chainable){
+        if (is_symmetrical_bubble and is_diploid_bubble){
             auto id_a = graph.get_id(h0);
             auto id_b = graph.get_id(graph.get_handle(*left_second_degree_neighbors.begin()));
 
@@ -162,6 +171,11 @@ void BubbleGraph::generate_bubble_adjacency_from_contact_map(const contact_map_t
         if (c0 != contact_map.end()) {
             for (auto&[other_id, count]: c0->second) {
                 auto b_other = find_bubble_id_of_node(other_id);
+
+                // Skip any contacts between regions of the graph that aren't identified as bubbles
+                if (b_other < 0){
+                    continue;
+                }
                 other_bubbles.emplace(b_other);
             }
         }
@@ -170,6 +184,11 @@ void BubbleGraph::generate_bubble_adjacency_from_contact_map(const contact_map_t
         if (c1 != contact_map.end()) {
             for (auto&[other_id, count]: c1->second) {
                 auto b_other = find_bubble_id_of_node(other_id);
+
+                // Skip any contacts between regions of the graph that aren't identified as bubbles
+                if (b_other < 0){
+                    continue;
+                }
                 other_bubbles.emplace(b_other);
             }
         }
@@ -179,7 +198,7 @@ void BubbleGraph::generate_bubble_adjacency_from_contact_map(const contact_map_t
             bubble_to_bubble[b].emplace_back(b_other);
 
             // Hash pairs in deterministic ordering
-            bubble_edges.emplace(min(b, b_other), max(b,b_other));
+            bubble_edges.emplace(min(b,b_other), max(b,b_other));
         }
     }
 }
@@ -282,7 +301,14 @@ Bubble<int32_t> BubbleGraph::get_bubble_of_node(int32_t node_id) const {
 
 
 int32_t BubbleGraph::find_bubble_id_of_node(int32_t node_id) const {
-    return node_id_to_bubble_id.at(node_id);
+    auto result = node_id_to_bubble_id.find(node_id);
+
+    if (result != node_id_to_bubble_id.end()){
+        return result->second;
+    }
+    else{
+        return -1;
+    }
 }
 
 
