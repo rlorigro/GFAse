@@ -18,10 +18,15 @@ int main(){
     array <set <string>, 2> phased_contigs;
     map<string,size_t> query_lengths;
 
+    path pat_bam_path;
+    path mat_bam_path;
+
     assign_phases(
             output_dir,
             pat_ref_path,
             mat_ref_path,
+            pat_bam_path,
+            mat_bam_path,
             query_path,
             "",
             4,

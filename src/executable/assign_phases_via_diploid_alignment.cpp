@@ -57,10 +57,15 @@ int main(int argc, char* argv[]){
     array <set <string>, 2> phased_contigs;
     map<string,size_t> query_lengths;
 
+    path query_vs_pat_bam;
+    path query_vs_mat_bam;
+
     assign_phases(
         output_dir,
         pat_ref_path,
         mat_ref_path,
+        query_vs_pat_bam,
+        query_vs_mat_bam,
         query_path,
         required_prefix,
         n_threads,

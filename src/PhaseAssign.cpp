@@ -189,6 +189,8 @@ void assign_phases(
         path output_dir,
         path pat_ref_path,
         path mat_ref_path,
+        path query_vs_pat_bam,
+        path query_vs_mat_bam,
         path query_path,
         string required_prefix,
         size_t n_threads,
@@ -199,21 +201,23 @@ void assign_phases(
 ){
     create_directories(output_dir);
 
-    // Do some cursory checks on input files
-    for (auto& p: {pat_ref_path, mat_ref_path, query_path}){
-        auto e = p.extension();
-        if (not (e == ".fa" or e == ".fna" or e == ".fasta")){
-            throw runtime_error("ERROR: input file does not have extension consistent with FASTA format: " + p.string());
-        }
+    // Do some cursory checks on input fasta files if alignment is happening
+    if (query_vs_pat_bam.empty() and query_vs_mat_bam.empty()){
+        for (auto& p: {pat_ref_path, mat_ref_path, query_path}){
+            auto e = p.extension();
+            if (not (e == ".fa" or e == ".fna" or e == ".fasta")){
+                throw runtime_error("ERROR: input file does not have extension consistent with FASTA format: " + p.string());
+            }
 
-        if (not exists(p)){
-            throw runtime_error("ERROR: input file can not be found: " + p.string());
-        }
-        else{
-            ifstream f(p);
+            if (not exists(p)){
+                throw runtime_error("ERROR: input file can not be found: " + p.string());
+            }
+            else{
+                ifstream f(p);
 
-            if (not f.good() or not f.is_open()){
-                throw runtime_error("ERROR: cannot read file: " + p.string());
+                if (not f.good() or not f.is_open()){
+                    throw runtime_error("ERROR: cannot read file: " + p.string());
+                }
             }
         }
     }
@@ -252,11 +256,14 @@ void assign_phases(
         phased_cigar_summaries.emplace(name, c);
     }
 
-    auto query_vs_pat_sam = align(output_dir, pat_ref_path, query_path, n_threads);
-    auto query_vs_mat_sam = align(output_dir, mat_ref_path, query_path, n_threads);
+    // If no alignments are provided, do the alignment with minimap2
+    if (query_vs_pat_bam.empty() and query_vs_mat_bam.empty()) {
+        auto query_vs_pat_sam = align(output_dir, pat_ref_path, query_path, n_threads);
+        auto query_vs_mat_sam = align(output_dir, mat_ref_path, query_path, n_threads);
 
-    auto query_vs_pat_bam = sam_to_sorted_bam(query_vs_pat_sam, n_threads);
-    auto query_vs_mat_bam = sam_to_sorted_bam(query_vs_mat_sam, n_threads);
+        query_vs_pat_bam = sam_to_sorted_bam(query_vs_pat_sam, n_threads);
+        query_vs_mat_bam = sam_to_sorted_bam(query_vs_mat_sam, n_threads);
+    }
 
     parse_bam_cigars(query_vs_pat_bam, phased_cigar_summaries, required_prefix, 0);
     parse_bam_cigars(query_vs_mat_bam, phased_cigar_summaries, required_prefix, 1);
@@ -425,6 +432,8 @@ void evaluate_phasing(
         path contact_phase_csv,
         path pat_ref_path,
         path mat_ref_path,
+        path pat_bam_path,
+        path mat_bam_path,
         path query_path,
         string required_prefix,
         size_t n_threads,
@@ -462,6 +471,8 @@ void evaluate_phasing(
             output_dir,
             pat_ref_path,
             mat_ref_path,
+            pat_bam_path,
+            mat_bam_path,
             query_path,
             required_prefix,
             n_threads,
