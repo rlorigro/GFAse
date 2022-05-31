@@ -427,6 +427,7 @@ set(TESTS
         test_connected_component_finder
         test_bfs
         test_bamtools
+        test_bubble_graph
         test_binary_sequence
         test_binary_sequence_performance
         test_assign_phase

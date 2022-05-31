@@ -2,9 +2,10 @@
 #define GFASE_BUBBLEGRAPH_HPP
 
 #include "IncrementalIdMap.hpp"
+#include "handle_graph.hpp"
+#include "bdsg/internal/hash_map.hpp"
 #include "sparsepp/spp.h"
 #include "Sam.hpp"
-#include "handle_graph.hpp"
 
 using spp::sparse_hash_map;
 using spp::sparse_hash_set;
@@ -154,10 +155,13 @@ public:
     // Constructors and constructor-helpers
     BubbleGraph();
     BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map);
-    BubbleGraph(HandleGraph& graph, const contact_map_t& contact_map);
+    BubbleGraph(const HandleGraph& graph, const contact_map_t& contact_map);
+    BubbleGraph(const HandleGraph& graph);
+    BubbleGraph(path csv_path, IncrementalIdMap<string>& id_map);
     void generate_bubble_adjacency_from_contact_map(const contact_map_t& contact_map);
     void generate_bubbles_from_shasta_names(IncrementalIdMap <string>& id_map);
     void generate_diploid_symmetrical_bubbles_from_graph(const HandleGraph& graph);
+    void generate_bubbles_from_csv(path csv_path, IncrementalIdMap<string>& id_map);
 
     // Iterating contents
     void for_each_adjacent_bubble(int32_t b, const function<void(Bubble<int32_t>& bubble)>& f);

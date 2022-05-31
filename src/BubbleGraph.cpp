@@ -81,14 +81,34 @@ BubbleGraph::BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& 
 }
 
 
-// Strictly adds ids to the id map if pairs (bubble sides) in the shasta convention (.0 or .1 suffix) are incomplete
-BubbleGraph::BubbleGraph(HandleGraph& graph, const contact_map_t& contact_map) :
+// Topology based bubble finding
+BubbleGraph::BubbleGraph(const HandleGraph& graph, const contact_map_t& contact_map) :
         bubbles(),
         node_id_to_bubble_id(),
         bubble_to_bubble(),
         bubble_edges() {
     generate_diploid_symmetrical_bubbles_from_graph(graph);
     generate_bubble_adjacency_from_contact_map(contact_map);
+}
+
+
+// Topology based bubble finding
+BubbleGraph::BubbleGraph(const HandleGraph& graph) :
+        bubbles(),
+        node_id_to_bubble_id(),
+        bubble_to_bubble(),
+        bubble_edges() {
+    generate_diploid_symmetrical_bubbles_from_graph(graph);
+}
+
+
+// Load from disk
+BubbleGraph::BubbleGraph(path csv_path, IncrementalIdMap<string>& id_map) :
+        bubbles(),
+        node_id_to_bubble_id(),
+        bubble_to_bubble(),
+        bubble_edges() {
+    generate_bubbles_from_csv(csv_path, id_map);
 }
 
 
@@ -151,6 +171,61 @@ void BubbleGraph::generate_diploid_symmetrical_bubbles_from_graph(const HandleGr
         }
     });
 
+}
+
+
+void BubbleGraph::generate_bubbles_from_csv(path csv_path, IncrementalIdMap<string>& id_map){
+    ifstream file(csv_path);
+
+    string line;
+    vector<string> tokens = {""};
+
+    int32_t prev_bubble_id = -1;
+    string prev_name;
+    bool prev_phase;
+
+    size_t l = 0;
+    while (getline(file, line)){
+        if (l == 0){
+            l++;
+            continue;
+        }
+
+        for (auto& c: line){
+            if (c == ','){
+                tokens.emplace_back();
+            }
+            else{
+                tokens.back() += c;
+            }
+        }
+
+        auto& name = tokens[0];
+        int32_t bubble_id = stoi(tokens[1]);
+        bool phase = stoi(tokens[2]);
+
+        if (bubble_id == prev_bubble_id){
+            auto id_a = id_map.try_insert(prev_name);
+            auto id_b = id_map.try_insert(name);
+
+            // Phase CSV will indicate phase for one side of the bubble at a time.
+            // 0/1 = phase 0
+            // 1/0 = phase 1
+            if (prev_phase and !phase){
+                emplace(int32_t(id_a), int32_t(id_b), 1);
+            }
+            else if (!prev_phase and phase){
+                emplace(int32_t(id_a), int32_t(id_b), 0);
+            }
+        }
+
+        prev_bubble_id = bubble_id;
+        prev_name = name;
+        prev_phase = phase;
+
+        tokens = {""};
+        l++;
+    }
 }
 
 
@@ -239,14 +314,16 @@ void BubbleGraph::write_bandage_csv(path output_path, const IncrementalIdMap <st
         throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
     }
 
-    file << "Name" << ',' << "Phase" << ',' << "Color" << '\n';
+    file << "Name" << ',' << "BubbleId" << ',' << "Phase" << ',' << "Color" << '\n';
 
-    for (auto& b: bubbles) {
+    for (size_t i=0; i<bubbles.size(); i++) {
+        auto b = bubbles.at(i);
+
         auto id0 = b.get(0);
         auto id1 = b.get(1);
 
-        file << id_map.get_name(id0) << ',' << 0 << ',' << "Dark Orange" << '\n';
-        file << id_map.get_name(id1) << ',' << 1 << ',' << "Green Yellow" << '\n';
+        file << id_map.get_name(id0) << ',' << i << ',' << 0 << ',' << "Dark Orange" << '\n';
+        file << id_map.get_name(id1) << ',' << i << ',' << 1 << ',' << "Green Yellow" << '\n';
     }
 }
 
@@ -570,7 +647,7 @@ void random_phase_search(
             bubbles.set_phases(best_phases);
         }
 
-//        cerr << m << ' ' << best_score << ' ' << total_score << std::flush << '\n';
+        cerr << m << ' ' << best_score << ' ' << total_score << std::flush << '\n';
         phase_mutex.unlock();
 
         m = job_index.fetch_add(1);

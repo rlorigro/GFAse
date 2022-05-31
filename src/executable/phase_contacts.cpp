@@ -135,11 +135,13 @@ void parse_unpaired_bam_file(
     size_t l = 0;
 
     while (reader.GetNextAlignment(a) ) {
-//        cerr << "e.Name" << ' ' << e.Name << '\n';
-//        cerr << "e.RefID" << ' ' << e.RefID << '\n';
+//        cerr << "e.Name" << ' ' << a.Name << '\n';
+//        cerr << "e.RefID" << ' ' << a.RefID << '\n';
 //        cerr << "int32_t(l)" << ' ' << int32_t(l) << '\n';
-//        cerr << "int16_t(e.AlignmentFlag)" << ' ' << int(e.AlignmentFlag) << '\n';
-//        cerr << "int8_t(e.MapQuality)" << ' ' << int(e.MapQuality) << '\n';
+//        cerr << "int(e.AlignmentFlag)" << ' ' << int(a.AlignmentFlag) << '\n';
+//        cerr << "int(e.IsPrimaryAlignment)" << ' ' << int(a.IsPrimaryAlignment()) << '\n';
+//        cerr << "int(e.IsSupplementary)" << ' ' << int(a.IsSupplementary()) << '\n';
+//        cerr << "int(e.MapQuality)" << ' ' << int(a.MapQuality) << '\n';
 //        cerr << '\n';
 
         // No information about reference contig, this alignment is unusable
