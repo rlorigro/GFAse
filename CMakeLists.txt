@@ -68,7 +68,7 @@ set(SOURCES
         src/PhaseAssign.cpp
         src/Sam.cpp
         src/Timer.cpp
-        )
+        src/executable/generate_contact_map_from_bam.cpp)
 
 
 project(GFAse)
@@ -471,6 +471,7 @@ set(EXECUTABLES
         get_mapq_distribution_from_sam
         get_degree_stats
         get_path_lengths
+        generate_contact_map_from_bam
         locate_kmer_matches
         phase_haplotype_paths
         phase_contacts
