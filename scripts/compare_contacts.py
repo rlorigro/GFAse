@@ -1,4 +1,5 @@
 from modules.IterativeHistogram import *
+from matplotlib.colors import rgb2hex
 from matplotlib import pyplot
 from matplotlib import cm
 import argparse
@@ -55,6 +56,28 @@ def iterate_bubbles_csv(csv_path):
             yield name, bubble_id, phase
 
 
+def get_log_ratio(a, b, e):
+    """
+    :param n_consistent:
+    :param n_inconsistent:
+    :param e: very small value to prevent 0-related division errors
+    :return:
+    """
+    ratio = math.log2((float(a)+e)/(float(b)+e))
+
+    return ratio
+
+
+def map_log_ratio_to_color(log_ratio, colormap):
+    weight_scaled = log_ratio/5
+    weight_scaled = min(max(-1.0, weight_scaled), 1.0)
+
+    color_weight = (weight_scaled + 1)/2.0
+    color = colormap(color_weight)
+
+    return color
+
+
 def main(path_a, path_b, bubbles_csv_path):
     allowed_names = {
         # "PR.1.1.1.0",
@@ -100,13 +123,11 @@ def main(path_a, path_b, bubbles_csv_path):
                 phases[0].add(bubble_names[0])
                 phases[1].add(bubble_names[1])
 
-                print("adding bubble",bubble_names)
+                # print("adding bubble",bubble_names)
 
                 bubble_names = [None,None]
 
-        print(bubble_names)
         bubble_names[phase] = name
-        print(bubble_names)
         prev_bubble_id = bubble_id
 
     intra_bubble_edges[bubble_names[0]].add(bubble_names[1])
@@ -183,26 +204,23 @@ def main(path_a, path_b, bubbles_csv_path):
             name_0 = id_map.get_name(id_0)
             name_1 = id_map.get_name(id_1)
 
-            print(name_0, name_1)
+            # print(name_0, name_1)
 
             # Skip non-bubbles
             if (name_0 not in intra_bubble_edges) or (name_1 not in intra_bubble_edges):
-                print("non-bubble")
+                # print("non-bubble")
                 continue
 
             # Skip edges within a bubble
             if name_1 in intra_bubble_edges[name_0]:
-                print("intra_bubble_edge", name_0, name_1)
+                # print("intra_bubble_edge", name_0, name_1)
                 continue
 
+            # Get a ratio of normalized contacts/weights for this edge, for sample a vs sample b
             weight = float(math.log2(((float(count_a)+e)/float(total_contacts_a)) / ((float(count_b)+e)/float(total_contacts_b))))
-            weight_scaled = weight/5
-            weight_scaled = min(max(-1.0, weight_scaled), 1.0)
+            color = map_log_ratio_to_color(log_ratio=weight, colormap=colormap)
 
-            color_weight = (weight_scaled + 1)/2.0
-            color = colormap(color_weight)
-
-            print(name_0, name_1, count_a, count_b, weight, weight_scaled, color_weight)
+            # print(name_0, name_1, count_a, count_b, weight, weight_scaled, color_weight)
 
             is_cross_phase_edge = (name_0 in phases[0]) != (name_1 in phases[0])
 
@@ -220,14 +238,28 @@ def main(path_a, path_b, bubbles_csv_path):
             g.add_edge(id_0, id_1, color=color)
             # g.add_edge(id_0, id_1, weight=count_a+e, color=color)
 
-    for v in signal_ratios_per_node_a.values():
-        signal_ratio_histogram_a.update(math.log2((float(v[1])+e)/(float(v[0])+e)))
+    with open("signal_ratios_a.csv", 'w') as file:
+        file.write("Name,Ratio,Color\n")
 
-    for v in signal_ratios_per_node_b.values():
-        signal_ratio_histogram_b.update(math.log2((float(v[1])+e)/(float(v[0])+e)))
+        for name,[n_inconsistent,n_consistent] in signal_ratios_per_node_a.items():
+            ratio = get_log_ratio(a=n_consistent, b=n_inconsistent, e=e)
+            signal_ratio_histogram_a.update(ratio)
 
-    print(phases[0])
-    print(phases[1])
+            color = map_log_ratio_to_color(log_ratio=ratio, colormap=colormap)
+            file.write("%s,%.3f,%s\n" % (name, ratio, rgb2hex(color)))
+
+    with open("signal_ratios_b.csv", 'w') as file:
+        file.write("Name,Ratio,Color\n")
+
+        for name,[n_inconsistent,n_consistent] in signal_ratios_per_node_b.items():
+            ratio = get_log_ratio(a=n_consistent, b=n_inconsistent, e=e)
+            signal_ratio_histogram_b.update(ratio)
+
+            color = map_log_ratio_to_color(log_ratio=ratio, colormap=colormap)
+            file.write("%s,%.3f,%s\n" % (name, ratio, rgb2hex(color)))
+
+    # print(phases[0])
+    # print(phases[1])
 
     remapping = dict()
 
@@ -236,30 +268,32 @@ def main(path_a, path_b, bubbles_csv_path):
 
     networkx.relabel_nodes(g, remapping, False)
 
-    pos = networkx.bipartite_layout(g, nodes=phases[0])
     # pos = networkx.spring_layout(g)
     node_colors = networkx.get_node_attributes(g,'color').values()
     edge_colors = networkx.get_edge_attributes(g,'color').values()
     weights = networkx.get_edge_attributes(g,'weight').values()
 
-    networkx.draw(
-        g,
-        pos,
-        edge_color=edge_colors,
-        with_labels=True,
-        node_color=node_colors)
+    if g.number_of_nodes() < 30:
+        pos = networkx.bipartite_layout(g, nodes=phases[0])
+
+        networkx.draw(
+            g,
+            pos,
+            edge_color=edge_colors,
+            with_labels=True,
+            node_color=node_colors)
 
     fig = pyplot.figure()
     axes = pyplot.axes()
 
     x = signal_ratio_histogram_a.get_bin_centers()
-    y = signal_ratio_histogram_a.get_histogram()
-    print(y)
+    y = signal_ratio_histogram_a.get_normalized_histogram()
+    # print(y)
     pyplot.bar(x=x,height=y,color="C1",alpha=0.6,width=interval)
 
     x = signal_ratio_histogram_b.get_bin_centers()
-    y = signal_ratio_histogram_b.get_histogram()
-    print(y)
+    y = signal_ratio_histogram_b.get_normalized_histogram()
+    # print(y)
     pyplot.bar(x=x,height=y,color="C0",alpha=0.6,width=interval)
 
     axes.set_title("Signal ratio per node")
