@@ -148,7 +148,7 @@ void write_contact_map(
 
     for (const auto& [id,map2]: contact_map){
         for (const auto& [id2,map3]: map2){
-            output_file << id_map.get_name(id) << ',' << id_map.get_name(id2) << ',' << '{';
+            output_file << id_map.get_name(id) << ',' << id_map.get_name(id2) << ',';
 
             auto max_key = map3.rbegin()->first;
 
@@ -156,10 +156,10 @@ void write_contact_map(
                  output_file << int(q) << ':' << count;
 
                  if (q != max_key){
-                    output_file << ',';
+                    output_file << ' ';
                  }
             }
-            output_file << '}' << '\n';
+            output_file << '\n';
         }
     }
 
@@ -219,9 +219,9 @@ int main (int argc, char* argv[]){
     CLI::App app{"App description"};
 
     app.add_option(
-                    "-i,--input",
-                    sam_path,
-                    "Path to SAM or BAM containing filtered, paired HiC reads")
+            "-i,--input",
+            sam_path,
+            "Path to SAM or BAM containing filtered, paired HiC reads")
             ->required();
 
     app.add_option(
@@ -230,9 +230,9 @@ int main (int argc, char* argv[]){
             "Path to GFA containing assembly graph to be phased");
 
     app.add_option(
-                    "-o,--output_dir",
-                    output_dir,
-                    "Path to (nonexistent) directory where output will be stored")
+            "-o,--output_dir",
+            output_dir,
+            "Path to (nonexistent) directory where output will be stored")
             ->required();
 
     app.add_option(
