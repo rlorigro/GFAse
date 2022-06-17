@@ -170,7 +170,6 @@ void BubbleGraph::generate_diploid_symmetrical_bubbles_from_graph(const HandleGr
             result = try_add_bubble(int32_t(id_a), int32_t(id_b));
         }
     });
-
 }
 
 

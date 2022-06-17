@@ -1,14 +1,18 @@
 #include "PhaseAssign.hpp"
 #include "BubbleGraph.hpp"
 #include "misc.hpp"
+#include "Bam.hpp"
+#include "Sam.hpp"
 
 #include <iomanip>
+#include <iostream>
 #include <map>
 
 using ghc::filesystem::create_directories;
 using std::setprecision;
 using std::min;
 using std::map;
+using std::cin;
 
 
 namespace gfase{
@@ -76,23 +80,16 @@ void parse_bam_cigars(
         const string& required_prefix,
         bool phase){
 
-    BamReader reader;
-
-    if (!reader.Open(bam_path) ) {
-        throw std::runtime_error("ERROR: could not read BAM file: " + bam_path.string());
-    }
-
-    auto reference_data = reader.GetReferenceData();
-
-    BamAlignment e;
+    cerr << "Reading: " << bam_path.string() << '\n';
+    Bam reader(bam_path);
 
     size_t l = 0;
-    while (reader.GetNextAlignment(e) ) {
-        if (e.IsPrimaryAlignment() and e.IsMapped()){
+    reader.for_alignment_in_bam(true, [&](SamElement& e){
+        if (e.is_primary() and e.mapq > 0){
             bool valid_prefix = true;
             if (not required_prefix.empty()){
                 for (size_t i=0; i<required_prefix.size(); i++){
-                    if (e.Name[i] != required_prefix[i]){
+                    if (e.query_name[i] != required_prefix[i]){
                         valid_prefix = false;
                         break;
                     }
@@ -100,20 +97,19 @@ void parse_bam_cigars(
             }
 
             if (not valid_prefix){
-                continue;
+                return;
             }
 
-            if (not e.IsSupplementary()){
-                auto& ref_name = reference_data.at(e.RefID).RefName;
-                phased_cigar_summaries[e.Name][phase].primary_ref = ref_name;
+            if (not e.is_supplementary()){
+                phased_cigar_summaries[e.query_name][phase].primary_ref = e.ref_name;
             }
 
-            for (auto& c: e.CigarData){
-                phased_cigar_summaries[e.Name][phase].update(c.Type, c.Length, 20);
-            }
+            e.for_each_cigar([&](char type, uint32_t length){
+                phased_cigar_summaries[e.query_name][phase].update(type, length, 20);
+            });
         }
         l++;
-    }
+    });
 }
 
 

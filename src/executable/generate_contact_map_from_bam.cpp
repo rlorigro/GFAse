@@ -1,18 +1,16 @@
 #include "BubbleGraph.hpp"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
-#include "BamReader.h"
 #include "CLI11.hpp"
 #include "Sam.hpp"
-
-using BamTools::BamReader;
-using BamTools::BamAlignment;
+#include "Bam.hpp"
 
 using gfase::BubbleGraph;
 using gfase::IncrementalIdMap;
 using gfase::unpaired_mappings_t;
 using gfase::unpaired_mappings_t;
 using gfase::SamElement;
+using gfase::Bam;
 
 using ghc::filesystem::path;
 using CLI::App;
@@ -26,48 +24,68 @@ using std::cerr;
 using std::min;
 using std::map;
 
-using weighted_contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, map <int8_t, int32_t> > >;
+using weighted_contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, map <uint8_t, int32_t> > >;
+using mappings_per_read_t = sparse_hash_map <string, map <size_t, map <uint8_t, int64_t> > >;
+
+
+void update_contact_map(
+        vector<SamElement>& alignments,
+        weighted_contact_map_t& contact_map,
+        IncrementalIdMap<string>& id_map){
+
+    // Iterate one triangle of the all-by-all matrix, adding up mapqs for reads on both end of the pair
+    for (size_t i=0; i<alignments.size(); i++){
+//        cerr << alignments[i] << '\n';
+
+        for (size_t j=i+1; j<alignments.size(); j++) {
+            auto& a = alignments[i];
+            auto& b = alignments[j];
+
+            auto ref_id_a = id_map.try_insert(a.ref_name);
+            auto ref_id_b = id_map.try_insert(b.ref_name);
+
+            // TODO: split left and right mapq?
+            contact_map[ref_id_a][ref_id_b][min(a.mapq,b.mapq)]++;
+            contact_map[ref_id_b][ref_id_a][min(a.mapq,b.mapq)]++;
+        }
+    }
+}
 
 
 void parse_unpaired_bam_file(
         path bam_path,
-        unpaired_mappings_t& mappings,
+        weighted_contact_map_t& contact_map,
         IncrementalIdMap<string>& id_map,
         string required_prefix,
         int8_t min_mapq){
 
-    BamReader reader;
+    Bam reader(bam_path);
 
-    if (!reader.Open(bam_path) ) {
-        throw std::runtime_error("ERROR: could not read BAM file: " + bam_path.string());
-    }
-
-    auto reference_data = reader.GetReferenceData();
-
-    BamAlignment a;
     size_t l = 0;
+    string prev_query_name = "";
+    vector<SamElement> alignments;
 
-    while (reader.GetNextAlignment(a) ) {
-//        cerr << "e.Name" << ' ' << a.Name << '\n';
-//        cerr << "e.RefID" << ' ' << a.RefID << '\n';
-//        cerr << "int32_t(l)" << ' ' << int32_t(l) << '\n';
-//        cerr << "int(e.AlignmentFlag)" << ' ' << int(a.AlignmentFlag) << '\n';
-//        cerr << "int(e.IsPrimaryAlignment)" << ' ' << int(a.IsPrimaryAlignment()) << '\n';
-//        cerr << "int(e.IsSupplementary)" << ' ' << int(a.IsSupplementary()) << '\n';
-//        cerr << "int(e.MapQuality)" << ' ' << int(a.MapQuality) << '\n';
-//        cerr << '\n';
-
-        // No information about reference contig, this alignment is unusable
-        if (a.RefID < 0 or a.RefID > reference_data.size()){
-            continue;
+    reader.for_alignment_in_bam(false, [&](const SamElement& a){
+        if (l == 0){
+            prev_query_name = a.query_name;
         }
 
-        auto& ref_name = reference_data.at(a.RefID).RefName;
+        if (prev_query_name != a.query_name){
+            if (alignments.size() > 1){
+                update_contact_map(alignments, contact_map, id_map);
+            }
+            alignments.clear();
+        }
+
+        // No information about reference contig, this alignment is unusable
+        if (a.ref_name.empty()){
+            return;
+        }
 
         bool valid_prefix = true;
         if (not required_prefix.empty()){
             for (size_t i=0; i<required_prefix.size(); i++){
-                if (ref_name[i] != required_prefix[i]){
+                if (a.ref_name[i] != required_prefix[i]){
                     valid_prefix = false;
                     break;
                 }
@@ -75,16 +93,14 @@ void parse_unpaired_bam_file(
         }
 
         if (valid_prefix) {
-            id_map.try_insert(ref_name);
-
-            if (a.MapQuality >= min_mapq and a.IsPrimaryAlignment()) {
-                SamElement s(a.Name, ref_name, int32_t(l), int16_t(a.AlignmentFlag), int8_t(a.MapQuality));
-                mappings[a.Name].emplace(s);
+            if (a.mapq >= min_mapq and a.is_primary()) {
+                alignments.emplace_back(a);
             }
         }
 
         l++;
-    }
+        prev_query_name = a.query_name;
+    });
 }
 
 
@@ -100,38 +116,6 @@ void remove_singleton_reads(unpaired_mappings_t& mappings){
 
     for (auto& item: to_be_deleted){
         mappings.erase(item);
-    }
-}
-
-
-void generate_contact_map_from_mappings(
-        const unpaired_mappings_t& mappings,
-        const IncrementalIdMap<string>& id_map,
-        weighted_contact_map_t& contact_map
-){
-    // All-vs-all, assuming reference names are unique in first vs second mates
-    for (const auto& [name,elements]: mappings) {
-        size_t i = 0;
-
-        for (const auto& e: elements){
-            size_t j = 0;
-
-            for (const auto& e2: elements){
-                if (j > i){
-                    if (e.ref_name != e2.ref_name) {
-                        auto id = int32_t(id_map.get_id(e.ref_name));
-                        auto id2 = int32_t(id_map.get_id(e2.ref_name));
-
-                        auto min_mapq = min(e.mapq, e2.mapq);
-
-                        contact_map[id][id2][min_mapq]++;
-                        contact_map[id2][id][min_mapq]++;
-                    }
-                }
-                j++;
-            }
-            i++;
-        }
     }
 }
 
@@ -177,31 +161,18 @@ void generate_contact_map_from_bam(path output_dir, path sam_path, path gfa_path
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
 
-    // TODO: Load GFA first, and find a method for identifying haplotypic bubbles
-    // TODO: in other words, stop relying on shasta conventions
-
-    // Mappings grouped by their read name (to simplify paired-end parsing)
-    unpaired_mappings_t mappings;
-
     // Datastructures to represent linkages from hiC
     weighted_contact_map_t contact_map;
     vector <vector <int32_t> > adjacency;
 
-    cerr << "Loading alignments..." << '\n';
+    cerr << "Loading alignments as contact map..." << '\n';
 
     if (sam_path.extension() == ".bam"){
-        parse_unpaired_bam_file(sam_path, mappings, id_map, required_prefix, min_mapq);
+        parse_unpaired_bam_file(sam_path, contact_map, id_map, required_prefix, min_mapq);
     }
     else{
         throw runtime_error("ERROR: unrecognized extension for SAM/BAM input file: " + sam_path.extension().string());
     }
-
-    remove_singleton_reads(mappings);
-
-    cerr << "Generating contact map..." << '\n';
-
-    // Build the contact map by iterating sets of alignments and creating edges in an all-by-all fashion within sets
-    generate_contact_map_from_mappings(mappings, id_map, contact_map);
 
     path output_path = output_dir / "contacts.csv";
     write_contact_map(output_path, contact_map, id_map);

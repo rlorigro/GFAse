@@ -17,6 +17,7 @@ using handlegraph::HandleGraph;
 #include <mutex>
 #include <array>
 #include <set>
+#include <map>
 
 using std::atomic;
 using std::vector;
@@ -24,6 +25,7 @@ using std::mutex;
 using std::array;
 using std::pair;
 using std::set;
+using std::map;
 
 
 namespace gfase {
@@ -31,6 +33,7 @@ namespace gfase {
 using paired_mappings_t = sparse_hash_map <string, array <set <SamElement>, 2> >;
 using unpaired_mappings_t = sparse_hash_map <string, set <SamElement> >;
 using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
+using weighted_contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, map <uint8_t, int32_t> > >;
 
 
 template <class T> class Bubble {

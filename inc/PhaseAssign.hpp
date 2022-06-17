@@ -1,7 +1,6 @@
 #ifndef GFASE_PHASEASSIGN_HPP
 #define GFASE_PHASEASSIGN_HPP
 
-#include "bamtools/api/BamReader.h"
 #include "IncrementalIdMap.hpp"
 #include "Filesystem.hpp"
 #include "sparsepp/spp.h"
@@ -10,9 +9,6 @@
 #include "Sam.hpp"
 
 using gfase::rgb_to_hex;
-
-using BamTools::BamAlignment;
-using BamTools::BamReader;
 
 
 namespace gfase{

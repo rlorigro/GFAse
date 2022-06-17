@@ -1,4 +1,6 @@
 #include "Sam.hpp"
+#include "htslib/include/htslib/hts.h"
+#include "htslib/include/htslib/sam.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -14,17 +16,16 @@ using std::cerr;
 namespace gfase {
 
 
-SamElement::SamElement(string& read_name, string& ref_name, int64_t line, int16_t flag, int8_t mapq) :
-        read_name(read_name),
+SamElement::SamElement(string& read_name, string& ref_name, uint16_t flag, uint8_t mapq) :
+        query_name(read_name),
         ref_name(ref_name),
-        line(line),
         flag(flag),
         mapq(mapq)
 {}
 
 
 //SamElement::SamElement(SamElement&& other) noexcept:
-//        read_name(std::move(other.read_name)),
+//        query_name(std::move(other.query_name)),
 //        ref_name(std::move(other.ref_name)),
 //        line(other.line),
 //        flag(other.flag),
@@ -33,7 +34,7 @@ SamElement::SamElement(string& read_name, string& ref_name, int64_t line, int16_
 
 
 //SamElement::SamElement(const SamElement& other) noexcept:
-//        read_name(other.read_name),
+//        query_name(other.query_name),
 //        ref_name(other.ref_name),
 //        line(other.line),
 //        flag(other.flag),
@@ -42,9 +43,8 @@ SamElement::SamElement(string& read_name, string& ref_name, int64_t line, int16_
 
 
 SamElement::SamElement() :
-        read_name(),
+        query_name(),
         ref_name(),
-        line(-1),
         flag(-1),
         mapq(-1)
 {}
@@ -58,28 +58,42 @@ SamElement::SamElement() :
 
 
 bool SamElement::is_first_mate() const {
-    return (int16_t(flag) >> 6) & int16_t(1);
+    return (uint16_t(flag) >> 6) & uint16_t(1);
 }
 
 
 bool SamElement::is_second_mate() const {
-    return (int16_t(flag) >> 7) & int16_t(1);
+    return (uint16_t(flag) >> 7) & uint16_t(1);
 }
 
 
 bool SamElement::is_not_primary() const {
-    return (int16_t(flag) >> 8) & int16_t(1);
+    return (uint16_t(flag) >> 8) & uint16_t(1);
+}
+
+
+bool SamElement::is_primary() const {
+    return (not is_not_primary());
 }
 
 
 bool SamElement::is_supplementary() const {
-    return (int16_t(flag) >> 11) & int16_t(1);
+    return (uint16_t(flag) >> 11) & uint16_t(1);
 }
 
 
-// Hash/compare using line number to guarantee unique
-bool sam_comparator(const SamElement& a, const SamElement& b) {
-    return a.line > b.line;
+//// Hash/compare using line number to guarantee unique
+//bool sam_comparator(const SamElement& a, const SamElement& b) {
+//    return a.line > b.line;
+//}
+
+
+void SamElement::for_each_cigar(const function<void(char type, uint32_t length)>& f) const {
+    for (auto& c: cigars){
+        char operation = bam_cigar_opchr(c);
+        auto length = bam_cigar_oplen(c);
+        f(operation, length);
+    }
 }
 
 
@@ -112,7 +126,7 @@ void for_element_in_sam_file(path sam_path, const function<void(SamElement& e)>&
         if (c == '\n'){
             n_delimiters = 0;
 
-            SamElement e(read_name, ref_name, n_lines, int16_t(stoi(flag_token)), int8_t(stoi(mapq_token)));
+            SamElement e(read_name, ref_name, int16_t(stoi(flag_token)), int8_t(stoi(mapq_token)));
 
             f(e);
 
@@ -162,10 +176,10 @@ void for_element_in_sam_file(path sam_path, const function<void(SamElement& e)>&
 
 
 ostream& operator<<(ostream& o, const gfase::SamElement& a){
-    o << a.read_name << '\n';
+    o << a.query_name << '\n';
 
     o << '\t' << a.ref_name << '\n';
-    o << '\t' << "line: " << a.line << '\n';
+    o << '\t' << "mapq: " << int(a.mapq) << '\n';
     o << '\t' << "flags: " << bitset<sizeof(a.flag)*8>(a.flag) << " = " << a.flag << '\n';
     o << '\t' << "pair: " << a.is_first_mate() << ' ' << a.is_second_mate() << '\n';
     o << '\t' << "secondary: " << a.is_not_primary() << '\n';
