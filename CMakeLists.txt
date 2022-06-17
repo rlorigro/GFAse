@@ -789,22 +789,22 @@ endforeach()
 # -------- EXECUTABLES --------
 
 set(EXECUTABLES
-#        assign_phases_via_diploid_alignment
-#        count_kmers
-#        create_bandage_path_color_table
-#        extract_haplotype_kmers
+        assign_phases_via_diploid_alignment
+        count_kmers
+        create_bandage_path_color_table
+        extract_haplotype_kmers
         evaluate_phasing
-#        find_bubbles
-#        get_mapq_distribution_from_sam
-#        get_degree_stats
-#        get_path_lengths
+        find_bubbles
+        get_mapq_distribution_from_sam
+        get_degree_stats
+        get_path_lengths
         generate_contact_map_from_bam
-#        locate_kmer_matches
-#        phase_haplotype_paths
+        locate_kmer_matches
+        phase_haplotype_paths
         phase_contacts
-#        remove_empty_nodes
-#        split_connected_components
-#        unzip
+        remove_empty_nodes
+        split_connected_components
+        unzip
 )
 
 foreach(FILENAME_PREFIX ${EXECUTABLES})

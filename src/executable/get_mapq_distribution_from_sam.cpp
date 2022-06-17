@@ -1,13 +1,12 @@
 #include "Filesystem.hpp"
-#include "BamReader.h"
 #include "CLI11.hpp"
+#include "Bam.hpp"
 #include "Sam.hpp"
 
 using gfase::for_element_in_sam_file;
 using gfase::SamElement;
+using gfase::Bam;
 
-using BamTools::BamReader;
-using BamTools::BamAlignment;
 using ghc::filesystem::path;
 using CLI::App;
 
@@ -34,25 +33,13 @@ void get_mapq_distribution(path sam_path){
         });
     }
     else if (sam_path.extension() == ".bam"){
-        BamReader reader;
+        Bam reader(sam_path);
 
-        if (!reader.Open(sam_path) ) {
-            throw std::runtime_error("ERROR: could not read BAM file: " + sam_path.string());
-        }
-
-        BamAlignment a;
         size_t l = 0;
-
-        while (reader.GetNextAlignment(a) ) {
-            // No information about reference contig, this alignment is unusable
-            if (a.RefID < 0){
-                continue;
-            }
-
-            distribution[int8_t(a.MapQuality)]++;
-
+        reader.for_alignment_in_bam(false, [&](SamElement& a) {
+            distribution[int8_t(a.mapq)]++;
             l++;
-        }
+        });
     }
     else{
         throw runtime_error("ERROR: file format not bam or sam: " + sam_path.string());
