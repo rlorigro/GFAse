@@ -27,7 +27,19 @@ make -j [n_threads]
 ## Example usage
 
 ### Phase with Hi-C
-A BAM file containing alignments of Hi-C data to the assembly contigs is required as input.
+A BAM file containing alignments of Hi-C data to the assembly contigs is required as input. The BAM must be sorted by read name, and does not need to be indexed. As an example, here is a command you could use align with bwa, and sort with the `-n` argument:
+
+```
+bwa index /home/ubuntu/data/human/hg002/assembly/paolo_ul_guppy6_run14/Assembly-Phased.fasta \
+&& \
+bwa mem -t 46 -5 -S -P \
+/home/ubuntu/data/human/hg002/assembly/paolo_ul_guppy6_run14/Assembly-Phased.fasta \
+/extra/data/human/hg002/hic/HG002.HiC_1_S1_R1_001.fastq \
+/extra/data/human/hg002/hic/HG002.HiC_1_S1_R2_001.fastq \
+| samtools sort -n -@ 24 - -o hg002_hic_s1_to_shasta_guppy6_run14.bam \
+```
+Once you have the BAM, pass it as an argument to GFAse, along with the gfa.
+
 ```
 /home/ubuntu/software/GFAse/build/phase_contacts \
 -i /extra/data/human/hg002/align/hg002_hic_s1-2_to_shasta_guppy6_run14.q1.bam \
@@ -37,6 +49,8 @@ A BAM file containing alignments of Hi-C data to the assembly contigs is require
 -p PR \
 -t 46
 ```
+In this case, only mappings above mapq=1 and with a target contig name with a "PR" will be used in phasing.
+
 
 ![image](https://user-images.githubusercontent.com/28764332/169711948-651feac3-2f53-4a71-9608-913a09b215b4.png)
 Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>2) will save loading time. 
