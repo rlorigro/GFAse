@@ -52,6 +52,7 @@ set(SOURCES
         src/BinarySequence.cpp
         src/Bipartition.cpp
         src/BubbleGraph.cpp
+        src/ContactGraph.cpp
         src/Color.cpp
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp
@@ -748,25 +749,25 @@ find_package(Threads REQUIRED)
 # -------- TESTS --------
 
 set(TESTS
-#        test_connected_component_finder
-#        test_bfs
-#        test_bamtools
-#        test_bubble_graph
-#        test_binary_sequence
-#        test_binary_sequence_performance
-#        test_assign_phase
-#        test_fixed_binary_sequence
-#        test_fixed_binary_sequence_sparsepp_performance
-#        test_gfareader
+        test_assign_phase
+        test_bfs
+        test_bubble_graph
+        test_binary_sequence
+        test_binary_sequence_performance
+        test_connected_component_finder
+        test_contact_graph
+        test_fixed_binary_sequence
+        test_fixed_binary_sequence_sparsepp_performance
+        test_gfareader
         test_htslib
         test_htslib_bam_reader
-#        test_kmer_unordered_set
-#        test_phase_haplotype_paths
-#        test_nonbinary_sequence_performance
-#        test_nonbinary_sequence_sparsepp_performance
-#        test_rgb_to_hex
-#        test_set_intersection
-#        test_timer
+        test_kmer_unordered_set
+        test_phase_haplotype_paths
+        test_nonbinary_sequence_performance
+        test_nonbinary_sequence_sparsepp_performance
+        test_rgb_to_hex
+        test_set_intersection
+        test_timer
 )
 
 foreach(FILENAME_PREFIX ${TESTS})
