@@ -1,4 +1,3 @@
-//#include "bamtools/api/BamReader.h"
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "graph_utility.hpp"
@@ -6,7 +5,6 @@
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
-//#include "sparsepp/spp.h"
 #include "Timer.hpp"
 #include "CLI11.hpp"
 #include "Sam.hpp"

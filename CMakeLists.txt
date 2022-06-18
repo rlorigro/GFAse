@@ -803,6 +803,7 @@ set(EXECUTABLES
         locate_kmer_matches
         phase_haplotype_paths
         phase_contacts
+#        phase_contacts_as_tripartition
         remove_empty_nodes
         split_connected_components
         unzip
