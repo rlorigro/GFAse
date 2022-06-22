@@ -64,10 +64,10 @@ void gfa_to_handle_graph(
         if (cigar == "0M" or cigar == "*") {
             graph.create_edge(a, b);
         }
-        else{
-            throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
-                                "contains non-empty overlap: " + cigar);
-        }
+//        else{
+//            throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
+//                                "contains non-empty overlap: " + cigar);
+//        }
     });
 
     cerr << "Creating paths..." << '\n';
@@ -81,11 +81,12 @@ void gfa_to_handle_graph(
 
         handle_t prev_handle;
 
-        for (auto& cigar: cigars){
-            if (not (cigar == "0M" or cigar == "*")){
-                throw runtime_error("ERROR: cigar in path " + path_name + " contains non-empty overlap");
-            }
-        }
+        // Allow overlaps bc doesn't terribly affect phasing for long nodes
+//        for (auto& cigar: cigars){
+//            if (not (cigar == "0M" or cigar == "*")){
+//                throw runtime_error("ERROR: cigar in path " + path_name + " contains non-empty overlap");
+//            }
+//        }
 
         for (size_t i=0; i<nodes.size(); i++){
             nid_t node_id;
