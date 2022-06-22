@@ -30,7 +30,10 @@ using std::cerr;
 
 namespace gfase {
 
-
+/// For any operation involving "length", length must be less than 2*bitcount(T)*T2 because each
+/// nucleotide takes two bits to store in binary.
+/// \tparam T integer type to use as word storage
+/// \tparam T2 number of words to have available for storage in array
 template<class T, size_t T2> class FixedBinarySequence {
 public:
     /// Attributes ///
@@ -252,6 +255,7 @@ template<class T, size_t T2> void FixedBinarySequence<T,T2>::to_string(string& s
 
     for (size_t i=0; i<length; i++){
         if (i % bp_per_word == 0) {
+            // Move to next word in array
             word = sequence[i/bp_per_word];
         }
 

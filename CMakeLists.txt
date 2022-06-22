@@ -18,10 +18,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (dev)
     message(STATUS "---- Building with debug options ----")
 
-    # Memory debug -- disabled because it reports false leaks with Bamtools library
-#    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
-#    set(ASAN_OPTIONS=check_initialization_order=1)
-#    set(ASAN_OPTIONS=detect_leaks=1)
+    # Memory debug
+    set(CMAKE_CXX_FLAGS "-fexceptions -fsanitize=address")
+    set(ASAN_OPTIONS=check_initialization_order=1)
+    set(ASAN_OPTIONS=detect_leaks=1)
 
     add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
 
@@ -757,6 +757,7 @@ set(TESTS
         test_connected_component_finder
         test_contact_graph
         test_fixed_binary_sequence
+        test_fixed_binary_sequence_performance_2
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
         test_htslib
@@ -793,6 +794,7 @@ set(EXECUTABLES
         assign_phases_via_diploid_alignment
         count_kmers
         create_bandage_path_color_table
+        compute_minhash
         extract_haplotype_kmers
         evaluate_phasing
         find_bubbles
