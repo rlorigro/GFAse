@@ -166,6 +166,11 @@ void ContactGraph::remove_node(int32_t id){
 }
 
 
+size_t ContactGraph::edge_count(int32_t id){
+    return nodes.at(id).neighbors.size();
+}
+
+
 size_t ContactGraph::size(){
     return nodes.size();
 }
@@ -177,6 +182,7 @@ int64_t ContactGraph::compute_consistency_score(int32_t id) const{
     auto n = nodes.at(id);
 
     for_each_node_neighbor(id, [&](int32_t id_other, const Node& n_other){
+//        cerr << '\t' << id << "<->" << id_other << ' ' << int(n.partition) << 'x' << int(n_other.partition) << 'x' << edge_weights.at(edge(id, id_other)) << '\n';
         score += n.partition * n_other.partition * edge_weights.at(edge(id, id_other));
     });
 
@@ -253,16 +259,22 @@ void random_phase_search(
 
     while (m < m_iterations) {
         // Randomly perturb
-        for (size_t i=0; i < ((contact_graph.size()/5) + 1); i++) {
-            auto partition = int8_t((uniform_distribution(rng) % 3) - 1);
-            contact_graph.set_partition(uniform_distribution(rng), partition);
-        }
+//        for (size_t i=0; i < ((contact_graph.size()/5) + 1); i++) {
+//            auto partition = int8_t((uniform_distribution(rng) % 3) - 1);
+//            contact_graph.set_partition(uniform_distribution(rng), partition);
+//        }
 
         for (size_t i=0; i < contact_graph.size(); i++) {
             auto n = uniform_distribution(rng);
 
             int64_t max_score = std::numeric_limits<int64_t>::min();
             int8_t p_max = 0;
+
+            if (contact_graph.edge_count(n) == 0){
+                contact_graph.set_partition(n, 0);
+                i++;
+                continue;
+            }
 
             for (int8_t p=-1; p<=1; p++) {
                 contact_graph.set_partition(n, p);
@@ -288,7 +300,12 @@ void random_phase_search(
             contact_graph.set_partitions(best_partitions);
         }
 
-        cerr << m << ' ' << best_score << ' ' << total_score << ' ' << '\n' << std::flush ;
+        cerr << m << ' ' << best_score << ' ' << total_score << ' ' << std::flush;
+        for (auto& [n,p]: best_partitions){
+            cerr << '(' << n << ',' << int(p) << ") ";
+        }
+        cerr << '\n';
+
         phase_mutex.unlock();
 
         m = job_index.fetch_add(1);

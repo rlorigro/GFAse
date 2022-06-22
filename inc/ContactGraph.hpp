@@ -67,6 +67,7 @@ public:
     void try_insert_node(int32_t id, int8_t partition);
     void remove_node(int32_t id);
     void set_partition(int32_t id, int8_t partition);
+    size_t edge_count(int32_t id);
 
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const Node& n)>& f) const;
