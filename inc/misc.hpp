@@ -63,6 +63,10 @@ void get_query_lengths_from_fasta(path fasta_path, map<string,size_t>& query_len
 
 void for_entry_in_csv(path csv_path, const function<void(const vector<string>& tokens, size_t line)>& f);
 
+char get_reverse_complement(char c);
+
+void get_reverse_complement(const string& fc, string& rc, size_t length);
+
 
 }
 

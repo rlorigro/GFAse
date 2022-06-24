@@ -3,6 +3,7 @@
 
 #include "graph_utility.hpp"
 #include "Filesystem.hpp"
+#include "misc.hpp"
 #include "spp.h"
 
 #include <unordered_set>
@@ -19,12 +20,6 @@ using ghc::filesystem::path;
 
 
 namespace gfase {
-
-
-char get_reverse_complement(char c);
-
-
-void get_reverse_complement(const string& fc, string& rc, size_t length);
 
 
 template <class T> class KmerSets {

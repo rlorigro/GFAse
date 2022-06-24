@@ -22,10 +22,37 @@ using std::ostream;
 using std::cerr;
 
 
+// Override the hash function for integer hashing because the hash is provided as the key already
+class Hash{
+public:
+    size_t operator() (uint64_t const& key) const
+    {
+        return key;
+    }
+};
+
+
+class Equal
+{
+public:
+    bool operator() (uint64_t a, uint64_t b) const
+    {
+        return a == b;
+    }
+};
+
+
 class HashCluster{
 private:
-    sparse_hash_map <uint64_t, unordered_set <string> > bins;
-    map <string, sparse_hash_set <uint64_t> > sketches;
+    // Where to store the names od reads which share hashed-k-mers
+    sparse_hash_map <uint64_t, unordered_set <string>, Hash, Equal> bins;
+
+    // How to backtrace for each read to its neighbors
+    map <string, sparse_hash_set <uint64_t, Hash, Equal> > sketches;
+
+    // Ultimately where the results are stored
+    sparse_hash_map <string, unordered_map <string, int64_t> > overlaps;
+
     size_t k;
 
     double total_sample_rate;
@@ -44,6 +71,7 @@ public:
     static uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index);
     void write_hash_frequency_distribution() const;
     void cluster(GfaReader& reader);
+    void write_results();
 };
 
 
@@ -108,9 +136,9 @@ uint64_t HashCluster::hash(const BinarySequence<uint64_t>& kmer, size_t seed_ind
 
 void HashCluster::add_sequence(const string& name, const string& sequence, size_t iteration_index) {
     BinarySequence<uint64_t> kmer;
-    sparse_hash_set<uint64_t> hashes;
+    sparse_hash_set<uint64_t, Hash, Equal> hashes;
 
-    cerr << name;
+    cerr << name << ' ' << sequence.size();
 
     for (auto& c: sequence) {
         if (kmer.length < k) {
@@ -125,6 +153,8 @@ void HashCluster::add_sequence(const string& name, const string& sequence, size_
             }
         }
     }
+
+    cerr << ' ' << hashes.size() << '\n';
 
     sketches.emplace(name, hashes);
 }
@@ -144,9 +174,10 @@ void HashCluster::write_hash_frequency_distribution() const{
 
 
 void HashCluster::cluster(GfaReader& reader){
+
     for (size_t i=0; i<n_iterations; i++){
+        sketches.clear();
         bins.clear();
-        bins.reserve(pow(k*2,2)*(total_sample_rate/2));
 
         reader.for_each_sequence([&](string& name, string& sequence){
             add_sequence(name, sequence, i);
@@ -154,35 +185,55 @@ void HashCluster::cluster(GfaReader& reader){
 
         write_hash_frequency_distribution();
 
+        for (auto& [name, hashes]: sketches){
+            // TODO: automate this parameter selection ?
+            if (hashes.size() < 10){
+                continue;
+            }
 
-//        for (auto& [name, hashes]: sketches){
-//            unordered_map <string, int64_t> overlaps;
-//
-//            // TODO: automate this parameter selection
-//            if (hashes.size() < 10){
-//                continue;
-//            }
-//
-//            // For each passing hash that this sequence contained
-//            for (auto& hash: hashes){
-//                // Iterate all the other sequences that also contained it
-//                for (auto& hit: bins.at(hash)){
-//                    // Skip self-hits
-//                    if (hit == name){
-//                        continue;
-//                    }
-//
-//                    overlaps[hit]++;
-//                }
-//            }
-//
-//            for (auto& [other_name, score]: overlaps){
-//                double similarity = double(score)/double(hashes.size());
-//                if (similarity > 0.7) {
-//                    cerr << name << '\t' << other_name << '\t' << score << '\t' << hashes.size() << '\t' << similarity << '\n';
-//                }
-//            }
-//        }
+            // For each passing hash that this sequence contained
+            for (auto& hash: hashes){
+                // Iterate all the other sequences that also contained it
+                for (auto& hit: bins.at(hash)){
+                    overlaps[name][hit]++;
+                }
+            }
+        }
+    }
+}
+
+
+void HashCluster::write_results(){
+    // TODO: sort and filter more comprehensively
+
+    for (auto& [name, results]: overlaps){
+        size_t total_hashes = results.at(name);
+
+        map <size_t, string> sorted_scores;
+
+        for (auto& [other_name, score]: results){
+            // Skip self-hits
+            if (other_name == name){
+                continue;
+            }
+
+            sorted_scores.emplace(score,other_name);
+        }
+
+        size_t i = 0;
+        for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
+            auto score = iter->first;
+            auto other_name = iter->second;
+
+            double similarity = double(score)/double(total_hashes);
+
+            cerr << name << '\t' << other_name << '\t' << score << '\t' << total_hashes << '\t' << similarity << '\n';
+            i++;
+
+            if (i == 10){
+                break;
+            }
+        }
     }
 }
 
@@ -191,9 +242,10 @@ int compute_minhash(path gfa_path){
     size_t k = 22;
 
     GfaReader reader(gfa_path);
-    HashCluster clusterer(k, 0.20, 3);
+    HashCluster clusterer(k, 0.12, 3);
 
     clusterer.cluster(reader);
+    clusterer.write_results();
 
     return 0;
 }
@@ -216,6 +268,3 @@ int main (int argc, char* argv[]){
 
     return 0;
 }
-
-
-
