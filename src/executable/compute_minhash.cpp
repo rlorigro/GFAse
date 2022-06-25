@@ -7,6 +7,8 @@
 #include "spp.h"
 
 using ghc::filesystem::path;
+using ghc::filesystem::exists;
+using ghc::filesystem::create_directories;
 using gfase::BinarySequence;
 using gfase::Sequence;
 using gfase::get_reverse_complement;
@@ -87,7 +89,7 @@ public:
     void write_hash_frequency_distribution(const hash_bins_t& bins) const;
     void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index);
     void cluster(const vector<Sequence>& sequences);
-    void write_results();
+    void write_results(path output_directory);
 };
 
 
@@ -158,11 +160,26 @@ void HashCluster::hash_sequence(const Sequence& sequence, size_t i) {
     BinarySequence<uint64_t> kmer;
 //    cerr << sequence.name << ' ' << sequence.size();
 
+    // Forward iteration
     for (auto& c: sequence.sequence) {
         if (kmer.length < k) {
             kmer.push_back(c);
         } else {
             kmer.shift(c);
+            uint64_t h = hash(kmer, i);
+
+            if (h < n_bins){
+                bins_per_iteration[i][h].emplace(sequence.name);
+            }
+        }
+    }
+
+    // Reverse complement iteration
+    for (auto iter = sequence.sequence.rbegin(); iter != sequence.sequence.rend(); iter++) {
+        if (kmer.length < k) {
+            kmer.push_back(get_reverse_complement(*iter));
+        } else {
+            kmer.shift(get_reverse_complement(*iter));
             uint64_t h = hash(kmer, i);
 
             if (h < n_bins){
@@ -197,13 +214,7 @@ void HashCluster::hash_sequences(const vector<Sequence>& sequences, atomic<size_
         auto& bins = bins_per_iteration[i];
 
         for (auto& sequence: sequences) {
-            // TODO: move the complementation step OUT of inner thread function
-            Sequence reverse_complement;
-            reverse_complement.name = sequence.name;
-            get_reverse_complement(sequence.sequence, reverse_complement.sequence, sequence.size());
-
             hash_sequence(sequence, i);
-            hash_sequence(reverse_complement, i);
         }
     }
 }
@@ -213,9 +224,8 @@ void HashCluster::cluster(const vector<Sequence>& sequences){
     bins_per_iteration.resize(n_iterations);
     sketches_per_iteration.resize(n_iterations);
 
-    atomic<size_t> job_index = 0;
-
     // Thread-related variables
+    atomic<size_t> job_index = 0;
     vector<thread> threads;
 
     // Launch threads
@@ -264,8 +274,21 @@ void HashCluster::cluster(const vector<Sequence>& sequences){
 }
 
 
-void HashCluster::write_results(){
-    // TODO: sort and filter more comprehensively
+// TODO: finish output
+void HashCluster::write_results(path output_directory){
+    path overlaps_path = output_directory / "overlaps.csv";
+    path pairs_path = output_directory / "pairs.csv";
+
+    ofstream overlaps_file(overlaps_path);
+    ofstream pairs_file(pairs_path);
+
+    if (overlaps_file.good() and overlaps_file.is_open()){
+        throw runtime_error("ERROR: could not write file: " + overlaps_path.string());
+    }
+
+    if (pairs_file.good() and pairs_file.is_open()){
+        throw runtime_error("ERROR: could not write file: " + pairs_path.string());
+    }
 
     for (auto& [name, results]: overlaps){
         size_t total_hashes = results.at(name);
@@ -301,11 +324,11 @@ void HashCluster::write_results(){
 }
 
 
-int compute_minhash(path gfa_path){
-    size_t k = 22;
+int compute_minhash(path gfa_path, path output_directory, double sample_rate, size_t k, size_t n_iterations, size_t n_threads){
+    create_directories(output_directory);
 
     GfaReader reader(gfa_path);
-    HashCluster clusterer(k, 0.12, 8, 8);
+    HashCluster clusterer(k, sample_rate, n_iterations, n_threads);
 
     vector<Sequence> sequences;
     reader.for_each_sequence([&](string& name, string& sequence){
@@ -313,7 +336,7 @@ int compute_minhash(path gfa_path){
     });
 
     clusterer.cluster(sequences);
-    clusterer.write_results();
+    clusterer.write_results(output_directory);
 
     return 0;
 }
@@ -321,18 +344,57 @@ int compute_minhash(path gfa_path){
 
 int main (int argc, char* argv[]){
     path file_path;
+    path output_directory;
+    double sample_rate = 0.1;
+    size_t k = 22;
+    size_t n_iterations = 10;
+    size_t n_threads = 1;
 
     CLI::App app{"App description"};
 
     app.add_option(
-            "-i,--input",
+            "-g,--gfa",
             file_path,
             "Path to GFA")
             ->required();
 
+    app.add_option(
+            "-o,--output_directory",
+            output_directory,
+            "Path to directory where output should be written")
+            ->required();
+
+    app.add_option(
+            "-r,--sample_rate",
+            sample_rate,
+            "Sample rate. Proportion [0-1] of k-mers to retain during in comparison")
+            ->required();
+
+    app.add_option(
+            "-k,--kmer_length",
+            k,
+            "Length of k-mer to use for hashing")
+            ->required();
+
+    app.add_option(
+            "-i,--n_iterations",
+            n_iterations,
+            "Number of iterations (different hash functions), each at a rate of sample_rate/n_iterations")
+            ->required();
+
+    app.add_option(
+            "-t,--n_threads",
+            n_threads,
+            "Maximum number of threads to use")
+            ->required();
+
     CLI11_PARSE(app, argc, argv);
 
-    compute_minhash(file_path);
+    if (sample_rate < 0 or sample_rate > 1){
+        throw std::runtime_error("ERROR: sample rate must be between 0 and 1.0");
+    }
+
+    compute_minhash(file_path, output_directory, sample_rate, k, n_iterations, n_threads);
 
     return 0;
 }
