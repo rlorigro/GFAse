@@ -3,7 +3,7 @@
 
 #include "graph_utility.hpp"
 #include "Filesystem.hpp"
-#include "misc.hpp"
+#include "Sequence.hpp"
 #include "spp.h"
 
 #include <unordered_set>

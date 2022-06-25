@@ -68,6 +68,7 @@ set(SOURCES
 ##        src/OverlapMap.cpp
         src/Phase.cpp
         src/PhaseAssign.cpp
+        src/Sequence.cpp
         src/Sam.cpp
         src/Timer.cpp
 )

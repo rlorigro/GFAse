@@ -1,11 +1,15 @@
 #include "BinarySequence.hpp"
 #include "GfaReader.hpp"
 #include "Filesystem.hpp"
+#include "Sequence.hpp"
 #include "CLI11.hpp"
+#include "misc.hpp"
 #include "spp.h"
 
 using ghc::filesystem::path;
 using gfase::BinarySequence;
+using gfase::Sequence;
+using gfase::get_reverse_complement;
 using spp::sparse_hash_set;
 using spp::sparse_hash_map;
 
@@ -13,12 +17,16 @@ using spp::sparse_hash_map;
 #include <map>
 #include <iostream>
 #include <ostream>
+#include <atomic>
+#include <thread>
 
 using std::unordered_set;
 using std::map;
 using std::numeric_limits;
 using std::stringstream;
 using std::ostream;
+using std::atomic;
+using std::thread;
 using std::cerr;
 
 
@@ -42,49 +50,59 @@ public:
 };
 
 
+// Where to store the names of reads which share hashed-k-mers
+using hash_bins_t = sparse_hash_map <uint64_t, unordered_set <string>, Hash, Equal>;
+
+// How to backtrace for each read to its neighbors
+using sketches_t = map <string, sparse_hash_set <uint64_t, Hash, Equal> >;
+
+// Ultimately where the results of LSH are stored
+using overlaps_t = sparse_hash_map <string, unordered_map <string, int64_t> >;
+
+
 class HashCluster{
 private:
-    // Where to store the names od reads which share hashed-k-mers
-    sparse_hash_map <uint64_t, unordered_set <string>, Hash, Equal> bins;
+    vector<hash_bins_t> bins_per_iteration;
+    vector<sketches_t> sketches_per_iteration;
+    overlaps_t overlaps;
 
-    // How to backtrace for each read to its neighbors
-    map <string, sparse_hash_set <uint64_t, Hash, Equal> > sketches;
+    const size_t k;
 
-    // Ultimately where the results are stored
-    sparse_hash_map <string, unordered_map <string, int64_t> > overlaps;
-
-    size_t k;
-
-    double total_sample_rate;
-    double iteration_sample_rate;
     size_t n_possible_bins;
-    size_t n_iterations;
-    size_t n_bins;
+    const size_t n_iterations;
+    const double total_sample_rate;
+    const double iteration_sample_rate;
+    const size_t n_threads;
+
+    size_t n_bins;  // Computed from the above values
 
     static const vector<uint64_t> seeds;
 
     /// Methods ///
-    void add_sequence(const string& name, const string& sequence, size_t iteration_index);
+    void hash_sequence(const Sequence& sequence, size_t i);
 
 public:
-    HashCluster(size_t k, double sample_rate, size_t n_iterations);
+    HashCluster(size_t k, double sample_rate, size_t n_iterations, size_t n_threads);
     static uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index);
-    void write_hash_frequency_distribution() const;
-    void cluster(GfaReader& reader);
+    void write_hash_frequency_distribution(const hash_bins_t& bins) const;
+    void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index);
+    void cluster(const vector<Sequence>& sequences);
     void write_results();
 };
 
 
-HashCluster::HashCluster(size_t k, double sample_rate, size_t n_iterations):
+HashCluster::HashCluster(size_t k, double sample_rate, size_t n_iterations, size_t n_threads):
     k(k),
+    n_possible_bins(numeric_limits<uint64_t>::max()),
+    n_iterations(n_iterations),
     total_sample_rate(sample_rate),
-    n_iterations(n_iterations)
+    iteration_sample_rate(sample_rate/double(n_iterations)),
+    n_threads(n_threads)
 {
     if (k > 32){
         throw runtime_error("ERROR: cannot perform robust 64bit hashing on kmer of length > 32");
     }
-    n_possible_bins = numeric_limits<uint64_t>::max();
-    iteration_sample_rate = total_sample_rate/double(n_iterations);
+
     n_bins = round(double(n_possible_bins)*iteration_sample_rate);
 
     cerr << "Using " << n_bins << " of " << n_possible_bins << " possible bins, for " << n_iterations 
@@ -133,34 +151,31 @@ uint64_t HashCluster::hash(const BinarySequence<uint64_t>& kmer, size_t seed_ind
     return MurmurHash64A(kmer.sequence.data(), int(kmer.get_byte_length()), seeds[seed_index]);
 }
 
-
-void HashCluster::add_sequence(const string& name, const string& sequence, size_t iteration_index) {
+///
+/// \param sequence
+/// \param i iteration of hashing to compute, corresponding to a hash function
+void HashCluster::hash_sequence(const Sequence& sequence, size_t i) {
     BinarySequence<uint64_t> kmer;
-    sparse_hash_set<uint64_t, Hash, Equal> hashes;
+//    cerr << sequence.name << ' ' << sequence.size();
 
-    cerr << name << ' ' << sequence.size();
-
-    for (auto& c: sequence) {
+    for (auto& c: sequence.sequence) {
         if (kmer.length < k) {
             kmer.push_back(c);
         } else {
             kmer.shift(c);
-            uint64_t h = hash(kmer, iteration_index);
+            uint64_t h = hash(kmer, i);
 
             if (h < n_bins){
-                bins[h].emplace(name);
-                hashes.emplace(h);
+                bins_per_iteration[i][h].emplace(sequence.name);
             }
         }
     }
 
-    cerr << ' ' << hashes.size() << '\n';
-
-    sketches.emplace(name, hashes);
+//    cerr << ' ' << hashes.size() << '\n';
 }
 
 
-void HashCluster::write_hash_frequency_distribution() const{
+void HashCluster::write_hash_frequency_distribution(const hash_bins_t& bins) const{
     map <size_t, size_t> distribution;
 
     for (auto& [bin_index, bin]: bins){
@@ -173,29 +188,75 @@ void HashCluster::write_hash_frequency_distribution() const{
 }
 
 
-void HashCluster::cluster(GfaReader& reader){
+void HashCluster::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index){
+    size_t i=0;
+    while (job_index < n_iterations){
+        i = job_index.fetch_add(1);
 
+        auto& sketches = sketches_per_iteration[i];
+        auto& bins = bins_per_iteration[i];
+
+        for (auto& sequence: sequences) {
+            // TODO: move the complementation step OUT of inner thread function
+            Sequence reverse_complement;
+            reverse_complement.name = sequence.name;
+            get_reverse_complement(sequence.sequence, reverse_complement.sequence, sequence.size());
+
+            hash_sequence(sequence, i);
+            hash_sequence(reverse_complement, i);
+        }
+    }
+}
+
+
+void HashCluster::cluster(const vector<Sequence>& sequences){
+    bins_per_iteration.resize(n_iterations);
+    sketches_per_iteration.resize(n_iterations);
+
+    atomic<size_t> job_index = 0;
+
+    // Thread-related variables
+    vector<thread> threads;
+
+    // Launch threads
+    for (uint64_t i=0; i<n_threads; i++){
+        try {
+            threads.emplace_back(thread(
+                    &HashCluster::hash_sequences,
+                    this,
+                    ref(sequences),
+                    ref(job_index)
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& t: threads){
+        t.join();
+    }
+
+    // Aggregate results
     for (size_t i=0; i<n_iterations; i++){
-        sketches.clear();
-        bins.clear();
+        auto& bins = bins_per_iteration[i];
 
-        reader.for_each_sequence([&](string& name, string& sequence){
-            add_sequence(name, sequence, i);
-        });
+        // Iterate all hash bins for this iteration (unique hash function)
+        for (auto& [hash,bin]: bins){
+            vector <string> items(bin.size());
 
-        write_hash_frequency_distribution();
-
-        for (auto& [name, hashes]: sketches){
-            // TODO: automate this parameter selection ?
-            if (hashes.size() < 10){
-                continue;
+            size_t n = 0;
+            for (auto& name: bin){
+                items[n] = name;
+                n++;
             }
 
-            // For each passing hash that this sequence contained
-            for (auto& hash: hashes){
-                // Iterate all the other sequences that also contained it
-                for (auto& hit: bins.at(hash)){
-                    overlaps[name][hit]++;
+            // Iterate all combinations of names found in this bin, including self hits, bc they'll be used as a
+            // normalization denominator later.
+            for (size_t a=0; a<items.size(); a++){
+                for (size_t b=a; b<items.size(); b++){
+                    overlaps[items[a]][items[b]]++;
                 }
             }
         }
@@ -221,6 +282,8 @@ void HashCluster::write_results(){
         }
 
         size_t i = 0;
+
+        // Report the top ten hits by % Jaccard similarity for each read
         for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
             auto score = iter->first;
             auto other_name = iter->second;
@@ -242,9 +305,14 @@ int compute_minhash(path gfa_path){
     size_t k = 22;
 
     GfaReader reader(gfa_path);
-    HashCluster clusterer(k, 0.12, 3);
+    HashCluster clusterer(k, 0.12, 8, 8);
 
-    clusterer.cluster(reader);
+    vector<Sequence> sequences;
+    reader.for_each_sequence([&](string& name, string& sequence){
+        sequences.emplace_back(name, sequence);
+    });
+
+    clusterer.cluster(sequences);
     clusterer.write_results();
 
     return 0;
