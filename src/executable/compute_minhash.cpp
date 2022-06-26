@@ -267,6 +267,11 @@ void HashCluster::cluster(const vector<Sequence>& sequences){
             for (size_t a=0; a<items.size(); a++){
                 for (size_t b=a; b<items.size(); b++){
                     overlaps[items[a]][items[b]]++;
+
+                    // Only increment the reciprocal if it's not a self hit
+                    if (a != b) {
+                        overlaps[items[b]][items[a]]++;
+                    }
                 }
             }
         }
@@ -274,21 +279,23 @@ void HashCluster::cluster(const vector<Sequence>& sequences){
 }
 
 
-// TODO: finish output
 void HashCluster::write_results(path output_directory){
     path overlaps_path = output_directory / "overlaps.csv";
     path pairs_path = output_directory / "pairs.csv";
 
     ofstream overlaps_file(overlaps_path);
-    ofstream pairs_file(pairs_path);
 
-    if (overlaps_file.good() and overlaps_file.is_open()){
+    if (not overlaps_file.good() or not overlaps_file.is_open()){
         throw runtime_error("ERROR: could not write file: " + overlaps_path.string());
     }
 
-    if (pairs_file.good() and pairs_file.is_open()){
+    ofstream pairs_file(pairs_path);
+
+    if (not pairs_file.good() or not pairs_file.is_open()){
         throw runtime_error("ERROR: could not write file: " + pairs_path.string());
     }
+
+    overlaps_file << "name" << ',' << "other_name" << ',' << "score" << ',' << "total_hashes" << ',' << "similarity" << '\n';
 
     for (auto& [name, results]: overlaps){
         size_t total_hashes = results.at(name);
@@ -306,14 +313,14 @@ void HashCluster::write_results(path output_directory){
 
         size_t i = 0;
 
-        // Report the top ten hits by % Jaccard similarity for each read
+        // Report the top hits by % Jaccard similarity for each
         for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
             auto score = iter->first;
             auto other_name = iter->second;
 
             double similarity = double(score)/double(total_hashes);
 
-            cerr << name << '\t' << other_name << '\t' << score << '\t' << total_hashes << '\t' << similarity << '\n';
+            overlaps_file << name << ',' << other_name << ',' << score << ',' << total_hashes << ',' << similarity << '\n';
             i++;
 
             if (i == 10){
