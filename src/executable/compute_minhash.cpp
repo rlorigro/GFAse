@@ -30,6 +30,8 @@ using std::ostream;
 using std::atomic;
 using std::thread;
 using std::cerr;
+using std::min;
+using std::max;
 
 
 // Override the hash function for integer hashing because the hash is provided as the key already
@@ -88,7 +90,9 @@ public:
     static uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index);
     void write_hash_frequency_distribution(const hash_bins_t& bins) const;
     void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index);
-    void cluster(const vector<Sequence>& sequences);
+    void hash(const vector<Sequence>& sequences);
+    void get_best_matches(map<string, string>& matches, double certainty_threshold);
+    void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold);
     void write_results(path output_directory);
 };
 
@@ -210,9 +214,6 @@ void HashCluster::hash_sequences(const vector<Sequence>& sequences, atomic<size_
     while (job_index < n_iterations){
         i = job_index.fetch_add(1);
 
-        auto& sketches = sketches_per_iteration[i];
-        auto& bins = bins_per_iteration[i];
-
         for (auto& sequence: sequences) {
             hash_sequence(sequence, i);
         }
@@ -220,7 +221,7 @@ void HashCluster::hash_sequences(const vector<Sequence>& sequences, atomic<size_
 }
 
 
-void HashCluster::cluster(const vector<Sequence>& sequences){
+void HashCluster::hash(const vector<Sequence>& sequences){
     bins_per_iteration.resize(n_iterations);
     sketches_per_iteration.resize(n_iterations);
 
@@ -279,20 +280,80 @@ void HashCluster::cluster(const vector<Sequence>& sequences){
 }
 
 
+void HashCluster::get_best_matches(map<string, string>& matches, double certainty_threshold){
+    for (auto& [name, results]: overlaps){
+        size_t total_hashes = results.at(name);
+
+        map <size_t, string> sorted_scores;
+
+        for (auto& [other_name, score]: results){
+            // Skip self-hits
+            if (other_name == name){
+                continue;
+            }
+
+            sorted_scores.emplace(score,other_name);
+        }
+
+        size_t i = 0;
+
+        string max_name;
+        double max_hashes = 0;
+        double all_hashes = 0;
+
+        // Report the top hits by % Jaccard similarity for each
+        for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
+            auto score = iter->first;
+            auto other_name = iter->second;
+
+            // First item is the maximum score
+            if (i == 0){
+                max_hashes = double(score);
+                max_name = other_name;
+            }
+
+            all_hashes += double(score);
+
+            i++;
+
+            if (i == 10){
+                break;
+            }
+        }
+
+        // Use a cheap certainty criteria that asks how much of the total matches were part of the max
+        if (max_hashes/all_hashes > certainty_threshold){
+            matches[name] = max_name;
+        }
+    }
+}
+
+
+void HashCluster::get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold){
+    map<string, string> matches;
+
+    get_best_matches(matches, certainty_threshold);
+
+    for (auto& [a,b]: matches){
+        auto b_to_a = matches.find(b);
+
+        if (b_to_a != matches.end()){
+            if (b_to_a->second == a){
+                // Only accept edges which are symmetrical
+                symmetrical_matches.emplace(min(a,b), max(a,b));
+            }
+        }
+    }
+}
+
+
 void HashCluster::write_results(path output_directory){
     path overlaps_path = output_directory / "overlaps.csv";
-    path pairs_path = output_directory / "pairs.csv";
 
     ofstream overlaps_file(overlaps_path);
 
     if (not overlaps_file.good() or not overlaps_file.is_open()){
         throw runtime_error("ERROR: could not write file: " + overlaps_path.string());
-    }
-
-    ofstream pairs_file(pairs_path);
-
-    if (not pairs_file.good() or not pairs_file.is_open()){
-        throw runtime_error("ERROR: could not write file: " + pairs_path.string());
     }
 
     overlaps_file << "name" << ',' << "other_name" << ',' << "score" << ',' << "total_hashes" << ',' << "similarity" << '\n';
@@ -335,15 +396,32 @@ int compute_minhash(path gfa_path, path output_directory, double sample_rate, si
     create_directories(output_directory);
 
     GfaReader reader(gfa_path);
-    HashCluster clusterer(k, sample_rate, n_iterations, n_threads);
+    HashCluster hasher(k, sample_rate, n_iterations, n_threads);
 
     vector<Sequence> sequences;
     reader.for_each_sequence([&](string& name, string& sequence){
         sequences.emplace_back(name, sequence);
     });
 
-    clusterer.cluster(sequences);
-    clusterer.write_results(output_directory);
+    hasher.hash(sequences);
+    hasher.write_results(output_directory);
+
+    map<string,string> overlaps;
+
+    hasher.get_symmetrical_matches(overlaps, 0.5);
+
+    path output_path = output_directory / "pairs.csv";
+    ofstream file(output_path);
+
+    if (not file.good() or not file.is_open()){
+        throw runtime_error("ERROR: could not write file: " + output_path.string());
+    }
+
+    file << "Name" << ',' << "Match" << ',' << "Color" << '\n';
+    for (auto& [a,b]: overlaps){
+        file << a << ',' << b << ',' << "Cornflower Blue" << '\n';
+        file << b << ',' << a << ',' << "Tomato" << '\n';
+    }
 
     return 0;
 }
