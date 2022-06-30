@@ -59,6 +59,7 @@ set(SOURCES
         src/gfa_to_handle.cpp
         src/graph_utility.cpp
         src/HaplotypePathKmer.cpp
+        src/Hasher.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         src/KmerSets.cpp
@@ -806,7 +807,7 @@ set(EXECUTABLES
         locate_kmer_matches
         phase_haplotype_paths
         phase_contacts
-#        phase_contacts_as_tripartition
+        phase_contacts_as_tripartition
         remove_empty_nodes
         split_connected_components
         unzip

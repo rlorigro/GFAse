@@ -36,7 +36,11 @@ public:
     // Which set does this node belong to
     int8_t partition;
 
+    // To find linked/opposing node in a bubble
+    int32_t alt;
+
     Node(int8_t partition);
+    bool has_alt() const;
 };
 
 
@@ -47,8 +51,9 @@ class ContactGraph {
     sparse_hash_map<pair<int32_t,int32_t>, int32_t> edge_weights;
     sparse_hash_map<int32_t,Node> nodes;
 
-private:
-    // No safety checks built in, only execute when it's known that the nodes exist and the edge does not.
+    static const array<string,3> colors;
+
+    // No safety checks built in, only should be called when it's known that the nodes exist and the edge does not.
     void insert_edge(int32_t a, int32_t b, int32_t weight);
 
 public:
@@ -67,20 +72,25 @@ public:
     void try_insert_node(int32_t id, int8_t partition);
     void remove_node(int32_t id);
     void set_partition(int32_t id, int8_t partition);
+    void add_alt(int32_t a, int32_t b);
     size_t edge_count(int32_t id);
 
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const Node& n)>& f) const;
     void for_each_node(const function<void(int32_t id, const Node& n)>& f) const;
     void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
+    bool has_alt(int32_t id) const;
+    bool has_node(int32_t id) const;
 
     // Optimization
+    int64_t get_score(const Node& a, const Node& b, int32_t weight) const;
     int64_t compute_total_consistency_score() const;
     int64_t compute_consistency_score(int32_t id) const;
     void get_partitions(vector <pair <int32_t,int8_t> >& partitions) const;
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
 
     // Misc
+    void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
     size_t size();
 };
 

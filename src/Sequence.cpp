@@ -28,6 +28,9 @@ char get_reverse_complement(char c){
     else if (c == 'T'){
         return 'A';
     }
+    else if (c == 'N'){
+        return 'N';
+    }
     else {
         throw runtime_error("ERROR: uncomplementable character in sequence " + string(1,c));
     }
