@@ -175,6 +175,10 @@ void Hasher::hash(const vector<Sequence>& sequences){
 
         // Iterate all hash bins for this iteration (unique hash function)
         for (auto& [hash,bin]: bins){
+            if (bin.size() > 40){
+                continue;
+            }
+
             vector <string> items(bin.size());
 
             size_t n = 0;
