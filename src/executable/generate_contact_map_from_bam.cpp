@@ -146,7 +146,6 @@ void write_contact_map(
             output_file << '\n';
         }
     }
-
 }
 
 

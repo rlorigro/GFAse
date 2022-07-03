@@ -5,6 +5,8 @@
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
+#include "Sequence.hpp"
+#include "Hasher.hpp"
 #include "Timer.hpp"
 #include "CLI11.hpp"
 #include "Sam.hpp"
@@ -18,8 +20,11 @@ using gfase::contact_map_t;
 using gfase::gfa_to_handle_graph;
 using gfase::IncrementalIdMap;
 using gfase::ContactGraph;
+using gfase::Node;
 using gfase::Bipartition;
 using gfase::SamElement;
+using gfase::Sequence;
+using gfase::Hasher;
 using gfase::Bubble;
 using gfase::Timer;
 using gfase::Bam;
@@ -28,46 +33,21 @@ using bdsg::HashGraph;
 using ghc::filesystem::path;
 using CLI::App;
 
-#include <unordered_map>
-#include <unordered_set>
-#include <functional>
-#include <stdexcept>
-#include <fstream>
-#include <utility>
-#include <atomic>
-#include <thread>
-#include <limits>
-#include <bitset>
-#include <vector>
-#include <mutex>
-#include <array>
-#include <set>
 
-using std::numeric_limits;
-using std::unordered_set;
-using std::unordered_map;
-using std::runtime_error;
-using std::streamsize;
-using std::exception;
-using std::to_string;
-using std::function;
-using std::ifstream;
-using std::ofstream;
-using std::shuffle;
-using std::string;
-using std::vector;
-using std::bitset;
-using std::thread;
-using std::atomic;
-using std::array;
-using std::mutex;
-using std::pair;
-using std::stoi;
-using std::cerr;
-using std::cref;
-using std::ref;
-using std::set;
+void write_contact_map(
+        path output_path,
+        const ContactGraph& contact_graph,
+        const IncrementalIdMap<string>& id_map){
+    ofstream output_file(output_path);
 
+    if (not output_file.is_open() or not output_file.good()){
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << '\n';
+    });
+}
 
 void update_contact_map(
         vector<SamElement>& alignments,
@@ -84,7 +64,7 @@ void update_contact_map(
             auto& b = alignments[j];
             auto ref_id_b = int32_t(id_map.try_insert(b.ref_name));
             contact_graph.try_insert_node(ref_id_b, 0);
-
+            contact_graph.try_insert_edge(ref_id_a, ref_id_b);
             contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 1);
         }
     }
@@ -158,6 +138,15 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
 
+    GfaReader reader(gfa_path);
+
+    // TODO: move this into domain of bdsg graph instead of GFA reader
+    vector<Sequence> sequences;
+    reader.for_each_sequence([&](string& name, string& sequence){
+        id_map.try_insert(name);
+        sequences.emplace_back(name, sequence);
+    });
+
     // Datastructures to represent linkages from hiC
     ContactGraph contact_graph;
     vector <vector <int32_t> > adjacency;
@@ -173,13 +162,90 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     HashGraph graph;
 
-    phase_contacts(contact_map, id_map, bubble_graph, n_threads);
+    double sample_rate = 0.1;
+    size_t k = 22;
+    size_t n_iterations = 10;
 
-    int64_t score = compute_total_consistency_score(bubble_graph, contact_map);
+    Hasher hasher(k, sample_rate, n_iterations, n_threads);
+
+    hasher.hash(sequences);
+    hasher.write_results(output_dir);
+
+    map<string,string> overlaps;
+
+    hasher.get_symmetrical_matches(overlaps, 0.75);
+
+    for (auto& [a,b]: overlaps){
+        auto id_a = int32_t(id_map.get_id(a));
+        auto id_b = int32_t(id_map.get_id(b));
+
+        if (contact_graph.has_node(id_a) and contact_graph.has_node(id_b)){
+            contact_graph.add_alt(id_a, id_b);
+        }
+    }
+
+//    vector<int32_t> tbd;
+//
+//    contact_graph.for_each_node([&](int32_t id, const Node& n){
+//        if (not n.has_alt()){
+//            tbd.emplace_back(id);
+//        }
+//    });
+//
+//    for (auto& id: tbd){
+//        contact_graph.remove_node(id);
+//    }
+
+    path output_path = output_dir / "pairs.csv";
+    ofstream file(output_path);
+
+    if (not file.good() or not file.is_open()){
+        throw runtime_error("ERROR: could not write file: " + output_path.string());
+    }
+
+    file << "Name" << ',' << "Match" << ',' << "Color" << '\n';
+    for (auto& [a,b]: overlaps){
+        file << a << ',' << b << ',' << "Cornflower Blue" << '\n';
+        file << b << ',' << a << ',' << "Tomato" << '\n';
+    }
+
+    contact_graph.for_each_node([&](int32_t id, const Node& n){
+        cerr << id << '\n';
+        cerr << n << '\n';
+    });
+
+    vector <pair <int32_t,int8_t> > best_partitions;
+    vector <int32_t> ids;
+    atomic<int64_t> best_score = std::numeric_limits<int64_t>::min();
+    atomic<size_t> job_index = 0;
+    mutex phase_mutex;
+    size_t m_iterations = 100;
+
+    contact_graph.get_node_ids(ids);
+    contact_graph.randomize_partitions();
+    contact_graph.get_partitions(best_partitions);
+
+    cerr << "Initital: " << std::flush;
+    for (auto& [n,p]: best_partitions){
+        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
+    }
+    cerr << '\n';
+
+    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
+
+    random_phase_search(contact_graph, ids, best_partitions, best_score, job_index, phase_mutex, m_iterations);
+
+    contact_graph.set_partitions(best_partitions);
+
+    cerr << "Final: " << std::flush;
+    for (auto& [n,p]: best_partitions){
+        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
+    }
+    cerr << '\n';
 
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
-    string suffix3 = "s" + to_string(int(score));
+    string suffix3 = "s" + to_string(best_score);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 
@@ -187,12 +253,13 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     path phases_output_path = output_dir / "phases.csv";
     path config_output_path = output_dir / "config.csv";
 
-    write_contact_map(contacts_output_path, contact_map, id_map);
-    bubble_graph.write_bandage_csv(phases_output_path, id_map);
+    contact_graph.write_bandage_csv(phases_output_path, id_map);
 
-    if (not gfa_path.empty()){
-        chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
-    }
+    write_contact_map(contacts_output_path, contact_graph, id_map);
+
+//    if (not gfa_path.empty()){
+//        chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
+//    }
 
     cerr << t << "Done" << '\n';
 }

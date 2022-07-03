@@ -79,6 +79,7 @@ public:
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const Node& n)>& f) const;
     void for_each_node(const function<void(int32_t id, const Node& n)>& f) const;
     void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
+    void get_node_ids(vector<int32_t>& ids);
     bool has_alt(int32_t id) const;
     bool has_node(int32_t id) const;
 
@@ -88,6 +89,7 @@ public:
     int64_t compute_consistency_score(int32_t id) const;
     void get_partitions(vector <pair <int32_t,int8_t> >& partitions) const;
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
+    void randomize_partitions();
 
     // Misc
     void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
@@ -98,6 +100,7 @@ ostream& operator<<(ostream& o, const gfase::Node& n);
 
 void random_phase_search(
         ContactGraph contact_graph,
+        const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,
         atomic<int64_t>& best_score,
         atomic<size_t>& job_index,

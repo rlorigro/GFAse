@@ -425,6 +425,44 @@ size_t get_total_length_of_phase_set(const map<string,size_t>& contig_lengths, c
 }
 
 
+void load_tripartition_csv(path csv_path, array <set<string>,2>& inferred_phases){
+    ifstream file(csv_path);
+
+    string line;
+    vector<string> tokens = {""};
+
+    size_t l = 0;
+    while (getline(file, line)){
+        if (l == 0){
+            l++;
+            continue;
+        }
+
+        for (auto& c: line){
+            if (c == ','){
+                tokens.emplace_back();
+            }
+            else{
+                tokens.back() += c;
+            }
+        }
+
+        auto& name = tokens[0];
+        int phase = stoi(tokens[1]);
+
+        if (phase == -1){
+            inferred_phases[0].emplace(name);
+        }
+        else if (phase == 1){
+            inferred_phases[1].emplace(name);
+        }
+
+        tokens = {""};
+        l++;
+    }
+}
+
+
 void evaluate_phasing(
         path output_dir,
         path phase_csv,
@@ -446,17 +484,25 @@ void evaluate_phasing(
 
     // Load the csv using the BubbleGraph mechanism
     IncrementalIdMap<string> id_map;
-    BubbleGraph bubble_graph(phase_csv, id_map);
 
-    // Translate the bubble graph into a set object for easier comparison...
-    for (size_t bubble_id=0; bubble_id<bubble_graph.size(); bubble_id++){
-        auto b = bubble_graph.at(bubble_id);
+    try {
+        BubbleGraph bubble_graph(phase_csv, id_map);
 
-        auto name_0 = id_map.get_name(b.get(0));
-        inferred_phases[0].emplace(name_0);
+        // Translate the bubble graph into a set object for easier comparison...
+        for (size_t bubble_id = 0; bubble_id < bubble_graph.size(); bubble_id++) {
+            auto b = bubble_graph.at(bubble_id);
 
-        auto name_1 = id_map.get_name(b.get(1));
-        inferred_phases[1].emplace(name_1);
+            auto name_0 = id_map.get_name(b.get(0));
+            inferred_phases[0].emplace(name_0);
+
+            auto name_1 = id_map.get_name(b.get(1));
+            inferred_phases[1].emplace(name_1);
+        }
+    }
+    catch (const std::exception& e){
+        cerr << e.what() << '\n';
+        cerr << "Trying to parse as tripartition instead..." << '\n';
+        load_tripartition_csv(phase_csv, inferred_phases);
     }
 
     assign_phases(
@@ -502,42 +548,42 @@ void evaluate_phasing(
 
     write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, phased_cigar_summaries, output_dir / "phase_intersections.csv");
 
-    BubbleGraph bubble_graph_ref = bubble_graph;
-
-    for (size_t id=0; id<bubble_graph_ref.size(); id++){
-        auto b = bubble_graph_ref.at(id);
-
-        auto name_0 = id_map.get_name(b.get(0));
-        auto name_1 = id_map.get_name(b.get(1));
-
-        bool cis_0 = true_phases[0].count(name_0);
-        bool cis_1 = true_phases[1].count(name_1);
-        bool trans_0 = true_phases[1].count(name_0);
-        bool trans_1 = true_phases[0].count(name_1);
-
-        bool not_found_0 = (not cis_0) and (not trans_0);
-        bool not_found_1 = (not cis_1) and (not trans_1);
-
-        if (not_found_0 or not_found_1){
-            // Bad reference assignment, both sides of bubble are same haplotype
-            cerr << "Warning: bad reference assignment for nodes in bubble (not aligned):\n"
-                 << name_0 << ": " << cis_0 << '\n'
-                 << name_1 << ": " << !cis_1 << '\n';
-        }
-        // Bubble needs flipping
-        else if ((not cis_0) and (not cis_1)){
-            bubble_graph_ref.flip(id);
-        }
-        else if ((not (cis_0 and cis_1))){
-            // Bad reference assignment, both sides of bubble are same haplotype
-            cerr << "Warning: bad reference assignment for nodes in bubble (both aligned to same haplotype):\n"
-                 << name_0 << ": " << cis_0 << '\n'
-                 << name_1 << ": " << !cis_1 << '\n';
-        }
-    }
-
-    path true_phases_csv_path = output_dir / "true_phases.csv";
-    bubble_graph_ref.write_bandage_csv(true_phases_csv_path, id_map);
+//    BubbleGraph bubble_graph_ref = bubble_graph;
+//
+//    for (size_t id=0; id<bubble_graph_ref.size(); id++){
+//        auto b = bubble_graph_ref.at(id);
+//
+//        auto name_0 = id_map.get_name(b.get(0));
+//        auto name_1 = id_map.get_name(b.get(1));
+//
+//        bool cis_0 = true_phases[0].count(name_0);
+//        bool cis_1 = true_phases[1].count(name_1);
+//        bool trans_0 = true_phases[1].count(name_0);
+//        bool trans_1 = true_phases[0].count(name_1);
+//
+//        bool not_found_0 = (not cis_0) and (not trans_0);
+//        bool not_found_1 = (not cis_1) and (not trans_1);
+//
+//        if (not_found_0 or not_found_1){
+//            // Bad reference assignment, both sides of bubble are same haplotype
+//            cerr << "Warning: bad reference assignment for nodes in bubble (not aligned):\n"
+//                 << name_0 << ": " << cis_0 << '\n'
+//                 << name_1 << ": " << !cis_1 << '\n';
+//        }
+//        // Bubble needs flipping
+//        else if ((not cis_0) and (not cis_1)){
+//            bubble_graph_ref.flip(id);
+//        }
+//        else if ((not (cis_0 and cis_1))){
+//            // Bad reference assignment, both sides of bubble are same haplotype
+//            cerr << "Warning: bad reference assignment for nodes in bubble (both aligned to same haplotype):\n"
+//                 << name_0 << ": " << cis_0 << '\n'
+//                 << name_1 << ": " << !cis_1 << '\n';
+//        }
+//    }
+//
+//    path true_phases_csv_path = output_dir / "true_phases.csv";
+//    bubble_graph_ref.write_bandage_csv(true_phases_csv_path, id_map);
 }
 
 

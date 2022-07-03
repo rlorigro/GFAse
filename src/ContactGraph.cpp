@@ -135,7 +135,7 @@ void ContactGraph::for_each_node_neighbor(int32_t id, const function<void(int32_
 
 
 void ContactGraph::for_each_node(const function<void(int32_t id, const Node& n)>& f) const{
-    for (int32_t id=0; id<nodes.size(); id++){
+    for (auto& [id,node]: nodes){
         f(id, nodes.at(id));
     }
 }
@@ -178,9 +178,7 @@ void ContactGraph::try_insert_node(int32_t id, int8_t partition){
 
 void ContactGraph::set_partition(int32_t id, int8_t partition) {
     auto& node = nodes.at(id);
-
-    auto& n = nodes.at(id);
-    n.partition = partition;
+    node.partition = partition;
 
     // If this node is linked to an alt, alt must be maintained in an opposite state
     if (node.has_alt()){
@@ -188,7 +186,7 @@ void ContactGraph::set_partition(int32_t id, int8_t partition) {
             throw runtime_error("ERROR: cannot set 0 partition for bubble: " + to_string(id));
         }
 
-        nodes.at(n.alt).partition = partition * -1;
+        nodes.at(node.alt).partition *= -1;
     }
 }
 
@@ -232,7 +230,7 @@ int64_t ContactGraph::get_score(const Node& a, const Node& b, int32_t weight) co
     auto p_b = b.partition;
 
     if (p_a != 0 and p_b != 0) {
-        score += p_a * p_b * weight;
+        score = p_a * p_b * weight;
     }
     else{
         score = weight/2;
@@ -248,13 +246,14 @@ int64_t ContactGraph::compute_consistency_score(int32_t id) const{
     auto n = nodes.at(id);
 
     for_each_node_neighbor(id, [&](int32_t id_other, const Node& n_other){
-//        cerr << '\t' << id << "<->" << id_other << ' ' << int(n.partition) << 'x' << int(n_other.partition) << 'x' << edge_weights.at(edge(id, id_other)) << '\n';
         score += get_score(n, n_other, edge_weights.at(edge(id, id_other)));
+//        cerr << '\t' << id << "<->" << id_other << ' ' << int(n.partition) << 'x' << int(n_other.partition) << 'x' << edge_weights.at(edge(id, id_other)) << ' ' << score << '\n';
     });
 
     if (n.has_alt()){
+        auto& n_alt = nodes.at(n.alt);
         for_each_node_neighbor(n.alt, [&](int32_t id_other, const Node& n_other){
-            score += get_score(n, n_other, edge_weights.at(edge(id, id_other)));
+            score += get_score(n_alt, n_other, edge_weights.at(edge(n.alt, id_other)));
         });
     }
 
@@ -281,8 +280,39 @@ void ContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) c
 
     size_t i=0;
     for (auto& [n, node]: nodes){
-        partitions.at(i) = {n,node.partition};
+        partitions[i] = {n,node.partition};
         i++;
+    }
+}
+
+
+void ContactGraph::randomize_partitions(){
+    // True random number
+    std::random_device rd;
+
+    // Pseudorandom generator with true random seed
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uniform_distribution(0,2);
+
+    for (auto& [id,node]: nodes){
+        int8_t p;
+        if (node.has_alt()){
+            // Only allow {1,-1} for known bubbles
+            p = int8_t((uniform_distribution(rng) % 2));
+
+            if (p == 0){
+                p = -1;
+            }
+
+            node.partition = p;
+            nodes.at(node.alt).partition = -p;
+        }
+        else{
+            // Allow {1,0,-1}
+            p = int8_t((uniform_distribution(rng) % 3) - 1);
+
+            node.partition = p;
+        }
     }
 }
 
@@ -290,6 +320,18 @@ void ContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) c
 void ContactGraph::set_partitions(const vector <pair <int32_t,int8_t> >& partitions){
     for (auto& [n, p]: partitions){
         set_partition(n, p);
+    }
+}
+
+
+void ContactGraph::get_node_ids(vector<int32_t>& ids){
+    ids.resize(nodes.size());
+
+    size_t i = 0;
+
+    for (auto& [id,node]: nodes){
+        ids[i] = id;
+        i++;
     }
 }
 
@@ -334,6 +376,7 @@ void ContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>&
 
 void random_phase_search(
         ContactGraph contact_graph,
+        const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,
         atomic<int64_t>& best_score,
         atomic<size_t>& job_index,
@@ -352,20 +395,15 @@ void random_phase_search(
 
     int64_t total_score;
 
-    vector<size_t> order(contact_graph.size());
-    for (size_t i=0; i<order.size(); i++){
-        order[i] = i;
-    }
-
     while (m < m_iterations) {
         // Randomly perturb
-        for (size_t i=0; i < ((contact_graph.size()/5) + 1); i++) {
-            auto r = uniform_distribution(rng);
+        for (size_t i=0; i<((contact_graph.size()/30) + 1); i++) {
+            auto r = ids[uniform_distribution(rng)];
 
             int8_t p;
             if (contact_graph.has_alt(r)){
                 // Only allow {1,-1}
-                p = int8_t((uniform_distribution(rng) % 2) - 1);
+                p = int8_t((uniform_distribution(rng) % 2));
 
                 if (p == 0){
                     p = -1;
@@ -379,15 +417,13 @@ void random_phase_search(
             contact_graph.set_partition(r, p);
         }
 
-        for (size_t i=0; i < contact_graph.size(); i++) {
-            auto n = uniform_distribution(rng);
+        for (size_t i=0; i<contact_graph.size(); i++) {
+            auto n = ids[uniform_distribution(rng)];
 
             int64_t max_score = std::numeric_limits<int64_t>::min();
             int8_t p_max = 0;
 
             if (contact_graph.edge_count(n) == 0){
-                contact_graph.set_partition(n, 0);
-                i++;
                 continue;
             }
 
@@ -406,6 +442,8 @@ void random_phase_search(
                     max_score = score;
                     p_max = p;
                 }
+
+//                cerr << n << ' ' << int(has_alt) << ' ' << int(p) << ' ' << score << ' ' << max_score << '\n';
             }
 
             contact_graph.set_partition(n, p_max);
@@ -423,9 +461,9 @@ void random_phase_search(
         }
 
         cerr << m << ' ' << best_score << ' ' << total_score << ' ' << std::flush;
-        for (auto& [n,p]: best_partitions){
-            cerr << '(' << n << ',' << int(p) << ") ";
-        }
+//        for (auto& [n,p]: best_partitions){
+//            cerr << '(' << n << ',' << int(p) << ") ";
+//        }
         cerr << '\n';
 
         phase_mutex.unlock();

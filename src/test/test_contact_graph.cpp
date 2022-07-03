@@ -158,7 +158,7 @@ void test_optimization(){
             -1, // 2
             0,  // 3
             1,  // 4
-            0,  // 5
+            -1,  // 5
             0,  // 6
             -1, // 7
             -1, // 8
@@ -170,20 +170,20 @@ void test_optimization(){
     }
 
     // Non-phaseable edges
-//    g.try_insert_edge(0,1,2);
+//    g.try_insert_edge(0,1,3);
 //    g.try_insert_edge(0,2,2);
-//    g.try_insert_edge(3,1,2);
-//    g.try_insert_edge(3,2,2);
+//    g.try_insert_edge(3,1,3);
+//    g.try_insert_edge(3,2,3);
 //
-//    g.try_insert_edge(3,4,2);
-//    g.try_insert_edge(3,5,2);
+//    g.try_insert_edge(3,4,3);
+//    g.try_insert_edge(3,5,3);
 //    g.try_insert_edge(6,4,2);
-//    g.try_insert_edge(6,5,2);
+//    g.try_insert_edge(6,5,3);
 //
-//    g.try_insert_edge(6,7,2);
-//    g.try_insert_edge(6,8,2);
+//    g.try_insert_edge(6,7,3);
+//    g.try_insert_edge(6,8,3);
 //    g.try_insert_edge(9,7,2);
-//    g.try_insert_edge(9,8,2);
+//    g.try_insert_edge(9,8,3);
 
     // Consistent edges
     g.try_insert_edge(1,4,6);
@@ -213,15 +213,21 @@ void test_optimization(){
         cerr << '\n';
     });
 
+    g.add_alt(4,5);
+
+    vector <int32_t> ids;
     vector <pair <int32_t,int8_t> > best_partitions;
     atomic<int64_t> best_score = std::numeric_limits<int64_t>::min();
     atomic<size_t> job_index = 0;
     mutex phase_mutex;
     size_t m_iterations = 10;
 
+    g.get_node_ids(ids);
+    g.get_partitions(best_partitions);
+
     cerr << g.compute_consistency_score(2) << '\n';
 
-    random_phase_search(g, best_partitions, best_score, job_index, phase_mutex, m_iterations);
+    random_phase_search(g, ids, best_partitions, best_score, job_index, phase_mutex, m_iterations);
 
     g.set_partitions(best_partitions);
     cerr << "After optimization:" << '\n';
@@ -243,7 +249,7 @@ void test_optimization(){
 
 
 int main(){
-    test_mutability();
+//    test_mutability();
     test_optimization();
 
     return 0;
