@@ -83,7 +83,7 @@ void ContactGraph::add_alt(int32_t a, int32_t b){
 
     // Chose arbitrary partition assignment
     node_a.partition = -1;
-    node_a.partition = 1;
+    node_b.partition = 1;
 }
 
 
