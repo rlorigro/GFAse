@@ -72,6 +72,10 @@ void ContactGraph::add_alt(int32_t a, int32_t b){
         throw runtime_error("ERROR: cannot add alt with nonexistent node id: (" + to_string(a) + "," + to_string(b) +")");
     }
 
+    if (a == b){
+        throw runtime_error("ERROR: cannot add alt to itself: " + to_string(b));
+    }
+
     auto& node_a = nodes.at(a);
     auto& node_b = nodes.at(b);
 
@@ -176,17 +180,37 @@ void ContactGraph::try_insert_node(int32_t id, int8_t partition){
 }
 
 
+void ContactGraph::validate_alts() {
+    for (auto& [id,node]: nodes){
+
+        // If this node is linked to an alt, alt must be maintained in an opposite state
+        if (node.has_alt()){
+            auto& alt = nodes.at(node.alt);
+
+            cerr << id << ',' << node.alt << ',' << int(node.partition) << ',' << int(alt.partition) << '\n';
+
+            if (alt.partition == node.partition){
+                throw runtime_error("ERROR: (ContactGraph::set_partition) alt nodes in same partition: " + to_string(int(id)) + ',' + to_string(int(node.alt)));
+            }
+        }
+    }
+
+}
+
+
 void ContactGraph::set_partition(int32_t id, int8_t partition) {
     auto& node = nodes.at(id);
     node.partition = partition;
 
     // If this node is linked to an alt, alt must be maintained in an opposite state
     if (node.has_alt()){
+        auto& alt = nodes.at(node.alt);
+
         if (partition == 0) {
             throw runtime_error("ERROR: cannot set 0 partition for bubble: " + to_string(id));
         }
 
-        nodes.at(node.alt).partition *= -1;
+        alt.partition = partition*-1;
     }
 }
 
@@ -278,7 +302,7 @@ void ContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) c
     partitions.clear();
     partitions.resize(nodes.size());
 
-    size_t i=0;
+    size_t i = 0;
     for (auto& [n, node]: nodes){
         partitions[i] = {n,node.partition};
         i++;
@@ -304,14 +328,13 @@ void ContactGraph::randomize_partitions(){
                 p = -1;
             }
 
-            node.partition = p;
-            nodes.at(node.alt).partition = -p;
+            set_partition(id,p);
         }
         else{
             // Allow {1,0,-1}
             p = int8_t((uniform_distribution(rng) % 3) - 1);
 
-            node.partition = p;
+            set_partition(id,p);
         }
     }
 }
@@ -392,6 +415,8 @@ void random_phase_search(
     // Pseudorandom generator with true random seed
     std::mt19937 rng(rd());
     std::uniform_int_distribution<int> uniform_distribution(0,int(contact_graph.size()-1));
+
+    contact_graph.set_partitions(best_partitions);
 
     int64_t total_score;
 

@@ -184,18 +184,6 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         }
     }
 
-//    vector<int32_t> tbd;
-//
-//    contact_graph.for_each_node([&](int32_t id, const Node& n){
-//        if (not n.has_alt()){
-//            tbd.emplace_back(id);
-//        }
-//    });
-//
-//    for (auto& id: tbd){
-//        contact_graph.remove_node(id);
-//    }
-
     path output_path = output_dir / "pairs.csv";
     ofstream file(output_path);
 
@@ -225,7 +213,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     contact_graph.randomize_partitions();
     contact_graph.get_partitions(best_partitions);
 
-    cerr << "Initital: " << std::flush;
+    cerr << "Initial: " << std::flush;
     for (auto& [n,p]: best_partitions){
         cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
     }

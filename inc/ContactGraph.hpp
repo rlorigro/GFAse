@@ -93,6 +93,7 @@ public:
 
     // Misc
     void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
+    void validate_alts();
     size_t size();
 };
 

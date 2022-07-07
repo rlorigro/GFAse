@@ -126,6 +126,23 @@ void test_mutability(){
         cerr << e.first << ',' << e.second << ' ' << int(weight) << '\n';
     });
 
+
+//    cerr << "------------ Test get/set partitions ----------" << '\n';
+//
+//    vector <pair <int32_t, int8_t> > p1 = {};
+//    vector <pair <int32_t, int8_t> > p2;
+//    g.get_partitions(p2);
+//
+//    if (p1.size() != p2.size()){
+//        throw runtime_error("ERROR: partition vectors not same size" + to_string(p1.size()) + "!=" + to_string(p2.size()));
+//    }
+//
+//    for (size_t i = 0; i < p1.size(); i++){
+//        if (p1[i] != p2[i]) {
+//            throw runtime_error("ERROR: partition vectors unequal: " + to_string(p1[i].first) + ',' + to_string(p2[i].first));
+//        }
+//    }
+
 }
 
 
@@ -214,6 +231,7 @@ void test_optimization(){
     });
 
     g.add_alt(4,5);
+    g.add_alt(1,2);
 
     vector <int32_t> ids;
     vector <pair <int32_t,int8_t> > best_partitions;
@@ -222,8 +240,15 @@ void test_optimization(){
     mutex phase_mutex;
     size_t m_iterations = 10;
 
+    cerr << "-- validating alts --" << '\n';
+    g.validate_alts();
+
     g.get_node_ids(ids);
+    g.randomize_partitions();
     g.get_partitions(best_partitions);
+
+    cerr << "-- validating alts --" << '\n';
+    g.validate_alts();
 
     cerr << g.compute_consistency_score(2) << '\n';
 
