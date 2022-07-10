@@ -95,8 +95,7 @@ private:
     const size_t min_hashes = 40;
 
     // How many more bins than the total length of the observed sequence do we want to have, to prevent collisions?
-    // Keeping this at 1.0 for now, because the sampling
-    const size_t bins_scaling_factor = 10;
+    const size_t bins_scaling_factor = 5;
 
     static const vector<uint64_t> seeds;
 

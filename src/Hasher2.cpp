@@ -153,12 +153,12 @@ void Hasher2::hash(const vector<Sequence>& sequences){
     max_kmers_in_sequence = size_t(double(max_kmers_in_sequence) * total_sample_rate);
 
     cerr << max_kmers_in_sequence << " kmers after downsampling" << '\n';
-    cerr << max_kmers_in_sequence*bins_scaling_factor << " bins allocated" << '\n';
+    cerr << max_kmers_in_sequence * bins_scaling_factor << " bins allocated" << '\n';
 
     // Aggregate results
     for (size_t h=0; h<n_iterations; h++){
         bins.clear();
-        bins.resize(max_kmers_in_sequence*bins_scaling_factor);
+        bins.resize(max_kmers_in_sequence * bins_scaling_factor);
 
         // Thread-related variables
         atomic<size_t> job_index = 0;
@@ -220,7 +220,7 @@ void Hasher2::get_best_matches(map<string, string>& matches, double certainty_th
     for (auto& [name, results]: overlaps){
         auto total_hashes = double(results.at(name));
 
-        if (total_hashes < min_hashes){
+        if (total_hashes < double(min_hashes)){
             continue;
         }
 
