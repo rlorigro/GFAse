@@ -1,5 +1,5 @@
-#ifndef GFASE_HASHER_HPP
-#define GFASE_HASHER_HPP
+#ifndef GFASE_Hasher22_HPP
+#define GFASE_Hasher22_HPP
 
 #include "BinarySequence.hpp"
 #include "GfaReader.hpp"
@@ -21,6 +21,7 @@ using spp::sparse_hash_map;
 #include <ostream>
 #include <atomic>
 #include <thread>
+#include <mutex>
 
 using std::unordered_set;
 using std::map;
@@ -29,6 +30,7 @@ using std::stringstream;
 using std::ostream;
 using std::atomic;
 using std::thread;
+using std::mutex;
 using std::cerr;
 using std::min;
 using std::max;
@@ -58,19 +60,22 @@ public:
 
 
 // Where to store the names of reads which share hashed-k-mers
-using hash_bins_t = sparse_hash_map <uint64_t, unordered_set <string>, Hash, Equal>;
-
-// How to backtrace for each read to its neighbors
-using sketches_t = map <string, sparse_hash_set <uint64_t, Hash, Equal> >;
+using hash_bins_t = vector <unordered_set <string> >;
 
 // Ultimately where the results of LSH are stored
 using overlaps_t = sparse_hash_map <string, unordered_map <string, int64_t> >;
 
 
-class Hasher{
+class Hasher2{
 private:
-    vector<hash_bins_t> bins_per_iteration;
-    vector<sketches_t> sketches_per_iteration;
+    // Each bin corresponds to a k-mer, and contains sequence names
+    hash_bins_t bins;
+
+    // Can't use a vector for mutexes, and it's probably more efficient to have fewer anyway. So the bin index
+    // is downsampled (%) to match the number of mutexes.
+    array<mutex,512> bin_mutexes;
+
+    // The result of counting co-occuring sequences in the hash bins
     overlaps_t overlaps;
 
     const size_t k;
@@ -83,18 +88,26 @@ private:
 
     size_t n_bins;  // Computed from the above values
 
+    // Don't iterate bins with too many hashes
     const size_t max_bin_size = 10;
+
+    // Skip assigning pairs for any match that has fewer than this many hashes
+    const size_t min_hashes = 40;
+
+    // How many more bins than the total length of the observed sequence do we want to have, to prevent collisions?
+    // Keeping this at 1.0 for now, because the sampling
+    const size_t bins_scaling_factor = 10;
 
     static const vector<uint64_t> seeds;
 
     /// Methods ///
-    void hash_sequence(const Sequence& sequence, size_t i);
+    void hash_sequence(const Sequence& sequence, size_t hash_index);
 
 public:
-    Hasher(size_t k, double sample_rate, size_t n_iterations, size_t n_threads);
-    static uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index);
-    void write_hash_frequency_distribution(const hash_bins_t& bins) const;
-    void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index);
+    Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads);
+    uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index) const;
+    void write_hash_frequency_distribution() const;
+    void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index);
     void hash(const vector<Sequence>& sequences);
     void get_best_matches(map<string, string>& matches, double certainty_threshold);
     void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold);
@@ -105,4 +118,4 @@ public:
 
 }
 
-#endif //GFASE_HASHER_HPP
+#endif //GFASE_Hasher22_HPP

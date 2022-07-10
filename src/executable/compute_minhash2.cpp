@@ -1,11 +1,11 @@
-#include "Hasher.hpp"
+#include "Hasher2.hpp"
 #include "GfaReader.hpp"
 #include "Filesystem.hpp"
 #include "Sequence.hpp"
 #include "CLI11.hpp"
 
 
-using gfase::Hasher;
+using gfase::Hasher2;
 using gfase::Sequence;
 
 
@@ -13,7 +13,7 @@ int compute_minhash(path gfa_path, path output_directory, double sample_rate, si
     create_directories(output_directory);
 
     GfaReader reader(gfa_path);
-    Hasher hasher(k, sample_rate, n_iterations, n_threads);
+    Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
 
     vector<Sequence> sequences;
     reader.for_each_sequence([&](string& name, string& sequence){

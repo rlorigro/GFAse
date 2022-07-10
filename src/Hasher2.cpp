@@ -1,10 +1,10 @@
-#include "Hasher.hpp"
+#include "Hasher2.hpp"
 
 
 namespace gfase{
 
 
-Hasher::Hasher(size_t k, double sample_rate, size_t n_iterations, size_t n_threads):
+Hasher2::Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads):
         k(k),
         n_possible_bins(numeric_limits<uint64_t>::max()),
         n_iterations(n_iterations),
@@ -23,7 +23,7 @@ Hasher::Hasher(size_t k, double sample_rate, size_t n_iterations, size_t n_threa
 }
 
 
-const vector<uint64_t> Hasher::seeds = {
+const vector<uint64_t> Hasher2::seeds = {
         2502369103967696952, 7135383713162725540, 13627014539775970274,
         4796741865460292034, 871560157616224954, 4803805340556337874,
         16419522238146181018, 2510544324051818521, 14730669708888401360,
@@ -60,7 +60,7 @@ const vector<uint64_t> Hasher::seeds = {
         10629356763957722439};
 
 
-uint64_t Hasher::hash(const BinarySequence<uint64_t>& kmer, size_t seed_index){
+uint64_t Hasher2::hash(const BinarySequence<uint64_t>& kmer, size_t seed_index) const{
     return MurmurHash64A(kmer.sequence.data(), int(kmer.get_byte_length()), seeds[seed_index]);
 }
 
@@ -68,9 +68,8 @@ uint64_t Hasher::hash(const BinarySequence<uint64_t>& kmer, size_t seed_index){
 ///
 /// \param sequence
 /// \param i iteration of hashing to compute, corresponding to a hash function
-void Hasher::hash_sequence(const Sequence& sequence, size_t i) {
+void Hasher2::hash_sequence(const Sequence& sequence, const size_t hash_index) {
     BinarySequence<uint64_t> kmer;
-//    cerr << sequence.name << ' ' << sequence.size();
 
     // Forward iteration
     for (auto& c: sequence.sequence) {
@@ -84,10 +83,13 @@ void Hasher::hash_sequence(const Sequence& sequence, size_t i) {
             kmer.push_back(c);
         } else {
             kmer.shift(c);
-            uint64_t h = hash(kmer, i);
+            uint64_t h = hash(kmer, hash_index);
 
             if (h < n_bins){
-                bins_per_iteration[i][h].emplace(sequence.name);
+                auto& m = bin_mutexes.at(h % bin_mutexes.size());
+                m.lock();
+                bins.at(h % bins.size()).emplace(sequence.name);
+                m.unlock();
             }
         }
     }
@@ -104,23 +106,24 @@ void Hasher::hash_sequence(const Sequence& sequence, size_t i) {
             kmer.push_back(get_reverse_complement(*iter));
         } else {
             kmer.shift(get_reverse_complement(*iter));
-            uint64_t h = hash(kmer, i);
+            uint64_t h = hash(kmer, hash_index);
 
             if (h < n_bins){
-                bins_per_iteration[i][h].emplace(sequence.name);
+                auto& m = bin_mutexes.at(h % bin_mutexes.size());
+                m.lock();
+                bins.at(h % bins.size()).emplace(sequence.name);
+                m.unlock();
             }
         }
     }
-
-//    cerr << ' ' << hashes.size() << '\n';
 }
 
 
-void Hasher::write_hash_frequency_distribution(const hash_bins_t& bins) const{
+void Hasher2::write_hash_frequency_distribution() const{
     map <size_t, size_t> distribution;
 
-    for (auto& [bin_index, bin]: bins){
-        distribution[bin.size()]++;
+    for (auto& b: bins){
+        distribution[b.size()]++;
     }
 
     for (auto& [size, frequency]: distribution){
@@ -129,52 +132,61 @@ void Hasher::write_hash_frequency_distribution(const hash_bins_t& bins) const{
 }
 
 
-void Hasher::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index){
-    size_t i=0;
-    while (job_index < n_iterations){
+void Hasher2::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index){
+    size_t i;
+    while (job_index < sequences.size()){
         i = job_index.fetch_add(1);
-
-        for (auto& sequence: sequences) {
-            hash_sequence(sequence, i);
-        }
+        hash_sequence(sequences[i], hash_index);
     }
 }
 
 
-void Hasher::hash(const vector<Sequence>& sequences){
-    bins_per_iteration.resize(n_iterations);
-    sketches_per_iteration.resize(n_iterations);
-
-    // Thread-related variables
-    atomic<size_t> job_index = 0;
-    vector<thread> threads;
-
-    // Launch threads
-    for (uint64_t i=0; i<n_threads; i++){
-        try {
-            threads.emplace_back(thread(
-                    &Hasher::hash_sequences,
-                    this,
-                    ref(sequences),
-                    ref(job_index)
-            ));
-        } catch (const exception &e) {
-            cerr << e.what() << "\n";
-            exit(1);
-        }
+void Hasher2::hash(const vector<Sequence>& sequences){
+    size_t max_kmers_in_sequence = 0;
+    for (auto& sequence: sequences) {
+        max_kmers_in_sequence += sequence.size();
     }
 
-    // Wait for threads to finish
-    for (auto& t: threads){
-        t.join();
-    }
+    cerr << max_kmers_in_sequence << " possible unique kmers in sequence" << '\n';
+
+    // The maximum observable unique kmers is the total number of kmers in the sequence * the sample rate
+    max_kmers_in_sequence = size_t(double(max_kmers_in_sequence) * total_sample_rate);
+
+    cerr << max_kmers_in_sequence << " kmers after downsampling" << '\n';
+    cerr << max_kmers_in_sequence*bins_scaling_factor << " bins allocated" << '\n';
 
     // Aggregate results
-    for (size_t i=0; i<n_iterations; i++){
-        auto& bins = bins_per_iteration[i];
+    for (size_t h=0; h<n_iterations; h++){
+        bins.clear();
+        bins.resize(max_kmers_in_sequence*bins_scaling_factor);
+
+        // Thread-related variables
+        atomic<size_t> job_index = 0;
+        vector<thread> threads;
+
+        // Launch threads
+        for (uint64_t t=0; t<n_threads; t++){
+            try {
+                threads.emplace_back(thread(
+                        &Hasher2::hash_sequences,
+                        this,
+                        ref(sequences),
+                        ref(job_index),
+                        h
+                ));
+            } catch (const exception &e) {
+                cerr << e.what() << "\n";
+                exit(1);
+            }
+        }
+
+        // Wait for threads to finish
+        for (auto& t: threads){
+            t.join();
+        }
 
         // Iterate all hash bins for this iteration (unique hash function)
-        for (auto& [hash,bin]: bins){
+        for (auto& bin: bins){
             if (bin.size() > max_bin_size){
                 continue;
             }
@@ -204,9 +216,13 @@ void Hasher::hash(const vector<Sequence>& sequences){
 }
 
 
-void Hasher::get_best_matches(map<string, string>& matches, double certainty_threshold){
+void Hasher2::get_best_matches(map<string, string>& matches, double certainty_threshold){
     for (auto& [name, results]: overlaps){
         auto total_hashes = double(results.at(name));
+
+        if (total_hashes < min_hashes){
+            continue;
+        }
 
         map <size_t, string> sorted_scores;
 
@@ -257,7 +273,7 @@ void Hasher::get_best_matches(map<string, string>& matches, double certainty_thr
 }
 
 
-void Hasher::get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold){
+void Hasher2::get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold){
     map<string, string> matches;
 
     get_best_matches(matches, certainty_threshold);
@@ -275,7 +291,7 @@ void Hasher::get_symmetrical_matches(map<string, string>& symmetrical_matches, d
 }
 
 
-void Hasher::write_results(path output_directory){
+void Hasher2::write_results(path output_directory){
     path overlaps_path = output_directory / "overlaps.csv";
 
     ofstream overlaps_file(overlaps_path);
