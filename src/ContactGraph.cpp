@@ -14,8 +14,10 @@ namespace gfase{
 
 Node::Node(int8_t partition):
         neighbors(),
-        partition(partition),
-        alt(-1)
+        coverage(0),
+        length(0),
+        alt(-1),
+        partition(partition)
 {}
 
 
@@ -119,6 +121,24 @@ void ContactGraph::increment_edge_weight(int32_t a, int32_t b, int32_t value){
 }
 
 
+void ContactGraph::increment_coverage(int32_t id, int64_t value){
+    if (nodes.count(id) == 0){
+        throw runtime_error("ERROR: cannot update coverage for nonexistent node id: " + to_string(id));
+    }
+
+    nodes.at(id).coverage += value;
+}
+
+
+void ContactGraph::set_node_length(int32_t id, int64_t length){
+    if (nodes.count(id) == 0){
+        throw runtime_error("ERROR: cannot update length for nonexistent node id: " + to_string(id));
+    }
+
+    nodes.at(id).length = length;
+}
+
+
 void ContactGraph::remove_edge(int32_t a, int32_t b){
     auto e = edge(a,b);
     auto result = edge_weights.find(e);
@@ -194,7 +214,6 @@ void ContactGraph::validate_alts() {
             }
         }
     }
-
 }
 
 
@@ -210,7 +229,7 @@ void ContactGraph::set_partition(int32_t id, int8_t partition) {
             throw runtime_error("ERROR: cannot set 0 partition for bubble: " + to_string(id));
         }
 
-        alt.partition = partition*-1;
+        alt.partition = partition*int8_t(-1);
     }
 }
 
@@ -247,25 +266,27 @@ size_t ContactGraph::size(){
 }
 
 
-int64_t ContactGraph::get_score(const Node& a, const Node& b, int32_t weight) const{
-    int64_t score = 0;
+double ContactGraph::get_score(const Node& a, const Node& b, int32_t weight) const{
+    double score = 0;
 
     auto p_a = a.partition;
     auto p_b = b.partition;
 
+    auto denominator = double(a.coverage * b.coverage * a.length * b.length);
+
     if (p_a != 0 and p_b != 0) {
-        score = p_a * p_b * weight;
+        score = double(p_a * p_b * weight)/denominator;
     }
     else{
-        score = weight/2;
+        score = double(weight)/denominator;
     }
 
     return score;
 }
 
 
-int64_t ContactGraph::compute_consistency_score(int32_t id) const{
-    int64_t score = 0;
+double ContactGraph::compute_consistency_score(int32_t id) const{
+    double score = 0;
 
     auto n = nodes.at(id);
 
@@ -285,8 +306,8 @@ int64_t ContactGraph::compute_consistency_score(int32_t id) const{
 }
 
 
-int64_t ContactGraph::compute_total_consistency_score() const{
-    int64_t score = 0;
+double ContactGraph::compute_total_consistency_score() const{
+    double score = 0;
 
     for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
         auto& a = nodes.at(edge.first);
@@ -388,11 +409,11 @@ void ContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>&
         throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
     }
 
-    file << "Name" << ',' << "Phase" << ',' << "Color" << '\n';
+    file << "Name" << ',' << "Phase" << ',' << "Coverage" << ',' << "Length" << ',' << "Color" << '\n';
 
     for (auto& [id,node]: nodes){
         auto name = id_map.get_name(id);
-        file << name << ',' << int(node.partition) << ',' << colors[node.partition+1] << '\n';
+        file << name << ',' << int(node.partition) << ',' << node.coverage << ',' << node.length << ',' << colors[node.partition+1] << '\n';
     }
 }
 
@@ -401,7 +422,7 @@ void random_phase_search(
         ContactGraph contact_graph,
         const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<int64_t>& best_score,
+        atomic<double>& best_score,
         atomic<size_t>& job_index,
         mutex& phase_mutex,
         size_t m_iterations
@@ -418,7 +439,7 @@ void random_phase_search(
 
     contact_graph.set_partitions(best_partitions);
 
-    int64_t total_score;
+    double total_score;
 
     while (m < m_iterations) {
         // Randomly perturb

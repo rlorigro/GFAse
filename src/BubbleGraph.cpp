@@ -201,7 +201,11 @@ void BubbleGraph::generate_bubbles_from_csv(path csv_path, IncrementalIdMap<stri
 
         auto& name = tokens[0];
         int32_t bubble_id = stoi(tokens[1]);
-        bool phase = stoi(tokens[2]);
+        int32_t phase = stoi(tokens[2]);
+
+        if (phase < 0 or phase > 1){
+            throw runtime_error("ERROR: BubbleGraph cannot load phase <0 or >1");
+        }
 
         if (bubble_id == prev_bubble_id){
             auto id_a = id_map.try_insert(prev_name);

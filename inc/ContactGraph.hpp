@@ -18,11 +18,22 @@ using bdsg::HashGraph;
 
 
 #include <functional>
+#include <utility>
+#include <thread>
+#include <ostream>
+#include <array>
 #include <set>
 #include <map>
+#include <set>
 
 using std::function;
+using std::atomic;
+using std::mutex;
+using std::pair;
+using std::ostream;
+using std::array;
 using std::map;
+using std::set;
 
 
 namespace gfase{
@@ -33,11 +44,17 @@ public:
     // To find adjacent nodes
     set<int32_t> neighbors;
 
-    // Which set does this node belong to
-    int8_t partition;
+    // Total reads located on this node > mapQ threshold, regardless of pair mapQ
+    int64_t coverage;
+
+    // Total reads located on this node > mapQ threshold, regardless of pair mapQ
+    int64_t length;
 
     // To find linked/opposing node in a bubble
     int32_t alt;
+
+    // Which set does this node belong to
+    int8_t partition;
 
     Node(int8_t partition);
     bool has_alt() const;
@@ -66,6 +83,8 @@ public:
     void try_insert_edge(int32_t a, int32_t b);
     void try_insert_edge(int32_t a, int32_t b, int32_t weight);
     void increment_edge_weight(int32_t a, int32_t b, int32_t value);
+    void increment_coverage(int32_t a, int64_t value);
+    void set_node_length(int32_t a, int64_t length);
     void insert_node(int32_t id);
     void insert_node(int32_t id, int8_t partition);
     void try_insert_node(int32_t id);
@@ -84,9 +103,9 @@ public:
     bool has_node(int32_t id) const;
 
     // Optimization
-    int64_t get_score(const Node& a, const Node& b, int32_t weight) const;
-    int64_t compute_total_consistency_score() const;
-    int64_t compute_consistency_score(int32_t id) const;
+    double get_score(const Node& a, const Node& b, int32_t weight) const;
+    double compute_total_consistency_score() const;
+    double compute_consistency_score(int32_t id) const;
     void get_partitions(vector <pair <int32_t,int8_t> >& partitions) const;
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
     void randomize_partitions();
@@ -103,7 +122,7 @@ void random_phase_search(
         ContactGraph contact_graph,
         const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<int64_t>& best_score,
+        atomic<double>& best_score,
         atomic<size_t>& job_index,
         mutex& phase_mutex,
         size_t m_iterations);

@@ -60,6 +60,8 @@ void update_contact_map(
         auto ref_id_a = int32_t(id_map.try_insert(a.ref_name));
         contact_graph.try_insert_node(ref_id_a, 0);
 
+        contact_graph.increment_coverage(ref_id_a, 1);
+
         for (size_t j=i+1; j<alignments.size(); j++) {
             auto& b = alignments[j];
             auto ref_id_b = int32_t(id_map.try_insert(b.ref_name));
@@ -90,9 +92,7 @@ void parse_unpaired_bam_file(
         }
 
         if (prev_query_name != a.query_name){
-            if (alignments.size() > 1){
-                update_contact_map(alignments, contact_graph, id_map);
-            }
+            update_contact_map(alignments, contact_graph, id_map);
             alignments.clear();
         }
 
@@ -101,6 +101,7 @@ void parse_unpaired_bam_file(
             return;
         }
 
+        // Optionally filter by the contig names. E.g. "PR" in shasta
         bool valid_prefix = true;
         if (not required_prefix.empty()){
             for (size_t i=0; i<required_prefix.size(); i++){
@@ -112,6 +113,7 @@ void parse_unpaired_bam_file(
         }
 
         if (valid_prefix) {
+            // Only allow reads with mapq > 0 and not secondary
             if (a.mapq >= min_mapq and a.is_primary()) {
                 alignments.emplace_back(a);
             }
@@ -160,9 +162,17 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         throw runtime_error("ERROR: unrecognized extension for BAM input file: " + sam_path.extension().string());
     }
 
-    HashGraph graph;
+//    HashGraph graph;
 
-    double sample_rate = 0.1;
+    for (auto& s: sequences){
+        auto id = id_map.get_id(s.name);
+
+        if (contact_graph.has_node(int32_t(id))) {
+            contact_graph.set_node_length(int32_t(id), int64_t(s.size()));
+        }
+    }
+
+    double sample_rate = 0.04;
     size_t k = 22;
     size_t n_iterations = 10;
 
@@ -173,7 +183,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     map<string,string> overlaps;
 
-    hasher.get_symmetrical_matches(overlaps, 0.75);
+    hasher.get_symmetrical_matches(overlaps, 0.7);
 
     for (auto& [a,b]: overlaps){
         auto id_a = int32_t(id_map.get_id(a));
@@ -204,10 +214,10 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     vector <pair <int32_t,int8_t> > best_partitions;
     vector <int32_t> ids;
-    atomic<int64_t> best_score = std::numeric_limits<int64_t>::min();
+    atomic<double> best_score = std::numeric_limits<double>::min();
     atomic<size_t> job_index = 0;
     mutex phase_mutex;
-    size_t m_iterations = 100;
+    size_t m_iterations = 500;
 
     contact_graph.get_node_ids(ids);
     contact_graph.randomize_partitions();

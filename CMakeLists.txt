@@ -60,6 +60,7 @@ set(SOURCES
         src/graph_utility.cpp
         src/HaplotypePathKmer.cpp
         src/Hasher.cpp
+        src/Hasher2.cpp
         src/handle_to_gfa.cpp
         src/IncrementalIdMap.cpp
         src/KmerSets.cpp
@@ -797,6 +798,7 @@ set(EXECUTABLES
         count_kmers
         create_bandage_path_color_table
         compute_minhash
+        compute_minhash2
         extract_haplotype_kmers
         evaluate_phasing
         find_bubbles

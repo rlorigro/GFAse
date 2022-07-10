@@ -235,7 +235,7 @@ void test_optimization(){
 
     vector <int32_t> ids;
     vector <pair <int32_t,int8_t> > best_partitions;
-    atomic<int64_t> best_score = std::numeric_limits<int64_t>::min();
+    atomic<double> best_score = std::numeric_limits<double>::min();
     atomic<size_t> job_index = 0;
     mutex phase_mutex;
     size_t m_iterations = 10;
