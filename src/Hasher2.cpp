@@ -157,6 +157,8 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 
     // Aggregate results
     for (size_t h=0; h<n_iterations; h++){
+        cerr << "Beginning iteration: " << h << '\n';
+
         bins.clear();
         bins.resize(max_kmers_in_sequence * bins_scaling_factor);
 
@@ -216,7 +218,7 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 }
 
 
-void Hasher2::get_best_matches(map<string, string>& matches, double certainty_threshold){
+void Hasher2::get_best_matches(map<string, string>& matches, double certainty_threshold) const{
     for (auto& [name, results]: overlaps){
         auto total_hashes = double(results.at(name));
 
@@ -273,7 +275,68 @@ void Hasher2::get_best_matches(map<string, string>& matches, double certainty_th
 }
 
 
-void Hasher2::get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold){
+void Hasher2::convert_to_contact_graph(
+        ContactGraph& contact_graph,
+        const IncrementalIdMap<string>& id_map,
+        double similarity_threshold,
+        size_t minimum_hashes,
+        size_t max_overlaps) const {
+
+    for (auto& [name, results]: overlaps){
+        auto total_hashes = double(results.at(name));
+
+        // Don't add every result to the graph. Only consider those with at least a certain number of hashes
+        if (total_hashes < double(minimum_hashes)){
+            continue;
+        }
+
+        // For each node try adding it to the graph, and give it a "coverage" that corresponds to its number of hashes
+        auto id_a = id_map.get_id(name);
+        contact_graph.try_insert_node(int32_t(id_a));
+        contact_graph.set_node_coverage(int32_t(id_a), int64_t(total_hashes));
+
+        map <size_t, string> sorted_scores;
+
+        for (auto& [other_name, score]: results){
+            // Skip self-hits
+            if (other_name == name){
+                continue;
+            }
+
+            sorted_scores.emplace(score,other_name);
+        }
+
+        if (sorted_scores.empty()){
+            continue;
+        }
+
+        size_t i = 0;
+
+        for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
+            auto score = iter->first;
+            auto other_name = iter->second;
+
+            // Don't add every result to the graph. Only consider those above a certain similarity
+            if (double(score)/double(total_hashes) < similarity_threshold){
+                continue;
+            }
+
+            auto id_b = id_map.get_id(other_name);
+            contact_graph.try_insert_node(int32_t(id_b));
+            contact_graph.try_insert_edge(int32_t(id_a), int32_t(id_b), int32_t(score));
+
+            i++;
+
+            // Don't let any node add more than x edges to the graph
+            if (i == max_overlaps){
+                break;
+            }
+        }
+    }
+}
+
+
+void Hasher2::get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold) const{
     map<string, string> matches;
 
     get_best_matches(matches, certainty_threshold);
@@ -291,7 +354,33 @@ void Hasher2::get_symmetrical_matches(map<string, string>& symmetrical_matches, 
 }
 
 
-void Hasher2::write_results(path output_directory){
+int64_t Hasher2::get_intersection_size(const string& a, const string& b) const{
+    int64_t intersection = 0;
+
+    auto result_a = overlaps.find(a);
+
+    if (result_a != overlaps.end()){
+        auto result_b = result_a->second.find(b);
+
+        intersection = result_b->second;
+    }
+
+    return intersection;
+}
+
+
+void Hasher2::for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const{
+    for (const auto& [a, result]: overlaps){
+        for (const auto& [b, count]: result){
+            if (a < b){
+                f({a,b}, count);
+            }
+        }
+    }
+}
+
+
+void Hasher2::write_results(path output_directory) const{
     path overlaps_path = output_directory / "overlaps.csv";
 
     ofstream overlaps_file(overlaps_path);

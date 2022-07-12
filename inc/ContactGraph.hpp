@@ -47,8 +47,8 @@ public:
     // Total reads located on this node > mapQ threshold, regardless of pair mapQ
     int64_t coverage;
 
-    // Total reads located on this node > mapQ threshold, regardless of pair mapQ
-    int64_t length;
+    // Sequence length of this node
+    int32_t length;
 
     // To find linked/opposing node in a bubble
     int32_t alt;
@@ -84,6 +84,7 @@ public:
     void try_insert_edge(int32_t a, int32_t b, int32_t weight);
     void increment_edge_weight(int32_t a, int32_t b, int32_t value);
     void increment_coverage(int32_t a, int64_t value);
+    void set_node_coverage(int32_t a, int64_t value);
     void set_node_length(int32_t a, int64_t length);
     void insert_node(int32_t id);
     void insert_node(int32_t id, int8_t partition);
@@ -101,6 +102,9 @@ public:
     void get_node_ids(vector<int32_t>& ids);
     bool has_alt(int32_t id) const;
     bool has_node(int32_t id) const;
+    int64_t get_node_coverage(int32_t id) const;
+    int32_t get_node_length(int32_t id) const;
+    int32_t get_edge_weight(int32_t a, int32_t b) const;
 
     // Optimization
     double get_score(const Node& a, const Node& b, int32_t weight) const;
@@ -111,10 +115,14 @@ public:
     void randomize_partitions();
 
     // Misc
-    void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map);
+    void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map) const;
+    void write_node_data(path output_path, IncrementalIdMap<string>& id_map) const;
     void validate_alts();
     size_t size();
 };
+
+
+pair<int32_t,int32_t> edge(int32_t a, int32_t b);
 
 ostream& operator<<(ostream& o, const gfase::Node& n);
 

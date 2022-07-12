@@ -107,6 +107,20 @@ void ContactGraph::try_insert_edge(int32_t a, int32_t b, int32_t weight){
 }
 
 
+int32_t ContactGraph::get_edge_weight(int32_t a, int32_t b) const{
+    int32_t weight = 0;
+
+    auto e = edge(a,b);
+    auto result = edge_weights.find(e);
+
+    if (result != edge_weights.end()) {
+        weight = result->second;
+    }
+
+    return weight;
+}
+
+
 void ContactGraph::increment_edge_weight(int32_t a, int32_t b, int32_t value){
     if (nodes.count(a) == 0 or nodes.count(b) == 0){
         throw runtime_error("ERROR: cannot add edge with nonexistent node id: (" + to_string(a) + "," + to_string(b) +")");
@@ -127,6 +141,15 @@ void ContactGraph::increment_coverage(int32_t id, int64_t value){
     }
 
     nodes.at(id).coverage += value;
+}
+
+
+void ContactGraph::set_node_coverage(int32_t id, int64_t value){
+    if (nodes.count(id) == 0){
+        throw runtime_error("ERROR: cannot update coverage for nonexistent node id: " + to_string(id));
+    }
+
+    nodes.at(id).coverage = value;
 }
 
 
@@ -390,6 +413,28 @@ bool ContactGraph::has_node(int32_t id) const{
 }
 
 
+int64_t ContactGraph::get_node_coverage(int32_t id) const{
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: cannot get coverage for nonexistent node: " + to_string(id));
+    }
+
+    return result->second.coverage;
+}
+
+
+int32_t ContactGraph::get_node_length(int32_t id) const{
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: cannot get coverage for nonexistent node: " + to_string(id));
+    }
+
+    return result->second.length;
+}
+
+
 ostream& operator<<(ostream& o, const Node& n){
     o << '\t' << "partition: " << int(n.partition) << '\n';
     o << '\t' << "neighbors: ";
@@ -402,7 +447,7 @@ ostream& operator<<(ostream& o, const Node& n){
 }
 
 
-void ContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map){
+void ContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map) const{
     ofstream file(output_path);
 
     if (not file.is_open() or not file.good()) {
@@ -414,6 +459,22 @@ void ContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>&
     for (auto& [id,node]: nodes){
         auto name = id_map.get_name(id);
         file << name << ',' << int(node.partition) << ',' << node.coverage << ',' << node.length << ',' << colors[node.partition+1] << '\n';
+    }
+}
+
+
+void ContactGraph::write_node_data(path output_path, IncrementalIdMap<string>& id_map) const{
+    ofstream file(output_path);
+
+    if (not file.is_open() or not file.good()) {
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    file << "Id" << ',' << "Name" << ',' << "Coverage" << ',' << "Length" << '\n';
+
+    for (auto& [id,node]: nodes){
+        auto name = id_map.get_name(id);
+        file << id << ',' << name << ',' << node.coverage << ',' << node.length << '\n';
     }
 }
 

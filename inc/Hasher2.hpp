@@ -2,6 +2,7 @@
 #define GFASE_Hasher22_HPP
 
 #include "BinarySequence.hpp"
+#include "ContactGraph.hpp"
 #include "GfaReader.hpp"
 #include "Filesystem.hpp"
 #include "Sequence.hpp"
@@ -75,7 +76,7 @@ private:
     // is downsampled (%) to match the number of mutexes.
     array<mutex,512> bin_mutexes;
 
-    // The result of counting co-occuring sequences in the hash bins
+    // The result of counting co-occurring sequences in the hash bins
     overlaps_t overlaps;
 
     const size_t k;
@@ -104,13 +105,29 @@ private:
 
 public:
     Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads);
+
+    // Main algorithm
     uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index) const;
-    void write_hash_frequency_distribution() const;
     void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index);
     void hash(const vector<Sequence>& sequences);
-    void get_best_matches(map<string, string>& matches, double certainty_threshold);
-    void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold);
-    void write_results(path output_directory);
+
+    // Output/results
+    void get_best_matches(map<string, string>& matches, double certainty_threshold) const;
+    void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold) const;
+    void for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const;
+    int64_t get_intersection_size(const string& a, const string& b) const;
+
+    // IO
+    void write_hash_frequency_distribution() const;
+    void write_results(path output_directory) const;
+
+    void convert_to_contact_graph(
+            ContactGraph& contact_graph,
+            const IncrementalIdMap<string>& id_map,
+            double similarity_threshold,
+            size_t minimum_hashes,
+            size_t max_overlaps) const;
+
 };
 
 

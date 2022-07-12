@@ -6,7 +6,7 @@
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
 #include "Sequence.hpp"
-#include "Hasher.hpp"
+#include "Hasher2.hpp"
 #include "Timer.hpp"
 #include "CLI11.hpp"
 #include "Sam.hpp"
@@ -24,7 +24,7 @@ using gfase::Node;
 using gfase::Bipartition;
 using gfase::SamElement;
 using gfase::Sequence;
-using gfase::Hasher;
+using gfase::Hasher2;
 using gfase::Bubble;
 using gfase::Timer;
 using gfase::Bam;
@@ -48,6 +48,65 @@ void write_contact_map(
         output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << '\n';
     });
 }
+
+
+void write_graph_data(
+        path output_directory,
+        const Hasher2& hasher,
+        const ContactGraph& contact_graph,
+        const IncrementalIdMap<string>& id_map){
+
+    path edges_path = output_directory / "edges.csv";
+    path nodes_path = output_directory / "nodes.csv";
+
+    ofstream edges_file(edges_path);
+    ofstream nodes_file(nodes_path);
+
+    if (not edges_file.is_open() or not edges_file.good()){
+        throw std::runtime_error("ERROR: could not write to file: " + edges_path.string());
+    }
+
+    if (not nodes_file.is_open() or not nodes_file.good()){
+        throw std::runtime_error("ERROR: could not write to file: " + nodes_path.string());
+    }
+
+    ContactGraph hash_graph;
+
+    hasher.convert_to_contact_graph(hash_graph, id_map, 0.1, 10, 10);
+
+    // TODO: Renumber nodes from 0-n
+
+    edges_file << "id_a" << ',' << "id_b" << ',' << "name_a" << ',' << "name_b" << ',' << "contact_weight" << ',' << "hash_weight" << '\n';
+
+    // Iterate all contact graph edges and cross-reference with hash graph edges
+    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        auto& id_a = edge.first;
+        auto& id_b = edge.second;
+
+        // Edges will be ordered by their IDs {min(a,b), max(a,b)}
+        auto name_a = id_map.get_name(id_a);
+        auto name_b = id_map.get_name(id_b);
+
+        auto hash_weight = hash_graph.get_edge_weight(id_a, id_b);
+        auto contact_weight = contact_graph.get_edge_weight(id_a, id_b);
+
+        edges_file << id_a << ',' << id_b << ',' << name_a << ',' << name_b << ',' << contact_weight << ',' << hash_weight << '\n';
+    });
+
+    nodes_file << "id" << ',' << "name" << ',' << "length" << ',' << "contact_coverage" << ',' << "hash_coverage" << '\n';
+
+    contact_graph.for_each_node([&](int32_t id, const Node& n){
+        auto name = id_map.get_name(id);
+
+        int64_t hash_coverage = 0;
+        if (hash_graph.has_node(id)){
+            hash_coverage = hash_graph.get_node_coverage(id);
+        }
+
+        nodes_file << id << ',' << name << ',' << n.length << ',' << n.coverage << ',' << hash_coverage << '\n';
+    });
+}
+
 
 void update_contact_map(
         vector<SamElement>& alignments,
@@ -176,10 +235,13 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     size_t k = 22;
     size_t n_iterations = 10;
 
-    Hasher hasher(k, sample_rate, n_iterations, n_threads);
+    Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
 
     hasher.hash(sequences);
     hasher.write_results(output_dir);
+
+    // Before creating bubbles in the contact graph, write out all the node/edge data
+    write_graph_data(output_dir, hasher, contact_graph, id_map);
 
     map<string,string> overlaps;
 
