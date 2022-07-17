@@ -76,22 +76,7 @@ void write_graph_data(
 
     // TODO: Renumber nodes from 0-n
 
-    edges_file << "id_a" << ',' << "id_b" << ',' << "name_a" << ',' << "name_b" << ',' << "contact_weight" << ',' << "hash_weight" << '\n';
-
-    // Iterate all contact graph edges and cross-reference with hash graph edges
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
-        auto& id_a = edge.first;
-        auto& id_b = edge.second;
-
-        // Edges will be ordered by their IDs {min(a,b), max(a,b)}
-        auto name_a = id_map.get_name(id_a);
-        auto name_b = id_map.get_name(id_b);
-
-        auto hash_weight = hash_graph.get_edge_weight(id_a, id_b);
-        auto contact_weight = contact_graph.get_edge_weight(id_a, id_b);
-
-        edges_file << id_a << ',' << id_b << ',' << name_a << ',' << name_b << ',' << contact_weight << ',' << hash_weight << '\n';
-    });
+    IncrementalIdMap<string> re_map(true);
 
     nodes_file << "id" << ',' << "name" << ',' << "length" << ',' << "contact_coverage" << ',' << "hash_coverage" << '\n';
 
@@ -103,7 +88,29 @@ void write_graph_data(
             hash_coverage = hash_graph.get_node_coverage(id);
         }
 
-        nodes_file << id << ',' << name << ',' << n.length << ',' << n.coverage << ',' << hash_coverage << '\n';
+        auto new_id = re_map.try_insert(name);
+
+        nodes_file << new_id << ',' << name << ',' << n.length << ',' << n.coverage << ',' << hash_coverage << '\n';
+    });
+
+    edges_file << "id_a" << ',' << "id_b" << ',' << "name_a" << ',' << "name_b" << ',' << "contact_weight" << ',' << "hash_weight" << '\n';
+
+    // Iterate all contact graph edges and cross-reference with hash graph edges
+    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        auto& id_a = edge.first;
+        auto& id_b = edge.second;
+
+        // Edges will be ordered by their IDs {min(a,b), max(a,b)}
+        auto name_a = id_map.get_name(id_a);
+        auto name_b = id_map.get_name(id_b);
+
+        auto new_id_a = re_map.get_id(name_a);
+        auto new_id_b = re_map.get_id(name_b);
+
+        auto hash_weight = hash_graph.get_edge_weight(id_a, id_b);
+        auto contact_weight = contact_graph.get_edge_weight(id_a, id_b);
+
+        edges_file << new_id_a << ',' << new_id_b << ',' << name_a << ',' << name_b << ',' << contact_weight << ',' << hash_weight << '\n';
     });
 }
 
@@ -221,8 +228,6 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         throw runtime_error("ERROR: unrecognized extension for BAM input file: " + sam_path.extension().string());
     }
 
-//    HashGraph graph;
-
     for (auto& s: sequences){
         auto id = id_map.get_id(s.name);
 
@@ -269,27 +274,27 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         file << b << ',' << a << ',' << "Tomato" << '\n';
     }
 
-    contact_graph.for_each_node([&](int32_t id, const Node& n){
-        cerr << id << '\n';
-        cerr << n << '\n';
-    });
+//    contact_graph.for_each_node([&](int32_t id, const Node& n){
+//        cerr << id << '\n';
+//        cerr << n << '\n';
+//    });
 
     vector <pair <int32_t,int8_t> > best_partitions;
     vector <int32_t> ids;
     atomic<double> best_score = std::numeric_limits<double>::min();
     atomic<size_t> job_index = 0;
     mutex phase_mutex;
-    size_t m_iterations = 500;
+    size_t m_iterations = 10;
 
     contact_graph.get_node_ids(ids);
     contact_graph.randomize_partitions();
     contact_graph.get_partitions(best_partitions);
 
-    cerr << "Initial: " << std::flush;
-    for (auto& [n,p]: best_partitions){
-        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
-    }
-    cerr << '\n';
+//    cerr << "Initial: " << std::flush;
+//    for (auto& [n,p]: best_partitions){
+//        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
+//    }
+//    cerr << '\n';
 
     cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
 
@@ -297,11 +302,11 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     contact_graph.set_partitions(best_partitions);
 
-    cerr << "Final: " << std::flush;
-    for (auto& [n,p]: best_partitions){
-        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
-    }
-    cerr << '\n';
+//    cerr << "Final: " << std::flush;
+//    for (auto& [n,p]: best_partitions){
+//        cerr << '(' << id_map.get_name(n) << ',' << int(p) << ") ";
+//    }
+//    cerr << '\n';
 
     string suffix1 = "p" + required_prefix;
     string suffix2 = "m" + to_string(int(min_mapq));
