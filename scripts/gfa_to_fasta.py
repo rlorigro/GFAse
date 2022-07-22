@@ -1,8 +1,8 @@
+import argparse
 import sys
 
 
-def main():
-    path = "/home/labmate/data/test/gfase/verkko/hg002_production_beta2_deepcns/assembly.homopolymer-compressed.gfa"
+def main(path):
     output_path = '.'.join(path.split('.')[:-1]) + ".fasta"
 
     print(output_path)
@@ -22,4 +22,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-i",
+        required=True,
+        type=str,
+        help="Input GFA to be phased"
+    )
+
+    args = parser.parse_args()
+
+    main(path=args.i)
