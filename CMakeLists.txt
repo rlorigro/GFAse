@@ -627,6 +627,7 @@ include_directories(
 
 add_library(htslib ${HTSLIB_SOURCES})
 add_dependencies(htslib BUILD_HTS)
+add_dependencies(GFAse htslib)
 
 target_link_libraries(htslib pthread bz2 z curl)
 
