@@ -635,6 +635,89 @@ target_link_libraries(htslib pthread bz2 z curl)
 ##############################################
 # ------------------------------------------ #
 # -------- LINKING EXTERNAL LIBRARY -------- #
+# --------------- minimap2 ----------------- #
+# ------------------------------------------ #
+##############################################
+
+
+message(STATUS "Fetching minimap2")
+
+
+# https://github.com/lh3/minimap2/archive/refs/tags/v2.24.tar.gz
+
+include(FetchContent)
+
+FetchContent_Declare(
+        project_minimap2
+        GIT_REPOSITORY https://github.com/lh3/minimap2.git
+        GIT_TAG v2.24
+)
+
+FetchContent_MakeAvailable(project_minimap2)
+
+set(MINIMAP2_SOURCES
+        ${project_minimap2_SOURCE_DIR}/ksw2_dispatch.c
+        ${project_minimap2_SOURCE_DIR}/lchain.c
+        ${project_minimap2_SOURCE_DIR}/format.c
+        ${project_minimap2_SOURCE_DIR}/example.c
+        ${project_minimap2_SOURCE_DIR}/ksw2_extz2_sse.c
+        ${project_minimap2_SOURCE_DIR}/ksw2_extd2_sse.c
+        ${project_minimap2_SOURCE_DIR}/kalloc.c
+        ${project_minimap2_SOURCE_DIR}/kthread.c
+        ${project_minimap2_SOURCE_DIR}/hit.c
+        ${project_minimap2_SOURCE_DIR}/ksw2_ll_sse.c
+        ${project_minimap2_SOURCE_DIR}/index.c
+        ${project_minimap2_SOURCE_DIR}/ksw2_exts2_sse.c
+        ${project_minimap2_SOURCE_DIR}/align.c
+        ${project_minimap2_SOURCE_DIR}/esterr.c
+        ${project_minimap2_SOURCE_DIR}/bseq.c
+        ${project_minimap2_SOURCE_DIR}/main.c
+        ${project_minimap2_SOURCE_DIR}/map.c
+        ${project_minimap2_SOURCE_DIR}/options.c
+        ${project_minimap2_SOURCE_DIR}/pe.c
+        ${project_minimap2_SOURCE_DIR}/sdust.c
+        ${project_minimap2_SOURCE_DIR}/sketch.c
+        ${project_minimap2_SOURCE_DIR}/splitidx.c
+        ${project_minimap2_SOURCE_DIR}/seed.c
+        ${project_minimap2_SOURCE_DIR}/misc.c
+        )
+
+message(STATUS "minimap2_SOURCE_DIR: ${project_minimap2_SOURCE_DIR}")
+
+
+set(MINIMAP2_DIR _deps/project_minimap2-src)
+
+add_custom_target(
+        BUILD_MINIMAP2
+        ALL
+        WORKING_DIRECTORY ${MINIMAP2_DIR}
+        COMMAND ""
+)
+
+# Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+include_directories(
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/
+#        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/sse2neon/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/simde/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/simde/simde/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/simde/simde/arm/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/simde/simde/arm/neon/
+        ${CMAKE_BINARY_DIR}/_deps/project_minimap2-src/lib/simde/simde/x86/
+)
+
+#add_custom_target(HTSLIB_CONFIGURED DEPENDS "${CMAKE_BINARY_DIR}/_deps/project_htslib-src/config.h")
+
+add_library(minimap2 ${MINIMAP2_SOURCES})
+add_dependencies(minimap2 BUILD_MINIMAP2)
+add_dependencies(GFAse minimap2)
+
+target_link_libraries(minimap2 pthread bz2 z curl)
+
+
+##############################################
+# ------------------------------------------ #
+# -------- LINKING EXTERNAL LIBRARY -------- #
 # ---------------- sparsepp ---------------- #
 # ------------------------------------------ #
 ##############################################
@@ -768,6 +851,7 @@ set(TESTS
         test_htslib_bam_reader
         test_kmer_unordered_set
         test_phase_haplotype_paths
+        test_minimap2
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
@@ -780,14 +864,15 @@ foreach(FILENAME_PREFIX ${TESTS})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
-#            bamtools
             ZLIB::ZLIB
             bdsg
 #            ${Boost_LIBRARIES}
             htslib
             divsufsort
             libhandlegraph
-            libsdsl)
+            libsdsl
+            minimap2
+            )
 
 endforeach()
 
@@ -821,14 +906,15 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
     target_link_libraries(${FILENAME_PREFIX}
             GFAse
             Threads::Threads
-#            bamtools
             ZLIB::ZLIB
             bdsg
 #            ${Boost_LIBRARIES}
             divsufsort
             htslib
             libhandlegraph
-            libsdsl)
+            libsdsl
+            minimap2
+            )
 
 endforeach()
 
