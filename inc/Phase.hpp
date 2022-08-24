@@ -149,7 +149,15 @@ void for_element_in_bubble_chain(
 
 
 template <class T, size_t T2>
-void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter) {
+void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, path output_directory, char path_delimiter) {
+    if (exists(output_directory)){
+        throw runtime_error("ERROR: output directory exists already");
+    }
+    else {
+        create_directories(output_directory);
+        create_directories(output_directory / "components");
+    }
+
     size_t min_unphased_contig_length = 100000;
     double min_total_kmers = 30;
     double score_threshold = 0.02;
@@ -215,12 +223,12 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 
     cerr << "Unzipping..." << '\n';
 
-    ofstream maternal_fasta("maternal.fasta");
-    ofstream paternal_fasta("paternal.fasta");
-    ofstream unphased_initial_fasta("unphased_initial.fasta");
-    ofstream unphased_fasta("unphased.fasta");
+    ofstream maternal_fasta(output_directory / "maternal.fasta");
+    ofstream paternal_fasta(output_directory / "paternal.fasta");
+    ofstream unphased_initial_fasta(output_directory / "unphased_initial.fasta");
+    ofstream unphased_fasta(output_directory / "unphased.fasta");
 
-    path provenance_output_path = "phase_chains.csv";
+    path provenance_output_path = output_directory / "phase_chains.csv";
     ofstream provenance_csv_file(provenance_output_path);
 
     if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
@@ -251,7 +259,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         Bipartition chain_bipartition(cc_graph, cc_id_map, chain_nodes);
         chain_bipartition.partition();
 
-        string filename_prefix = "component_" + to_string(c) + "_";
+        string filename_prefix = output_directory / "components" / ("component_" + to_string(c) + "_");
         ofstream file(filename_prefix + ".gfa");
         handle_graph_to_gfa(connected_components[c], connected_component_ids[c], file);
 
@@ -348,7 +356,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         unzip(cc_graph, cc_id_map, false);
         write_paths_to_csv(cc_graph, cc_id_map, provenance_csv_file);
 
-        ofstream test_gfa_phased(filename_prefix + "phased.gfa");
+        ofstream test_gfa_phased(output_directory / (filename_prefix + "phased.gfa"));
         handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
 
         cc_graph.for_each_handle([&](const handle_t& h){
@@ -371,10 +379,10 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
         });
     }
 
-    ofstream unphased_parental_counts("unphased_parental_counts.csv");
+    ofstream unphased_parental_counts(output_directory / "unphased_parental_counts.csv");
     unphased_parental_counts << "name" << ',' << "maternal_count" << ',' << "paternal_count" << ',' << "unique_maternal_count" << ',' << "unique_paternal_count" << ',' << "score" << ',' << "unique_score" << ',' << "color" << '\n';
 
-    ofstream unphased_kmers_log("unphased_kmers.csv");
+    ofstream unphased_kmers_log(output_directory / "unphased_kmers.csv");
     unphased_kmers_log << "count" << ',' << "is_mat" << ',' << "is_pat" << '\n';
 
     sparse_hash_map <FixedBinarySequence<T,T2>, size_t> unphased_kmer_counts;
@@ -490,7 +498,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, ch
 }
 
 
-void phase_k(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter='.');
+void phase_k(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, path output_directory, char path_delimiter='.');
 
 
 }

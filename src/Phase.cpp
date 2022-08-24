@@ -252,49 +252,49 @@ void for_element_in_bubble_chain(
 }
 
 
-void phase_k(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, char path_delimiter){
+void phase_k(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, path output_directory, char path_delimiter){
     if (k < 4){
         throw runtime_error("ERROR: must choose a k value larger than 4");
     }
         // Min = 8 bits, max = 16 bits
     else if (k >= 4 and k <= 8){
-        phase<uint16_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint16_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 18 bits, max = 24 bits
     else if (k > 8 and k <= 12){
-        phase<uint8_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint8_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 26 bits, max = 32 bits
     else if (k > 12 and k <= 16){
-        phase<uint32_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint32_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 34 bits, max = 40 bits
     else if (k > 16 and k <= 20){
-        phase<uint8_t,5>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint8_t,5>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 42 bits, max = 48 bits
     else if (k > 20 and k <= 24){
-        phase<uint16_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint16_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 50 bits, max = 56 bits
     else if (k > 24 and k <= 28){
-        phase<uint8_t,7>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint8_t,7>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 58 bits, max = 64 bits
     else if (k > 28 and k <= 32){
-        phase<uint64_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint64_t,1>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 66 bits, max = 80 bits
     else if (k > 32 and k <= 40){
-        phase<uint16_t,5>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint16_t,5>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 82 bits, max = 96 bits
     else if (k > 40 and k <= 48){
-        phase<uint32_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint32_t,3>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
         // Min = 98 bits, max = 128 bits
     else if (k > 48 and k <= 64){
-        phase<uint64_t,2>(gfa_path, k, paternal_kmers, maternal_kmers, path_delimiter);
+        phase<uint64_t,2>(gfa_path, k, paternal_kmers, maternal_kmers, output_directory, path_delimiter);
     }
 }
 

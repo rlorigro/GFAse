@@ -72,6 +72,7 @@ set(SOURCES
         src/PhaseAssign.cpp
         src/Sequence.cpp
         src/Sam.cpp
+        src/SvgPlot.cpp
         src/Timer.cpp
 )
 
@@ -313,130 +314,7 @@ message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
 # ------------------------------------------ #
 ##############################################
 
-## Need to explicitly enable ExternalProject functionality
-#include(ExternalProject)
-#
-#message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-#message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
-#message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
-#message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-#
-## Dependencies
-#find_package(ZLIB REQUIRED)
-#
-#find_library(BZ2LIB REQUIRED)
-#
-#find_library(CURLLIB REQUIRED)
-#
-##if (dev)
-#    # Download or update library as an external project
-#    ExternalProject_Add(project_htslib
-#            GIT_REPOSITORY https://github.com/samtools/htslib.git
-##            DOWNLOAD_COMMAND ""
-##            UPDATE_COMMAND ""
-#            PREFIX ${CMAKE_SOURCE_DIR}/external/htslib/
-#            CMAKE_ARGS ""
-#            CONFIGURE_COMMAND autoreconf -i COMMAND ./configure --disable-lzma --disable-libcurl --disable-bz2 --disable-s3 --disable-gcs --without-libdeflate --disable-plugins
-#            BUILD_COMMAND $(MAKE)
-#            INSTALL_COMMAND $(MAKE) prefix=${CMAKE_SOURCE_DIR}/external/htslib/ install
-#            BUILD_IN_SOURCE True
-#            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/htslib/
-#            )
-##else()
-##    # Download or update library as an external project
-##    ExternalProject_Add(project_htslib
-##            GIT_REPOSITORY https://github.com/samtools/htslib.git
-##            PREFIX ${CMAKE_SOURCE_DIR}/external/htslib/
-##            CMAKE_ARGS ""
-##            BUILD_COMMAND "autoreconf -i"
-##            INSTALL_COMMAND "make install"
-##            BUILD_IN_SOURCE True
-##            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/htslib/
-##            INSTALL_COMMAND make install
-##            )
-##endif()
-#
-## Define INSTALL_DIR as the install directory for external library
-#ExternalProject_Get_Property(project_htslib INSTALL_DIR)
-#
-#if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-#    error("NO MACs")
-#elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-#    set(LIB_SUFFIX "a")
-#endif()
-#
-#
-## Create new library for external project (so it can be linked with main library)
-#add_library(hts STATIC IMPORTED)
-#set_property(TARGET hts
-#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libhts.${LIB_SUFFIX})
-#
-## Define library as dependent on the downloaded project
-#add_dependencies(hts
-#        project_htslib
-#        )
-#
-## Define main library as dependent on the downloaded project (transitively)
-#add_dependencies(GFAse hts)
-#
-## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
-#include_directories(
-#        external/
-#        external/htslib/
-#        external/htslib/include/
-#        external/htslib/include/htslib
-#        )
-
-# ----------------------------
-
-
-#set(HTS_SOURCES
-#        ${INSTALL_DIR}/bcf_sr_sort.c
-#        ${INSTALL_DIR}/bgzf.c
-#        ${INSTALL_DIR}/bgzip.c
-#        ${INSTALL_DIR}/errmod.c
-#        ${INSTALL_DIR}/faidx.c
-#        ${INSTALL_DIR}/header.c
-#        ${INSTALL_DIR}/hfile.c
-#        ${INSTALL_DIR}/hfile_gcs.c
-#        ${INSTALL_DIR}/hfile_libcurl.c
-#        ${INSTALL_DIR}/hfile_s3.c
-#        ${INSTALL_DIR}/hfile_s3_write.c
-#        ${INSTALL_DIR}/hts.c
-#        ${INSTALL_DIR}/hts_expr.c
-#        ${INSTALL_DIR}/htsfile.c
-#        ${INSTALL_DIR}/hts_os.c
-#        ${INSTALL_DIR}/kfunc.c
-#        ${INSTALL_DIR}/kstring.c
-#        ${INSTALL_DIR}/md5.c
-#        ${INSTALL_DIR}/multipart.c
-#        ${INSTALL_DIR}/plugin.c
-#        ${INSTALL_DIR}/probaln.c
-#        ${INSTALL_DIR}/realn.c
-#        ${INSTALL_DIR}/regidx.c
-#        ${INSTALL_DIR}/region.c
-#        ${INSTALL_DIR}/sam.c
-#        ${INSTALL_DIR}/synced_bcf_reader.c
-#        ${INSTALL_DIR}/tabix.c
-#        ${INSTALL_DIR}/tbx.c
-#        ${INSTALL_DIR}/textutils.c
-#        ${INSTALL_DIR}/thread_pool.c
-#        ${INSTALL_DIR}/vcf.c
-#        ${INSTALL_DIR}/vcf_sweep.c
-#        ${INSTALL_DIR}/vcfutils.c
-#        )
-#
-#add_library(htslib ${HTSLIB_SOURCES})
-#add_dependencies(htslib HTSLIB_CONFIGURED)
-#target_link_libraries(htslib pthread bz2 z curl)
-#
-#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
-
-
-# --------------------
-
 message(STATUS "Fetching htslib")
-
 
 # https://github.com/samtools/htslib/releases/download/1.15.1/htslib-1.15.1.tar.bz2
 
@@ -458,68 +336,14 @@ if(${CURLLIB} STREQUAL "CURLLIB-NOTFOUND")
     message(WARNING "Couldn't find the 'curl' library")
 endif()
 
-#set(HTSLIB_SOURCES
-#        ${project_htslib_SOURCE_DIR}/cram/cram_codecs.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_decode.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_encode.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_external.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_index.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_io.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_stats.c
-#        ${project_htslib_SOURCE_DIR}/cram/mFILE.c
-#        ${project_htslib_SOURCE_DIR}/cram/open_trace_file.c
-#        ${project_htslib_SOURCE_DIR}/cram/pooled_alloc.c
-#        ${project_htslib_SOURCE_DIR}/cram/string_alloc.c
-#        ${project_htslib_SOURCE_DIR}/bcf_sr_sort.c
-#        ${project_htslib_SOURCE_DIR}/bgzf.c
-#        ${project_htslib_SOURCE_DIR}/bgzip.c
-#        ${project_htslib_SOURCE_DIR}/errmod.c
-#        ${project_htslib_SOURCE_DIR}/faidx.c
-#        ${project_htslib_SOURCE_DIR}/header.c
-#        ${project_htslib_SOURCE_DIR}/hfile.c
-#        ${project_htslib_SOURCE_DIR}/hfile_gcs.c
-#        ${project_htslib_SOURCE_DIR}/hfile_libcurl.c
-#        ${project_htslib_SOURCE_DIR}/hfile_s3.c
-#        ${project_htslib_SOURCE_DIR}/hfile_s3_write.c
-#        ${project_htslib_SOURCE_DIR}/hts.c
-#        ${project_htslib_SOURCE_DIR}/hts_expr.c
-#        ${project_htslib_SOURCE_DIR}/htsfile.c
-#        ${project_htslib_SOURCE_DIR}/hts_os.c
-#        ${project_htslib_SOURCE_DIR}/kfunc.c
-#        ${project_htslib_SOURCE_DIR}/kstring.c
-#        ${project_htslib_SOURCE_DIR}/md5.c
-#        ${project_htslib_SOURCE_DIR}/multipart.c
-#        ${project_htslib_SOURCE_DIR}/plugin.c
-#        ${project_htslib_SOURCE_DIR}/probaln.c
-#        ${project_htslib_SOURCE_DIR}/realn.c
-#        ${project_htslib_SOURCE_DIR}/regidx.c
-#        ${project_htslib_SOURCE_DIR}/region.c
-#        ${project_htslib_SOURCE_DIR}/sam.c
-#        ${project_htslib_SOURCE_DIR}/synced_bcf_reader.c
-#        ${project_htslib_SOURCE_DIR}/tabix.c
-#        ${project_htslib_SOURCE_DIR}/tbx.c
-#        ${project_htslib_SOURCE_DIR}/textutils.c
-#        ${project_htslib_SOURCE_DIR}/thread_pool.c
-#        ${project_htslib_SOURCE_DIR}/vcf.c
-#        ${project_htslib_SOURCE_DIR}/vcf_sweep.c
-#        ${project_htslib_SOURCE_DIR}/vcfutils.c
-#        )
-
 include(FetchContent)
 
 FetchContent_Declare(
         project_htslib
         URL      https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2
-#        PREFIX ${CMAKE_SOURCE_DIR}/external/htslib/
-#        CMAKE_ARGS ""
-#        CONFIGURE_COMMAND autoreconf -i COMMAND ./configure --disable-lzma --disable-libcurl --disable-bz2 --disable-s3 --disable-gcs --without-libdeflate --disable-plugins
-#        INSTALL_COMMAND $(MAKE) prefix=${CMAKE_SOURCE_DIR}/external/htslib/ install
-#        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/htslib/
-#        BINARY_DIR ${CMAKE_SOURCE_DIR}/external/htslib/
 )
 
 FetchContent_MakeAvailable(project_htslib)
-#FetchContent_populate(project_htslib)
 
 set(HTSLIB_SOURCES
         ${project_htslib_SOURCE_DIR}/cram/cram_codecs.c
@@ -588,15 +412,6 @@ set(HTSLIB_SOURCES
 
 message(STATUS "htslib_SOURCE_DIR: ${project_htslib_SOURCE_DIR}")
 
-## HTSLIB configure
-#add_custom_command(
-#        OUTPUT "${htslib_SOURCE_DIR}/external/htslib/config.h"
-#        COMMAND autoreconf -i
-#        COMMAND ./configure --disable-lzma --disable-libcurl --disable-bz2 --disable-s3 --disable-gcs --without-libdeflate --disable-plugins
-#        COMMAND make prefix=${CMAKE_SOURCE_DIR}/external/htslib/ install
-#        WORKING_DIRECTORY ${htslib_SOURCE_DIR}
-#)
-
 
 set(HTS_DIR _deps/project_htslib-src)
 
@@ -606,7 +421,6 @@ add_custom_target(
         ALL
 #        OUTPUT ${PROJECT_SOURCE_DIR}/external/htslib/config.h # //TODO: at build time ${htslib_SOURCE_DIR} is not actually populated!! is an empty string
         WORKING_DIRECTORY ${HTS_DIR}
-#        COMMENT "AAAAAAA ${HTS_DIR}"
         COMMAND pwd
         COMMAND autoconf
         COMMAND autoheader
@@ -622,8 +436,6 @@ include_directories(
 #        ${CMAKE_BINARY_DIR}/_deps/project_htslib-src/os/
         ${CMAKE_SOURCE_DIR}/external/
 )
-
-#add_custom_target(HTSLIB_CONFIGURED DEPENDS "${CMAKE_BINARY_DIR}/_deps/project_htslib-src/config.h")
 
 add_library(htslib ${HTSLIB_SOURCES})
 add_dependencies(htslib BUILD_HTS)
@@ -739,6 +551,54 @@ ExternalProject_Get_Property(project_sparsepp SOURCE_DIR)
 include_directories(${SOURCE_DIR}/sparsepp)
 
 
+###############################################
+## ------------------------------------------ #
+## -------- LINKING EXTERNAL LIBRARY -------- #
+## ---------------- mummer4 ----------------- #
+## ------------------------------------------ #
+###############################################
+#
+## Need to explicitly enable ExternalProject functionality
+#include(ExternalProject)
+#
+## Download or update library as an external project
+#ExternalProject_Add(project_mummer
+#        URL https://github.com/mummer4/mummer/releases/download/v4.0.0rc1/mummer-4.0.0rc1.tar.gz
+#        #        PREFIX ${CMAKE_SOURCE_DIR}/external/mummer
+#        #        DOWNLOAD_COMMAND ""
+#        #        UPDATE_COMMAND ""
+#        #        STAMP_DIR ${CMAKE_SOURCE_DIR}/external/mummer/stamp
+#        BUILD_IN_SOURCE TRUE
+#        SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mummer/
+#        CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/external/mummer/configure --prefix=${CMAKE_SOURCE_DIR}/external/mummer/
+#        INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/mummer/
+#        BUILD_COMMAND make
+#        INSTALL_COMMAND make install
+#        )
+#
+## Define INSTALL_DIR as the install directory for external library
+#ExternalProject_Get_Property(project_mummer INSTALL_DIR)
+#
+## Create new library for external project (so it can be linked with main library)
+#add_library(mummer4 SHARED IMPORTED)
+#set_property(TARGET mummer4
+#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libumdmummer.so)
+#
+## Define main library as dependent on the downloaded project (transitively)
+#add_dependencies(mummer4
+#        project_mummer)
+#
+#add_dependencies(GFAse mummer4)
+#
+## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
+#include_directories(external/mummer/include/)
+#
+## Add runtime path for main library so it can access external library
+##set_property(TARGET GetBlunted PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/ogdf")
+#
+#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+
+
 ##############################################
 # ------------------------------------------ #
 # -------- LINKING EXTERNAL LIBRARY -------- #
@@ -852,6 +712,8 @@ set(TESTS
         test_kmer_unordered_set
         test_phase_haplotype_paths
         test_minimap2
+        test_minimap2_no_io
+#        test_mummer
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
@@ -872,6 +734,7 @@ foreach(FILENAME_PREFIX ${TESTS})
             libhandlegraph
             libsdsl
             minimap2
+#            mummer4
             )
 
 endforeach()
@@ -914,6 +777,7 @@ foreach(FILENAME_PREFIX ${EXECUTABLES})
             libhandlegraph
             libsdsl
             minimap2
+#            mummer4
             )
 
 endforeach()

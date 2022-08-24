@@ -15,6 +15,7 @@ using std::cerr;
 
 int main (int argc, char* argv[]){
     path gfa_path;
+    path output_directory;
     size_t k;
     path paternal_kmers;
     path maternal_kmers;
@@ -24,6 +25,12 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-i,--input_gfa",
             gfa_path,
+            "Path to GFA containing phased non-overlapping segments")
+            ->required();
+
+    app.add_option(
+            "-o,--output_directory",
+            output_directory,
             "Path to GFA containing phased non-overlapping segments")
             ->required();
 
@@ -47,7 +54,7 @@ int main (int argc, char* argv[]){
 
     CLI11_PARSE(app, argc, argv);
 
-    gfase::phase_k(gfa_path, k, paternal_kmers, maternal_kmers);
+    gfase::phase_k(gfa_path, k, paternal_kmers, maternal_kmers, output_directory);
 
     return 0;
 }
