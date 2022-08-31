@@ -7,6 +7,7 @@ def locate_cigar_events(paf_path, output_path, indel_threshold):
 
     n_inserts = 0
     n_deletes = 0
+    n_mismatches = 0
 
     reversal_char = ['+','-']
 
@@ -27,9 +28,14 @@ def locate_cigar_events(paf_path, output_path, indel_threshold):
                         n_deletes += 1
                         output_file.write(','.join(list(map(str,[l,element.get_ref_name(), ref_coord, element.get_query_name(), query_coord, reversal_char[element.get_reversal()], operation, length, element.get_map_quality()]))))
                         output_file.write('\n')
+                    if operation == 'X':
+                        n_mismatches += 1
+                        output_file.write(','.join(list(map(str,[l,element.get_ref_name(), ref_coord, element.get_query_name(), query_coord, reversal_char[element.get_reversal()], operation, length, element.get_map_quality()]))))
+                        output_file.write('\n')
 
     # print("n_inserts", n_inserts)
     # print("n_deletes", n_deletes)
+    # print("n_mismatches", n_mismatches)
 
 
 if __name__ == "__main__":
