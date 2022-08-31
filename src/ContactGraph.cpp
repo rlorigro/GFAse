@@ -295,13 +295,11 @@ double ContactGraph::get_score(const Node& a, const Node& b, int32_t weight) con
     auto p_a = a.partition;
     auto p_b = b.partition;
 
-    auto denominator = double(a.coverage * b.coverage * a.length * b.length);
-
     if (p_a != 0 and p_b != 0) {
-        score = double(p_a * p_b * weight)/denominator;
+        score = p_a * p_b * weight;
     }
     else{
-        score = double(weight)/denominator;
+        score = 0;
     }
 
     return score;

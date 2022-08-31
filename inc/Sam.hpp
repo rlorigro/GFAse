@@ -43,6 +43,48 @@ public:
 };
 
 
+class AlignmentBlock {
+public:
+    int32_t ref_start;
+    int32_t ref_stop;
+    int32_t query_start;
+    int32_t query_stop;
+    uint32_t n_matches;
+    uint32_t n_mismatches;
+    uint32_t n_inserts;
+    uint32_t n_deletes;
+    bool is_reverse;
+
+    AlignmentBlock(
+            int32_t ref_start,
+            int32_t ref_stop,
+            int32_t query_start,
+            int32_t query_stop,
+            int32_t n_matches,
+            int32_t n_mismatches,
+            int32_t n_inserts,
+            int32_t n_deletes,
+            bool is_reverse
+            );
+
+    AlignmentBlock()=default;
+
+    double get_identity();
+    char get_reversal_char();
+};
+
+
+class AlignmentChain{
+public:
+    vector<AlignmentBlock> chain;
+
+    AlignmentChain()=default;
+    void sort_chains(bool by_ref);
+    size_t get_total_matches();
+    bool empty();
+};
+
+
 void for_element_in_sam_file(path sam_path, const function<void(SamElement& e)>& f);
 
 
@@ -56,6 +98,7 @@ void for_element_in_sam_file(path sam_path, const function<void(SamElement& e)>&
 
 ostream& operator<<(ostream& o, const gfase::SamElement& a);
 
+ostream& operator<<(ostream& o, const gfase::AlignmentBlock& a);
 
 // TODO: if this needs to be hashable, it will need a unique identifier...
 //namespace std {

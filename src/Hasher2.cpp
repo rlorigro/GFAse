@@ -380,6 +380,58 @@ void Hasher2::for_each_overlap(const function<void(const pair<string,string>, in
 }
 
 
+void Hasher2::for_each_overlap(
+        size_t max_hits,
+        double min_similarity,
+        const function<void(const string& a, const string& b, int64_t n_hashes, int64_t total_hashes)>& f) const{
+
+    for (auto& [name, results]: overlaps){
+        // Self-hit is the total number of hashes the parent sequence had
+        auto total_hashes = double(results.at(name));
+
+        if (total_hashes < double(min_hashes)){
+            continue;
+        }
+
+        map <size_t, string> sorted_scores;
+
+        for (auto& [other_name, score]: results){
+            // Skip self-hits
+            if (other_name == name){
+                continue;
+            }
+
+            sorted_scores.emplace(score,other_name);
+        }
+
+        if (sorted_scores.empty()){
+            continue;
+        }
+
+        string max_name = sorted_scores.rbegin()->second;
+        auto max_hashes = double(sorted_scores.rbegin()->first);
+
+        size_t i = 0;
+        // Report the top hits by % similarity for each
+        for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
+            auto score = iter->first;
+            auto other_name = iter->second;
+
+            float similarity = float(score)/(float(total_hashes) + 1e-12f);
+
+            if (similarity > min_similarity) {
+                f(name, other_name, int64_t(score), int64_t(total_hashes));
+            }
+
+            i++;
+            if (i == max_hits){
+                break;
+            }
+        }
+    }
+}
+
+
 void Hasher2::write_results(path output_directory) const{
     path overlaps_path = output_directory / "overlaps.csv";
 

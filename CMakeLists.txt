@@ -696,6 +696,7 @@ find_package(Threads REQUIRED)
 # -------- TESTS --------
 
 set(TESTS
+        test_alignment_chain
         test_assign_phase
         test_bfs
         test_bubble_graph

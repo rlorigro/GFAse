@@ -6,7 +6,10 @@
 #include "kseq.h"
 
 #include <iostream>
+#include <string>
 
+using std::string;
+using std::cout;
 using std::cerr;
 
 
@@ -36,11 +39,14 @@ int main(int argc, char *argv[])
 //    mopt.best_n = 50;
 
     mm_verbose = 3; // disable message output to stderr
+    mm_set_opt(0, &iopt, &mopt);
     mm_set_opt("asm20", &iopt, &mopt);
 
-//    iopt.k = 21;
+    mopt.min_cnt = 10;
+
+    iopt.k = 21;
     mopt.flag |= MM_F_CIGAR; // perform alignment
-    mopt.flag |= MM_F_EQX;
+//    mopt.flag |= MM_F_EQX;
 
     cerr << "k=" << iopt.k << '\n';
     cerr << "min_mid_occ=" << mopt.min_mid_occ << '\n';
@@ -71,6 +77,7 @@ int main(int argc, char *argv[])
 
             cerr << '\n';
             cerr << "id" << ' ' << reg->id << '\n';
+            cerr << "n_reg" << ' ' << n_reg << '\n';
             cerr << "score" << ' ' << reg->score << '\n';
             cerr << "cnt" << ' ' << reg->cnt << '\n';
             cerr << "mlen" << ' ' << reg->mlen << '\n';
@@ -79,9 +86,14 @@ int main(int argc, char *argv[])
             for (j = 0; j < n_reg; ++j) { // traverse hits and print them out
                 mm_reg1_t *r2 = &reg[j];
 
+                string type;
+                if (r2->id == r2->parent) type = r2->inv? 'I' : 'P';
+                else type = r2->inv? 'i' : 'S';
+
                 assert(r2->p); // with MM_F_CIGAR, this should not be NULL
                 printf("%s\t%d\t%d\t%d\t%c\t", ks->name.s, ks->seq.l, r2->qs, r2->qe, "+-"[r2->rev]);
-                printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\tcg:Z:", mi->seq[r2->rid].name, mi->seq[r2->rid].len, r2->rs, r2->re, r2->mlen, r2->blen, r2->mapq);
+                printf("%s\t%d\t%d\t%d\t%d\t%d\t%d\tTP:%s\tcg:Z:", mi->seq[r2->rid].name, mi->seq[r2->rid].len, r2->rs, r2->re, r2->mlen, r2->blen, r2->mapq, type.c_str());
+
                 for (i = 0; i < r2->p->n_cigar; ++i) // IMPORTANT: this gives the CIGAR in the aligned regions. NO soft/hard clippings!
                     printf("%d%c", r2->p->cigar[i] >> 4, MM_CIGAR_STR[r2->p->cigar[i] & 0xf]);
                 putchar('\n');

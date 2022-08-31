@@ -114,8 +114,12 @@ public:
     // Output/results
     void get_best_matches(map<string, string>& matches, double certainty_threshold) const;
     void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold) const;
-    void for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const;
     int64_t get_intersection_size(const string& a, const string& b) const;
+    void for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const;
+    void for_each_overlap(
+            size_t max_hits,
+            double min_similarity,
+            const function<void(const string& a, const string& b, int64_t n_hashes, int64_t total_hashes)>& f) const;
 
     // IO
     void write_hash_frequency_distribution() const;

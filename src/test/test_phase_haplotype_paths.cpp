@@ -11,7 +11,9 @@ int main(){
     path maternal_kmers_path = project_directory / "data/simple_chain_maternal_kmers.fasta";
     path paternal_kmers_path = project_directory / "data/simple_chain_paternal_kmers.fasta";
 
-    phase_k(gfa_path, 6, paternal_kmers_path, maternal_kmers_path, '.');
+    path output_dir = "";
+
+    phase_k(gfa_path, 6, paternal_kmers_path, maternal_kmers_path, output_dir, '.');
 
     return 0;
 }

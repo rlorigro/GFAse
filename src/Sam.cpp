@@ -2,6 +2,7 @@
 #include "htslib/include/htslib/hts.h"
 #include "htslib/include/htslib/sam.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <iostream>
 #include <istream>
@@ -12,6 +13,7 @@ using std::runtime_error;
 using std::streamsize;
 using std::ifstream;
 using std::cerr;
+using std::sort;
 
 namespace gfase {
 
@@ -55,6 +57,66 @@ SamElement::SamElement() :
 //
 //    }
 //}
+
+
+AlignmentBlock::AlignmentBlock(
+        int32_t ref_start,
+        int32_t ref_stop,
+        int32_t query_start,
+        int32_t query_stop,
+        int32_t n_matches,
+        int32_t n_mismatches,
+        int32_t n_inserts,
+        int32_t n_deletes,
+        bool is_reverse
+        ):
+    ref_start(ref_start),
+    ref_stop(ref_stop),
+    query_start(query_start),
+    query_stop(query_stop),
+    n_matches(n_matches),
+    n_mismatches(n_mismatches),
+    n_inserts(n_inserts),
+    n_deletes(n_deletes),
+    is_reverse(is_reverse)
+{}
+
+
+double AlignmentBlock::get_identity(){
+    return double(n_matches) / double(n_matches+n_mismatches+n_inserts+n_deletes+1e-12);
+}
+
+
+char AlignmentBlock::get_reversal_char(){
+    return is_reverse ? '-' : '+';
+}
+
+
+void AlignmentChain::sort_chains(bool by_ref) {
+    sort(chain.begin(), chain.end(), [&](const AlignmentBlock& a, const AlignmentBlock& b){
+        if (by_ref){
+            return a.ref_start < b.ref_start;
+        }
+        else{
+            return a.query_start < b.query_start;
+        }
+    });
+}
+
+
+size_t AlignmentChain::get_total_matches(){
+    size_t total_matches = 0;
+    for (auto& c: chain){
+        total_matches += c.n_matches;
+    }
+
+    return total_matches;
+}
+
+
+bool AlignmentChain::empty() {
+    return chain.empty();
+}
 
 
 bool SamElement::is_first_mate() const {
@@ -184,6 +246,17 @@ ostream& operator<<(ostream& o, const gfase::SamElement& a){
     o << '\t' << "pair: " << a.is_first_mate() << ' ' << a.is_second_mate() << '\n';
     o << '\t' << "secondary: " << a.is_not_primary() << '\n';
     o << '\t' << "supplementary: " << a.is_supplementary() << '\n';
+
+    return o;
+}
+
+
+ostream& operator<<(ostream& o, const gfase::AlignmentBlock& a){
+    o << '\t' << "ref_start: " << a.ref_start << '\n';
+    o << '\t' << "ref_stop: " << a.ref_stop << '\n';
+    o << '\t' << "query_start: " << a.query_start << '\n';
+    o << '\t' << "query_stop: " << a.query_stop << '\n';
+    o << '\t' << "n_matches: " << a.n_matches << '\n';
 
     return o;
 }
