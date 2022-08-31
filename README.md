@@ -21,7 +21,9 @@ make -j [n_threads]
 - c++17
 - gcc
 - OpenMP
-- zlib
+- zlib1g-dev
+- libbz2-dev
+- libcurl4-openssl-dev
 
 
 ## Example usage
