@@ -700,6 +700,7 @@ set(TESTS
         test_assign_phase
         test_bfs
         test_bubble_graph
+        test_bubble_align
         test_binary_sequence
         test_binary_sequence_performance
         test_connected_component_finder

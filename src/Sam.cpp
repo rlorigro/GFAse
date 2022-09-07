@@ -14,6 +14,7 @@ using std::streamsize;
 using std::ifstream;
 using std::cerr;
 using std::sort;
+using std::max;
 
 namespace gfase {
 
@@ -64,10 +65,10 @@ AlignmentBlock::AlignmentBlock(
         int32_t ref_stop,
         int32_t query_start,
         int32_t query_stop,
-        int32_t n_matches,
-        int32_t n_mismatches,
-        int32_t n_inserts,
-        int32_t n_deletes,
+        uint32_t n_matches,
+        uint32_t n_mismatches,
+        uint32_t n_inserts,
+        uint32_t n_deletes,
         bool is_reverse
         ):
     ref_start(ref_start),
@@ -82,13 +83,31 @@ AlignmentBlock::AlignmentBlock(
 {}
 
 
-double AlignmentBlock::get_identity(){
+double AlignmentBlock::get_identity() const{
     return double(n_matches) / double(n_matches+n_mismatches+n_inserts+n_deletes+1e-12);
 }
 
 
-char AlignmentBlock::get_reversal_char(){
+char AlignmentBlock::get_reversal_char() const{
     return is_reverse ? '-' : '+';
+}
+
+
+int32_t AlignmentBlock::get_forward_start() const {
+    if (is_reverse) {
+        return ref_stop;
+    } else {
+        return ref_start;
+    }
+}
+
+
+int32_t AlignmentBlock::get_forward_stop() const {
+    if (is_reverse) {
+        return ref_start;
+    } else {
+        return ref_stop;
+    }
 }
 
 
@@ -104,8 +123,35 @@ void AlignmentChain::sort_chains(bool by_ref) {
 }
 
 
+size_t AlignmentChain::get_approximate_non_overlapping_matches(){
+    size_t total_matches = 0;
+
+    auto sorted_chain = *this;
+    sorted_chain.sort_chains(true);
+
+    // Don't double count overlaps, use identity to approximate # matches in the overlapping regions
+    int32_t prev_stop = -1;
+    double prev_identity = 0;
+    for (auto& c: sorted_chain.chain){
+        auto identity = c.get_identity();
+
+        total_matches += c.n_matches;
+
+        if (prev_stop > c.ref_start){
+            total_matches -= (prev_stop - c.ref_start)*(max(prev_identity, identity));
+        }
+
+        prev_stop = c.ref_stop;
+        prev_identity = identity;
+    }
+
+    return total_matches;
+}
+
+
 size_t AlignmentChain::get_total_matches(){
     size_t total_matches = 0;
+
     for (auto& c: chain){
         total_matches += c.n_matches;
     }

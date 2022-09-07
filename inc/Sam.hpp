@@ -60,17 +60,19 @@ public:
             int32_t ref_stop,
             int32_t query_start,
             int32_t query_stop,
-            int32_t n_matches,
-            int32_t n_mismatches,
-            int32_t n_inserts,
-            int32_t n_deletes,
+            uint32_t n_matches,
+            uint32_t n_mismatches,
+            uint32_t n_inserts,
+            uint32_t n_deletes,
             bool is_reverse
             );
 
     AlignmentBlock()=default;
 
-    double get_identity();
-    char get_reversal_char();
+    double get_identity() const;
+    char get_reversal_char() const;
+    int32_t get_forward_start() const;
+    int32_t get_forward_stop() const;
 };
 
 
@@ -81,6 +83,7 @@ public:
     AlignmentChain()=default;
     void sort_chains(bool by_ref);
     size_t get_total_matches();
+    size_t get_approximate_non_overlapping_matches();
     bool empty();
 };
 

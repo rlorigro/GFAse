@@ -377,11 +377,13 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     // Before creating bubbles in the contact graph, write out all the node/edge data
     write_graph_data(output_dir, hasher, contact_graph, id_map);
 
-    size_t max_hits = 5;
-    double min_similarity = 0.15;
+    size_t max_hits = 3;
+    double min_similarity = 0.25;
 
     unordered_map <pair <string,string>, AlignmentChain> alignments;
     unordered_set <pair <string,string> > visited_pairs;
+
+    ContactGraph alignment_graph;
 
     hasher.for_each_overlap(max_hits, min_similarity,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
         auto& seq_a = sequences[name_to_sequence[a]].sequence;

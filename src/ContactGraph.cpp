@@ -69,6 +69,24 @@ void ContactGraph::try_insert_edge(int32_t a, int32_t b){
 }
 
 
+bool ContactGraph::has_edge(int32_t a, int32_t b) const{
+    if (nodes.count(a) == 0 or nodes.count(b) == 0){
+        return false;
+    }
+
+    bool has_edge = false;
+
+    auto e = edge(a,b);
+    auto result = edge_weights.find(e);
+
+    if (result != edge_weights.end()) {
+        has_edge = true;
+    }
+
+    return has_edge;
+}
+
+
 void ContactGraph::add_alt(int32_t a, int32_t b){
     if (nodes.count(a) == 0 or nodes.count(b) == 0){
         throw runtime_error("ERROR: cannot add alt with nonexistent node id: (" + to_string(a) + "," + to_string(b) +")");
@@ -153,7 +171,7 @@ void ContactGraph::set_node_coverage(int32_t id, int64_t value){
 }
 
 
-void ContactGraph::set_node_length(int32_t id, int64_t length){
+void ContactGraph::set_node_length(int32_t id, int32_t length){
     if (nodes.count(id) == 0){
         throw runtime_error("ERROR: cannot update length for nonexistent node id: " + to_string(id));
     }

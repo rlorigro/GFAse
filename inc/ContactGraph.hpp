@@ -85,7 +85,7 @@ public:
     void increment_edge_weight(int32_t a, int32_t b, int32_t value);
     void increment_coverage(int32_t a, int64_t value);
     void set_node_coverage(int32_t a, int64_t value);
-    void set_node_length(int32_t a, int64_t length);
+    void set_node_length(int32_t a, int32_t length);
     void insert_node(int32_t id);
     void insert_node(int32_t id, int8_t partition);
     void try_insert_node(int32_t id);
@@ -102,6 +102,7 @@ public:
     void get_node_ids(vector<int32_t>& ids);
     bool has_alt(int32_t id) const;
     bool has_node(int32_t id) const;
+    bool has_edge(int32_t a, int32_t b) const;
     int64_t get_node_coverage(int32_t id) const;
     int32_t get_node_length(int32_t id) const;
     int32_t get_edge_weight(int32_t a, int32_t b) const;
