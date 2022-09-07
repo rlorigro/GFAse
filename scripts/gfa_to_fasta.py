@@ -1,9 +1,16 @@
 import argparse
 import sys
+import os
 
 
-def main(path):
-    output_path = '.'.join(path.split('.')[:-1]) + ".fasta"
+def main(path, output_path):
+    output_directory = os.path.dirname(output_path)
+
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    if not output_path.endswith(".fasta") or output_path.endswith(".fa"):
+        exit("ERROR: output path does not have FASTA suffix: " + output_path)
 
     print(output_path)
 
@@ -31,6 +38,13 @@ if __name__ == "__main__":
         help="Input GFA to be phased"
     )
 
+    parser.add_argument(
+        "-o",
+        required=True,
+        type=str,
+        help="Output directory where [filename].fasta will be written"
+    )
+
     args = parser.parse_args()
 
-    main(path=args.i)
+    main(path=args.i, output_path=args.o)
