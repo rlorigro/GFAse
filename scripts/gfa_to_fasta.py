@@ -6,8 +6,9 @@ import os
 def main(path, output_path):
     output_directory = os.path.dirname(output_path)
 
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
+    if not len(output_directory) == 0:
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
 
     if not output_path.endswith(".fasta") or output_path.endswith(".fa"):
         exit("ERROR: output path does not have FASTA suffix: " + output_path)
@@ -42,7 +43,7 @@ if __name__ == "__main__":
         "-o",
         required=True,
         type=str,
-        help="Output directory where [filename].fasta will be written"
+        help="Output path of the format /path/to/[filename].fasta or simply [filename].fasta"
     )
 
     args = parser.parse_args()
