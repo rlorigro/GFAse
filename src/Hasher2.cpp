@@ -432,6 +432,11 @@ void Hasher2::for_each_overlap(
 }
 
 
+void Hasher2::deallocate_bins(){
+    bins = {};
+}
+
+
 void Hasher2::write_results(path output_directory) const{
     path overlaps_path = output_directory / "overlaps.csv";
 
