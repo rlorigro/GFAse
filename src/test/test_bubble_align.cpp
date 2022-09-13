@@ -319,13 +319,23 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
         i++;
     }
 
-    // Sort by descending minimum length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
+    // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
     sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const pair <string,string>& a, const pair <string,string>& b){
-        auto length_a = sequences[name_to_sequence[a.second]].sequence.size();
-        auto length_b = sequences[name_to_sequence[b.second]].sequence.size();
-
-        return length_a > length_b;
+        auto length_a_0 = sequences[name_to_sequence[a.first]].sequence.size();
+        auto length_a_1 = sequences[name_to_sequence[a.second]].sequence.size();
+        auto length_b_0 = sequences[name_to_sequence[b.first]].sequence.size();
+        auto length_b_1 = sequences[name_to_sequence[b.second]].sequence.size();
+        auto a_avg = (length_a_0 + length_a_1) / 2;
+        auto b_avg = (length_b_0 + length_b_1) / 2;
+        return a_avg > b_avg;
     });
+
+    for (const auto& [a,b]: to_be_aligned) {
+        auto length_a = sequences[name_to_sequence[a]].sequence.size();
+        auto length_b = sequences[name_to_sequence[b]].sequence.size();
+
+        cerr << a << ',' << b << ',' << length_a << ',' << length_b << '\n';
+    }
 
     cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
     cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';
