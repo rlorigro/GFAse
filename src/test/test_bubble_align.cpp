@@ -407,13 +407,17 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
                 auto a_length = alignment_graph.get_node_length(a);
                 auto b_length = alignment_graph.get_node_length(b);
 
-                bool a_max = double(a_coverage) + double(weight) < double(a_length);
-                bool b_max = double(b_coverage) + double(weight) < double(b_length);
-                bool a_min = double(weight) > double(a_length)*0.2;
-                bool b_min = double(weight) > double(b_length)*0.2;
+                // Sometimes supplementaries overlap and extend loger than the node length
+                auto capped_weight_a = min(weight, a_length - 1);
+                auto capped_weight_b = min(weight, b_length - 1);
 
-                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ")" << '\n';
-                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ")" << '\n';
+                bool a_max = double(a_coverage) + double(capped_weight_a) < double(a_length);
+                bool b_max = double(b_coverage) + double(capped_weight_b) < double(b_length);
+                bool a_min = double(capped_weight_a) > double(a_length)*0.2;
+                bool b_min = double(capped_weight_b) > double(b_length)*0.2;
+
+                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ", capped_weight=" << capped_weight_a << ")" << '\n';
+                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ", capped_weight=" << capped_weight_b << ")" << '\n';
                 cerr << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
 
                 if (a_max and b_max and a_min and b_min){
