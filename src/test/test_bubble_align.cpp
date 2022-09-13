@@ -58,108 +58,187 @@ void print_minimap_alignment_block(mm_mapopt_t& map_options, mm_idx_t* mi, mm_re
 }
 
 
-AlignmentChain map_sequences(
-        const vector<string>& targets,
-        const vector<string>& target_names,
-        const vector<string>& queries,
-        const vector<string>& query_names){
+void map_sequences(
+        const vector <pair <string,string> >& to_be_aligned,
+        const vector<Sequence>& sequences,
+        const unordered_map<string,size_t>& name_to_sequence,
+        const IncrementalIdMap<string>& id_map,
+        ContactGraph& alignment_graph,
+        double min_similarity,
+        mutex& output_mutex,
+        atomic<size_t>& global_index
+){
 
-    AlignmentChain result;
+    size_t thread_index;
+    while (global_index < to_be_aligned.size()){
+        thread_index = global_index.fetch_add(1);
 
-    vector<const char*> c_targets;
-    vector<const char*> c_names;
+        AlignmentChain result;
 
-    c_targets.reserve(targets.size());
-    c_names.reserve(targets.size());
+        auto&[target_name, query_name] = to_be_aligned.at(thread_index);
 
-    for(size_t i=0; i<targets.size(); i++) {
-        c_targets.push_back(targets[i].c_str());
-        c_names.push_back(target_names[i].c_str());
-    }
+        output_mutex.lock();
+        cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
+        output_mutex.unlock();
 
-    mm_idxopt_t index_options;
-    mm_mapopt_t map_options;
+        auto& seq_a = sequences[name_to_sequence.at(target_name)].sequence;
+        auto& seq_b = sequences[name_to_sequence.at(query_name)].sequence;
 
-    mm_verbose = 3; // disable message output to stderr
-    mm_set_opt(0, &index_options, &map_options);
-    mm_set_opt("asm10", &index_options, &map_options);
+        // Longer length is first
+        auto length_a = seq_a.size();
+        auto length_b = seq_b.size();
 
-    index_options.k = 21;
-    map_options.flag |= MM_F_CIGAR; // perform alignment
-    map_options.flag |= MM_F_EQX;
+        double size_ratio = double(length_b) / double(length_a);
 
-    mm_idx_t *mi = mm_idx_str(
-            index_options.w,
-            index_options.k,
-            int(0),
-            index_options.bucket_bits,
-            int(targets.size()),
-            c_targets.data(),
-            c_names.data()
-    );
-
-    mm_tbuf_t *tbuf = mm_tbuf_init(); // thread buffer; for multi-threading, allocate one tbuf for each thread
-    for (size_t i=0; i<queries.size(); i++) {
-        auto& query = queries[i];
-        auto& name = query_names[i];
-
-//        cerr << "ALIGNING" << '\n';
-//        cerr << target_names[0] << " " << query_names[i] << ' ' << query.size() << ' ' << targets[0].size() << '\n';
-
-        mm_mapopt_update(&map_options, mi); // this sets the maximum minimizer occurrence; TODO: set a better default in mm_mapopt_init()!
-
-        int n_reg;
-        mm_reg1_t *reg;
-        reg = mm_map(mi, query.size(), query.c_str(), &n_reg, tbuf, &map_options, name.c_str()); // get all hits for the query
-
-        for (int j = 0; j < n_reg; ++j) { // traverse hits
-            mm_reg1_t *r2 = &reg[j];
-
-            assert(r2->p); // with MM_F_CIGAR, this should not be NULL
-
-            if (r2->id == r2->parent){
-                AlignmentBlock block(
-                        r2->rs,
-                        r2->re,
-                        r2->qs,
-                        r2->qe,
-                        0,
-                        0,
-                        0,
-                        0,
-                        r2->rev);
-
-                for (uint32_t k = 0; k < r2->p->n_cigar; ++k) { // IMPORTANT: this gives the CIGAR in the aligned regions. NO soft/hard clippings!
-                    uint32_t length = r2->p->cigar[k] >> 4;
-                    char operation = MM_CIGAR_STR[r2->p->cigar[k] & 0xf];
-
-                    if (operation == '='){
-                        block.n_matches += length;
-                    }
-                    else if (operation == 'X'){
-                        block.n_mismatches += length;
-                    }
-                    else if (operation == 'I'){
-                        block.n_inserts += length;
-                    }
-                    else if (operation == 'D'){
-                        block.n_deletes += length;
-                    }
-                }
-
-                result.chain.emplace_back(block);
-
-                free(r2->p);
-            }
+        if (size_ratio < min_similarity){
+            // Don't align reads with a size_ratio that would make min_similarity impossible during alignment
+            // Occasionally needed where hash similarity is not predictive due to repetitiveness
+            continue;
         }
-        free(reg);
+
+        const vector<string>& targets = {seq_a};
+        const vector<string>& target_names = {target_name};
+        const vector<string>& queries = {seq_b};
+        const vector<string>& query_names = {query_name};
+
+        vector<const char*> c_targets;
+        vector<const char*> c_names;
+
+        c_targets.reserve(targets.size());
+        c_names.reserve(targets.size());
+
+        for (size_t t = 0; t < targets.size(); t++) {
+            c_targets.push_back(targets[t].c_str());
+            c_names.push_back(target_names[t].c_str());
+        }
+
+        mm_idxopt_t index_options;
+        mm_mapopt_t map_options;
+
+        mm_verbose = 3; // disable message output to stderr
+        mm_set_opt(0, &index_options, &map_options);
+        mm_set_opt("asm10", &index_options, &map_options);
+
+        index_options.k = 21;
+        map_options.flag |= MM_F_CIGAR; // perform alignment
+        map_options.flag |= MM_F_EQX;
+
+        mm_idx_t *mi = mm_idx_str(
+                index_options.w,
+                index_options.k,
+                int(0),
+                index_options.bucket_bits,
+                int(targets.size()),
+                c_targets.data(),
+                c_names.data()
+        );
+
+        mm_tbuf_t *tbuf = mm_tbuf_init(); // thread buffer; for multi-threading, allocate one tbuf for each thread
+        for (size_t q=0; q<queries.size(); q++) {
+            auto& query = queries[q];
+            auto& name = query_names[q];
+
+    //        cerr << "ALIGNING" << '\n';
+    //        cerr << target_names[0] << " " << query_names[i] << ' ' << query.size() << ' ' << targets[0].size() << '\n';
+
+            mm_mapopt_update(&map_options, mi); // this sets the maximum minimizer occurrence; TODO: set a better default in mm_mapopt_init()!
+
+            int n_reg;
+            mm_reg1_t *reg;
+            reg = mm_map(mi, query.size(), query.c_str(), &n_reg, tbuf, &map_options, name.c_str()); // get all hits for the query
+
+            for (int j = 0; j < n_reg; ++j) { // traverse hits
+                mm_reg1_t *r2 = &reg[j];
+
+                assert(r2->p); // with MM_F_CIGAR, this should not be NULL
+
+                if (r2->id == r2->parent){
+                    AlignmentBlock block(
+                            r2->rs,
+                            r2->re,
+                            r2->qs,
+                            r2->qe,
+                            0,
+                            0,
+                            0,
+                            0,
+                            r2->rev);
+
+                    for (uint32_t k = 0; k < r2->p->n_cigar; ++k) { // IMPORTANT: this gives the CIGAR in the aligned regions. NO soft/hard clippings!
+                        uint32_t length = r2->p->cigar[k] >> 4;
+                        char operation = MM_CIGAR_STR[r2->p->cigar[k] & 0xf];
+
+                        if (operation == '='){
+                            block.n_matches += length;
+                        }
+                        else if (operation == 'X'){
+                            block.n_mismatches += length;
+                        }
+                        else if (operation == 'I'){
+                            block.n_inserts += length;
+                        }
+                        else if (operation == 'D'){
+                            block.n_deletes += length;
+                        }
+                    }
+
+                    result.chain.emplace_back(block);
+
+                    free(r2->p);
+                }
+            }
+            free(reg);
+        }
+        mm_tbuf_destroy(tbuf);
+        mm_idx_destroy(mi);
+
+        result.sort_chains(true);
+
+        if (not result.empty()) {
+            output_mutex.lock();
+
+            cerr << target_name << ' ' << query_name << '\n';
+            for (auto& item: result.chain) {
+                cerr << item.get_reversal_char() << '\t' << '(' << item.ref_start << ',' << item.ref_stop << ")\t("
+                     << item.query_start << ',' << item.query_stop << ')' << '\t' << item.get_identity() << '\n';
+            }
+            cerr << '\n';
+            output_mutex.unlock();
+
+            // Make sure to retain the ordering by size
+            auto id_a = int32_t(id_map.get_id(target_name));
+            auto id_b = int32_t(id_map.get_id(query_name));
+
+            // Clip maximum matches to the length of the longer node
+            auto total_matches = min(length_a, result.get_approximate_non_overlapping_matches());
+
+            auto alignment_coverage = double(total_matches) / double(length_a);
+
+            if (alignment_coverage < min_similarity){
+                // Skip alignments which don't have at least min_similarity matches relative to larger node
+                continue;
+            }
+
+            output_mutex.lock();
+
+            // Update the graph
+            alignment_graph.try_insert_node(id_a);
+            alignment_graph.try_insert_node(id_b);
+
+            alignment_graph.set_node_coverage(id_a, 0);
+            alignment_graph.set_node_coverage(id_b, 0);
+
+            alignment_graph.try_insert_edge(id_a, id_b, total_matches);
+
+            alignment_graph.set_node_length(id_a, length_a);
+            alignment_graph.set_node_length(id_b, length_b);
+
+            cerr << "adding alignment: " << target_name << ',' << query_name << ',' << length_a << ',' << length_b << ',' << total_matches << '\n';
+            cerr << "from graph: " << alignment_graph.get_node_length(id_a) << ',' << alignment_graph.get_node_length(id_b) << '\n';
+
+            output_mutex.unlock();
+        }
     }
-    mm_tbuf_destroy(tbuf);
-    mm_idx_destroy(mi);
-
-    result.sort_chains(true);
-
-    return result;
 }
 
 
@@ -201,8 +280,7 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
     size_t max_hits = 5;
     double min_similarity = 0.2;
 
-    unordered_map <pair <string,string>, AlignmentChain> alignments;
-    unordered_set <pair <string,string> > visited_pairs;
+    unordered_set <pair <string,string> > ordered_pairs;
 
     ContactGraph alignment_graph;
 
@@ -223,85 +301,56 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
             ordered_pair = {b,a};
         }
 
-        auto result = visited_pairs.find(ordered_pair);
+        auto result = ordered_pairs.find(ordered_pair);
 
-        if (result == visited_pairs.end()) {
-            visited_pairs.emplace(ordered_pair);
+        if (result == ordered_pairs.end()) {
+            ordered_pairs.emplace(ordered_pair);
         }
         else{
             // Don't align pairs twice
             return;
         }
-
-        // Longer length is first
-        auto length_a = int32_t(max(seq_a.size(), seq_b.size()));
-        auto length_b = int32_t(min(seq_a.size(), seq_b.size()));
-
-        double size_ratio = double(length_b) / double(length_a);
-
-        if (size_ratio < min_similarity){
-            // Don't align reads with a size_ratio that would make min_similarity impossible during alignment
-            // Occasionally needed where hash similarity fails due to repetitiveness
-            return;
-        }
-
-        AlignmentChain alignment;
-
-        if (seq_a.size() > seq_b.size()) {
-            const vector<string>& targets = {seq_a};
-            const vector<string>& target_names = {a};
-            const vector<string>& queries = {seq_b};
-            const vector<string>& query_names = {b};
-
-            alignment = map_sequences(targets, target_names, queries, query_names);
-        }
-        else{
-            const vector<string>& targets = {seq_b};
-            const vector<string>& target_names = {b};
-            const vector<string>& queries = {seq_a};
-            const vector<string>& query_names = {a};
-
-            alignment = map_sequences(targets, target_names, queries, query_names);
-        }
-
-        if (not alignment.empty()) {
-            cerr << ordered_pair.first << ' ' << ordered_pair.second << '\n';
-            for (auto& item: alignment.chain) {
-                cerr << item.get_reversal_char() << '\t' << '(' << item.ref_start << ',' << item.ref_stop << ")\t("
-                     << item.query_start << ',' << item.query_stop << ')' << '\t' << item.get_identity() << '\n';
-            }
-            cerr << '\n';
-
-            // Make sure to retain the ordering by size
-            auto id_a = int32_t(id_map.get_id(ordered_pair.first));
-            auto id_b = int32_t(id_map.get_id(ordered_pair.second));
-
-            // Clip maximum matches to the length of the longer node
-            auto total_matches = min(length_a, int32_t(alignment.get_approximate_non_overlapping_matches()));
-
-            auto alignment_coverage = double(total_matches) / double(length_a);
-
-            if (alignment_coverage < min_similarity){
-                // Skip alignments which don't have at least min_similarity matches relative to larger node
-                return;
-            }
-
-            // Update the graph
-            alignment_graph.try_insert_node(id_a);
-            alignment_graph.try_insert_node(id_b);
-
-            alignment_graph.set_node_coverage(id_a, 0);
-            alignment_graph.set_node_coverage(id_b, 0);
-
-            alignment_graph.try_insert_edge(id_a, id_b, total_matches);
-
-            alignment_graph.set_node_length(id_a, length_a);
-            alignment_graph.set_node_length(id_b, length_b);
-
-            cerr << "adding alignment: " << ordered_pair.first << ',' << ordered_pair.second << ',' << length_a << ',' << length_b << ',' << total_matches << '\n';
-            cerr << "from graph: " << alignment_graph.get_node_length(id_a) << ',' << alignment_graph.get_node_length(id_b) << '\n';
-        }
     });
+
+    vector <pair <string,string> > to_be_aligned(ordered_pairs.size());
+    size_t i = 0;
+    for (const auto& item: ordered_pairs){
+        to_be_aligned[i] = item;
+        i++;
+    }
+
+    cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
+    cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';
+
+    // Thread-related variables
+    atomic<size_t> job_index = 0;
+    vector<thread> threads;
+    mutex output_mutex;
+
+    // Launch threads
+    for (uint64_t n=0; n<n_threads; n++){
+        try {
+            threads.emplace_back(thread(
+                    map_sequences,
+                    ref(to_be_aligned),
+                    ref(sequences),
+                    ref(name_to_sequence),
+                    ref(id_map),
+                    ref(alignment_graph),
+                    min_similarity,
+                    ref(output_mutex),
+                    ref(job_index)
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& n: threads){
+        n.join();
+    }
 
     ContactGraph symmetrical_alignment_graph;
 
@@ -418,23 +467,6 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
         alignment_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << ',' << 1 << ',' << colors.first << '\n';
         alignment_file << id_map.get_name(edge.second) << ',' << id_map.get_name(edge.first) << ',' << weight << ',' << 1 << ',' << colors.second << '\n';
     });
-
-    map<string,string> overlaps;
-
-    hasher.get_symmetrical_matches(overlaps, 0.7);
-
-    path output_path = output_dir / "pairs.csv";
-    ofstream file(output_path);
-
-    if (not file.good() or not file.is_open()){
-        throw runtime_error("ERROR: could not write file: " + output_path.string());
-    }
-
-    file << "Name" << ',' << "Match" << ',' << "Color" << '\n';
-    for (auto& [a,b]: overlaps){
-        file << a << ',' << b << ',' << "Cornflower Blue" << '\n';
-        file << b << ',' << a << ',' << "Tomato" << '\n';
-    }
 
     cerr << t << "Done" << '\n';
 }
