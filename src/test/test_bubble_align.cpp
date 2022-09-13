@@ -273,9 +273,9 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
     size_t n_iterations = 6;
 
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
-
     hasher.hash(sequences);
     hasher.write_results(output_dir);
+    hasher.deallocate_bins();
 
     size_t max_hits = 5;
     double min_similarity = 0.2;
@@ -318,6 +318,14 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
         to_be_aligned[i] = item;
         i++;
     }
+
+    // Sort by descending minimum length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
+    sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const pair <string,string>& a, const pair <string,string>& b){
+        auto length_a = sequences[name_to_sequence[a.second]].sequence.size();
+        auto length_b = sequences[name_to_sequence[b.second]].sequence.size();
+
+        return length_a > length_b;
+    });
 
     cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
     cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';

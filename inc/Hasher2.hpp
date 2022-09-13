@@ -132,6 +132,8 @@ public:
             size_t minimum_hashes,
             size_t max_overlaps) const;
 
+    void deallocate_bins();
+
 };
 
 
