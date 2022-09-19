@@ -67,6 +67,7 @@ set(SOURCES
         src/misc.cpp
         src/MurmurHash2.cpp
         src/MurmurHash3.cpp
+        src/MultiContactGraph.cpp
 ##        src/OverlapMap.cpp
         src/Phase.cpp
         src/PhaseAssign.cpp
@@ -715,6 +716,7 @@ set(TESTS
         test_phase_haplotype_paths
         test_minimap2
         test_minimap2_no_io
+        test_multi_contact_graph
 #        test_mummer
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance

@@ -61,7 +61,6 @@ void print_minimap_alignment_block(mm_mapopt_t& map_options, mm_idx_t* mi, mm_re
 void map_sequences(
         const vector <pair <string,string> >& to_be_aligned,
         const vector<Sequence>& sequences,
-        const unordered_map<string,size_t>& name_to_sequence,
         const IncrementalIdMap<string>& id_map,
         ContactGraph& alignment_graph,
         double min_similarity,
@@ -81,8 +80,8 @@ void map_sequences(
         cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
         output_mutex.unlock();
 
-        auto& seq_a = sequences[name_to_sequence.at(target_name)].sequence;
-        auto& seq_b = sequences[name_to_sequence.at(query_name)].sequence;
+        auto& seq_a = sequences[id_map.get_id(target_name)].sequence;
+        auto& seq_b = sequences[id_map.get_id(query_name)].sequence;
 
         // Longer length is first
         auto length_a = seq_a.size();
@@ -242,47 +241,24 @@ void map_sequences(
 }
 
 
-void phase_hic(path output_dir, path gfa_path, size_t n_threads){
-    Timer t;
-
-    if (exists(output_dir)){
-        throw runtime_error("ERROR: output directory exists already");
-    }
-    else {
-        create_directories(output_dir);
-    }
-
-//    write_config(output_dir, sam_path, required_prefix, min_mapq, n_threads);
-
-    // Id-to-name bimap for reference contigs
-    IncrementalIdMap<string> id_map(false);
-
-    GfaReader reader(gfa_path);
-
-    // TODO: move this into domain of bdsg graph instead of GFA reader
-    vector<Sequence> sequences;
-    unordered_map<string,size_t> name_to_sequence;
-    reader.for_each_sequence([&](string& name, string& sequence){
-        id_map.try_insert(name);
-        name_to_sequence.emplace(name, sequences.size());
-        sequences.emplace_back(name, sequence);
-    });
-
-    double sample_rate = 0.04;
-    size_t k = 22;
-    size_t n_iterations = 6;
+void get_alignment_candidates(
+        const vector<Sequence>& sequences,
+        const IncrementalIdMap<string>& id_map,
+        vector <pair <string,string> >& to_be_aligned,
+        path output_dir,
+        size_t n_threads,
+        double sample_rate,
+        size_t k,
+        size_t n_iterations,
+        size_t max_hits,
+        double min_similarity
+        ){
 
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
     hasher.hash(sequences);
     hasher.write_results(output_dir);
-    hasher.deallocate_bins();
-
-    size_t max_hits = 5;
-    double min_similarity = 0.2;
 
     unordered_set <pair <string,string> > ordered_pairs;
-
-    ContactGraph alignment_graph;
 
     hasher.for_each_overlap(max_hits, min_similarity,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
         // Skip self hits
@@ -290,8 +266,8 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
             return;
         }
 
-        auto& seq_a = sequences[name_to_sequence[a]].sequence;
-        auto& seq_b = sequences[name_to_sequence[b]].sequence;
+        auto& seq_a = sequences[id_map.get_id(a)].sequence;
+        auto& seq_b = sequences[id_map.get_id(b)].sequence;
 
         pair<string,string> ordered_pair;
         if (seq_a.size() > seq_b.size()){
@@ -312,7 +288,7 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
         }
     });
 
-    vector <pair <string,string> > to_be_aligned(ordered_pairs.size());
+    to_be_aligned.resize(ordered_pairs.size());
     size_t i = 0;
     for (const auto& item: ordered_pairs){
         to_be_aligned[i] = item;
@@ -321,56 +297,32 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
     sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const pair <string,string>& a, const pair <string,string>& b){
-        auto length_a_0 = sequences[name_to_sequence[a.first]].sequence.size();
-        auto length_a_1 = sequences[name_to_sequence[a.second]].sequence.size();
-        auto length_b_0 = sequences[name_to_sequence[b.first]].sequence.size();
-        auto length_b_1 = sequences[name_to_sequence[b.second]].sequence.size();
+        auto length_a_0 = sequences[id_map.get_id(a.first)].sequence.size();
+        auto length_a_1 = sequences[id_map.get_id(a.second)].sequence.size();
+        auto length_b_0 = sequences[id_map.get_id(b.first)].sequence.size();
+        auto length_b_1 = sequences[id_map.get_id(b.second)].sequence.size();
         auto a_avg = (length_a_0 + length_a_1) / 2;
         auto b_avg = (length_b_0 + length_b_1) / 2;
         return a_avg > b_avg;
     });
 
     for (const auto& [a,b]: to_be_aligned) {
-        auto length_a = sequences[name_to_sequence[a]].sequence.size();
-        auto length_b = sequences[name_to_sequence[b]].sequence.size();
+        auto length_a = sequences[id_map.get_id(a)].sequence.size();
+        auto length_b = sequences[id_map.get_id(b)].sequence.size();
 
         cerr << a << ',' << b << ',' << length_a << ',' << length_b << '\n';
     }
 
     cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
     cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';
+}
 
-    // Thread-related variables
-    atomic<size_t> job_index = 0;
-    vector<thread> threads;
-    mutex output_mutex;
 
-    // Launch threads
-    for (uint64_t n=0; n<n_threads; n++){
-        try {
-            threads.emplace_back(thread(
-                    map_sequences,
-                    ref(to_be_aligned),
-                    ref(sequences),
-                    ref(name_to_sequence),
-                    ref(id_map),
-                    ref(alignment_graph),
-                    min_similarity,
-                    ref(output_mutex),
-                    ref(job_index)
-            ));
-        } catch (const exception &e) {
-            cerr << e.what() << "\n";
-            exit(1);
-        }
-    }
-
-    // Wait for threads to finish
-    for (auto& n: threads){
-        n.join();
-    }
-
-    ContactGraph symmetrical_alignment_graph;
+void get_best_overlaps(
+        const IncrementalIdMap<string>& id_map,
+        ContactGraph& alignment_graph,
+        ContactGraph& symmetrical_alignment_graph
+        ){
 
     bool symmetrical_edges_found = true;
     while (symmetrical_edges_found){
@@ -465,6 +417,15 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
 
         to_be_deleted.clear();
     }
+}
+
+
+void write_alignment_results_to_file(
+        const IncrementalIdMap<string>& id_map,
+        const ContactGraph& alignment_graph,
+        const ContactGraph& symmetrical_alignment_graph,
+        path output_dir
+        ){
 
     ofstream alignment_file(output_dir / "alignments.csv");
     alignment_file << "name_a" << ',' << "name_b" << ',' << "total_matches" << ',' << "symmetrical" << ',' << "color" << '\n';
@@ -489,6 +450,96 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
         alignment_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << ',' << 1 << ',' << colors.first << '\n';
         alignment_file << id_map.get_name(edge.second) << ',' << id_map.get_name(edge.first) << ',' << weight << ',' << 1 << ',' << colors.second << '\n';
     });
+}
+
+
+void phase_hic(path output_dir, path gfa_path, size_t n_threads){
+    Timer t;
+
+    if (exists(output_dir)){
+        throw runtime_error("ERROR: output directory exists already");
+    }
+    else {
+        create_directories(output_dir);
+    }
+
+//    write_config(output_dir, sam_path, required_prefix, min_mapq, n_threads);
+
+    // Id-to-name bimap for reference contigs
+    IncrementalIdMap<string> id_map(false);
+
+    GfaReader reader(gfa_path);
+
+    // TODO: move this into domain of bdsg graph instead of GFA reader
+    string dummy_name = "";
+    string dummy_seq = "";
+    vector<Sequence> sequences = {Sequence(dummy_name,dummy_seq)};
+    reader.for_each_sequence([&](string& name, string& sequence){
+        id_map.insert(name);
+        sequences.emplace_back(name, sequence);
+    });
+
+    // Hashing params
+    double sample_rate = 0.04;
+    size_t k = 22;
+    size_t n_iterations = 6;
+
+    // Only align the top n hits
+    size_t max_hits = 5;
+
+    // Hash results must have at least this percent similarity (A U B)/A, where A is larger
+    // Sequence lengths must be at least this ratio
+    // Resulting alignment coverage must be at least this amount on larger node
+    double min_similarity = 0.2;
+
+    vector <pair <string,string> > to_be_aligned;
+
+    get_alignment_candidates(
+            sequences,
+            id_map,
+            to_be_aligned,
+            output_dir,
+            n_threads,
+            sample_rate,
+            k,
+            n_iterations,
+            max_hits,
+            min_similarity
+    );
+    ContactGraph alignment_graph;
+    ContactGraph symmetrical_alignment_graph;
+
+    // Thread-related variables
+    atomic<size_t> job_index = 0;
+    vector<thread> threads;
+    mutex output_mutex;
+
+    // Launch threads
+    for (uint64_t n=0; n<n_threads; n++){
+        try {
+            threads.emplace_back(thread(
+                    map_sequences,
+                    ref(to_be_aligned),
+                    ref(sequences),
+                    ref(id_map),
+                    ref(alignment_graph),
+                    min_similarity,
+                    ref(output_mutex),
+                    ref(job_index)
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& n: threads){
+        n.join();
+    }
+
+    get_best_overlaps(id_map, alignment_graph, symmetrical_alignment_graph);
+    write_alignment_results_to_file(id_map, alignment_graph, symmetrical_alignment_graph, output_dir);
 
     cerr << t << "Done" << '\n';
 }
