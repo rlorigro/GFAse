@@ -39,7 +39,7 @@ using std::set;
 namespace gfase{
 
 
-using alt_component_t = pair <set <int32_t>, set <int32_t> > ;
+using alt_component_t = pair <set<int32_t>, set<int32_t> >;
 
 
 class MultiNode {
@@ -124,6 +124,7 @@ public:
     // Misc
     void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map) const;
     void write_node_data(path output_path, IncrementalIdMap<string>& id_map) const;
+    void assert_component_is_valid(const alt_component_t& component) const;
     void validate_alts();
     size_t size();
 };

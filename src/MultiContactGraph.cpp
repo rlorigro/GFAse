@@ -48,6 +48,28 @@ void MultiContactGraph::for_each_double_alt(int32_t id, const function<void(int3
 }
 
 
+void MultiContactGraph::assert_component_is_valid(const alt_component_t& component) const{
+    vector<int32_t> result;
+    set_intersection(
+            component.first.begin(),
+            component.first.end(),
+            component.second.begin(),
+            component.second.end(),
+            std::inserter(result, result.begin()));
+
+    if (not result.empty()){
+        for (auto& item: component.first){
+            cerr << 0 << ' ' << item << '\n';
+        }
+        for (auto& item: component.second){
+            cerr << 1 << ' ' << item << '\n';
+        }
+
+        throw runtime_error("ERROR: Alt component is non-bipartite. See output above for details.");
+    }
+}
+
+
 void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_component_t& component){
     component = {};
 
@@ -81,25 +103,7 @@ void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_compone
     }
 
     if (validate){
-        cerr << "validating... " << '\n';
-        vector<int32_t> result;
-        set_intersection(
-                component.first.begin(),
-                component.first.end(),
-                component.second.begin(),
-                component.second.end(),
-                std::inserter(result, result.begin()));
-
-        if (not result.empty()){
-            for (auto& item: component.first){
-                cerr << 0 << ' ' << item << '\n';
-            }
-            for (auto& item: component.second){
-                cerr << 1 << ' ' << item << '\n';
-            }
-
-            throw runtime_error("ERROR: Alt component is non-bipartite. See output above for details.");
-        }
+        assert_component_is_valid(component);
     }
 }
 
@@ -174,18 +178,66 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
         throw runtime_error("ERROR: cannot add alt to itself: " + to_string(b));
     }
 
-    auto& node_a = nodes.at(a);
+    // Start by doing alt-wise BFS to get bipartite component of nodes
+    alt_component_t component;
+    get_alt_component(a, false, component);
+
+    if (component.first.count(b) == 0){
+        component.second.emplace(b);
+    }
+    else{
+        for (auto& item: component.first){
+            cerr << 0 << ' ' << item << '\n';
+        }
+        for (auto& item: component.second){
+            cerr << 1 << ' ' << item << '\n';
+        }
+
+        throw runtime_error("ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component, see above for details");
+    }
+    if (component.second.count(a) == 0) {
+        component.first.emplace(a);
+    }
+    else{
+        for (auto& item: component.first){
+            cerr << 0 << ' ' << item << '\n';
+        }
+        for (auto& item: component.second){
+            cerr << 1 << ' ' << item << '\n';
+        }
+
+        throw runtime_error("ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component, see above for details");
+    }
+
     auto& node_b = nodes.at(b);
+    auto& node_a = nodes.at(a);
 
-    // Remove any edge that may exist between a and b
-    remove_edge(a,b);
+    for (auto& id: component.first){
+        auto& node_n = nodes.at(id);
 
-    node_a.alts.emplace(b);
-    node_b.alts.emplace(a);
+        // Enforce all-vs-all connectivity in alt components
+        node_n.alts.emplace(b);
+        node_b.alts.emplace(id);
 
-    // Chose arbitrary partition assignment
-    node_a.partition = -1;
-    node_b.partition = 1;
+        // No valid edge can exist between alts
+        remove_edge(id, b);
+
+        // Assign arbitrary partition
+        node_n.partition = -1;
+    }
+    for (auto& id: component.second){
+        auto& node_n = nodes.at(id);
+
+        // Enforce all-vs-all connectivity in alt components
+        node_n.alts.emplace(a);
+        node_a.alts.emplace(id);
+
+        // No valid edge can exist between alts
+        remove_edge(a, id);
+
+        // Assign arbitrary partition
+        node_n.partition = 1;
+    }
 }
 
 
@@ -342,17 +394,23 @@ void MultiContactGraph::set_partition(int32_t id, int8_t partition) {
     auto& node = nodes.at(id);
     node.partition = partition;
 
-    // If this node is linked to an alt, alt must be maintained in an opposite state
+    // If this node is linked to an alt, alt must be maintained in an opposite state,
+    // and double-alts must be maintained in identical state
     if (node.has_alt()){
-        for (auto& alt_id: node.alts){
+        if (partition == 0) {
+            throw runtime_error("ERROR: cannot set 0 partition for bubble: " + to_string(id));
+        }
+
+        alt_component_t component;
+        get_alt_component(id, false, component);
+
+        for (auto& alt_id: component.second){
             auto& alt = nodes.at(alt_id);
-
-
-            if (partition == 0) {
-                throw runtime_error("ERROR: cannot set 0 partition for bubble: " + to_string(id));
-            }
-
             alt.partition = partition*int8_t(-1);
+        }
+        for (auto& alt_id: component.first){
+            auto& alt = nodes.at(alt_id);
+            alt.partition = partition;
         }
     }
 }
