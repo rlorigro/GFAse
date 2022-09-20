@@ -58,7 +58,115 @@ void print_minimap_alignment_block(mm_mapopt_t& map_options, mm_idx_t* mi, mm_re
 }
 
 
-void map_sequences(
+void map_sequence_pair(
+        const string& target_name,
+        const string& target_sequence,
+        const string& query_name,
+        const string& query_sequence,
+        AlignmentChain& result
+        ){
+    result = {};
+
+    const vector<string>& targets = {target_sequence};
+    const vector<string>& target_names = {target_name};
+    const vector<string>& queries = {query_sequence};
+    const vector<string>& query_names = {query_name};
+
+    vector<const char*> c_targets;
+    vector<const char*> c_names;
+
+    c_targets.reserve(targets.size());
+    c_names.reserve(targets.size());
+
+    for (size_t t = 0; t < targets.size(); t++) {
+        c_targets.push_back(targets[t].c_str());
+        c_names.push_back(target_names[t].c_str());
+    }
+
+    mm_idxopt_t index_options;
+    mm_mapopt_t map_options;
+
+    mm_verbose = 3; // disable message output to stderr
+    mm_set_opt(0, &index_options, &map_options);
+    mm_set_opt("asm10", &index_options, &map_options);
+
+    index_options.k = 21;
+    map_options.flag |= MM_F_CIGAR; // perform alignment
+    map_options.flag |= MM_F_EQX;
+
+    mm_idx_t *mi = mm_idx_str(
+            index_options.w,
+            index_options.k,
+            int(0),
+            index_options.bucket_bits,
+            int(targets.size()),
+            c_targets.data(),
+            c_names.data()
+    );
+
+    mm_tbuf_t *tbuf = mm_tbuf_init(); // thread buffer; for multi-threading, allocate one tbuf for each thread
+    for (size_t q=0; q<queries.size(); q++) {
+        auto& query = queries[q];
+        auto& name = query_names[q];
+
+        //        cerr << "ALIGNING" << '\n';
+        //        cerr << target_names[0] << " " << query_names[i] << ' ' << query.size() << ' ' << targets[0].size() << '\n';
+
+        mm_mapopt_update(&map_options, mi); // this sets the maximum minimizer occurrence; TODO: set a better default in mm_mapopt_init()!
+
+        int n_reg;
+        mm_reg1_t *reg;
+        reg = mm_map(mi, query.size(), query.c_str(), &n_reg, tbuf, &map_options, name.c_str()); // get all hits for the query
+
+        for (int j = 0; j < n_reg; ++j) { // traverse hits
+            mm_reg1_t *r2 = &reg[j];
+
+            assert(r2->p); // with MM_F_CIGAR, this should not be NULL
+
+            if (r2->id == r2->parent){
+                AlignmentBlock block(
+                        r2->rs,
+                        r2->re,
+                        r2->qs,
+                        r2->qe,
+                        0,
+                        0,
+                        0,
+                        0,
+                        r2->rev);
+
+                for (uint32_t k = 0; k < r2->p->n_cigar; ++k) { // IMPORTANT: this gives the CIGAR in the aligned regions. NO soft/hard clippings!
+                    uint32_t length = r2->p->cigar[k] >> 4;
+                    char operation = MM_CIGAR_STR[r2->p->cigar[k] & 0xf];
+
+                    if (operation == '='){
+                        block.n_matches += length;
+                    }
+                    else if (operation == 'X'){
+                        block.n_mismatches += length;
+                    }
+                    else if (operation == 'I'){
+                        block.n_inserts += length;
+                    }
+                    else if (operation == 'D'){
+                        block.n_deletes += length;
+                    }
+                }
+
+                result.chain.emplace_back(block);
+
+                free(r2->p);
+            }
+        }
+        free(reg);
+    }
+
+    mm_tbuf_destroy(tbuf);
+    mm_idx_destroy(mi);
+}
+
+
+void construct_alignment_graph(
         const vector <pair <string,string> >& to_be_aligned,
         const vector<Sequence>& sequences,
         const IncrementalIdMap<string>& id_map,
@@ -95,101 +203,7 @@ void map_sequences(
             continue;
         }
 
-        const vector<string>& targets = {seq_a};
-        const vector<string>& target_names = {target_name};
-        const vector<string>& queries = {seq_b};
-        const vector<string>& query_names = {query_name};
-
-        vector<const char*> c_targets;
-        vector<const char*> c_names;
-
-        c_targets.reserve(targets.size());
-        c_names.reserve(targets.size());
-
-        for (size_t t = 0; t < targets.size(); t++) {
-            c_targets.push_back(targets[t].c_str());
-            c_names.push_back(target_names[t].c_str());
-        }
-
-        mm_idxopt_t index_options;
-        mm_mapopt_t map_options;
-
-        mm_verbose = 3; // disable message output to stderr
-        mm_set_opt(0, &index_options, &map_options);
-        mm_set_opt("asm10", &index_options, &map_options);
-
-        index_options.k = 21;
-        map_options.flag |= MM_F_CIGAR; // perform alignment
-        map_options.flag |= MM_F_EQX;
-
-        mm_idx_t *mi = mm_idx_str(
-                index_options.w,
-                index_options.k,
-                int(0),
-                index_options.bucket_bits,
-                int(targets.size()),
-                c_targets.data(),
-                c_names.data()
-        );
-
-        mm_tbuf_t *tbuf = mm_tbuf_init(); // thread buffer; for multi-threading, allocate one tbuf for each thread
-        for (size_t q=0; q<queries.size(); q++) {
-            auto& query = queries[q];
-            auto& name = query_names[q];
-
-    //        cerr << "ALIGNING" << '\n';
-    //        cerr << target_names[0] << " " << query_names[i] << ' ' << query.size() << ' ' << targets[0].size() << '\n';
-
-            mm_mapopt_update(&map_options, mi); // this sets the maximum minimizer occurrence; TODO: set a better default in mm_mapopt_init()!
-
-            int n_reg;
-            mm_reg1_t *reg;
-            reg = mm_map(mi, query.size(), query.c_str(), &n_reg, tbuf, &map_options, name.c_str()); // get all hits for the query
-
-            for (int j = 0; j < n_reg; ++j) { // traverse hits
-                mm_reg1_t *r2 = &reg[j];
-
-                assert(r2->p); // with MM_F_CIGAR, this should not be NULL
-
-                if (r2->id == r2->parent){
-                    AlignmentBlock block(
-                            r2->rs,
-                            r2->re,
-                            r2->qs,
-                            r2->qe,
-                            0,
-                            0,
-                            0,
-                            0,
-                            r2->rev);
-
-                    for (uint32_t k = 0; k < r2->p->n_cigar; ++k) { // IMPORTANT: this gives the CIGAR in the aligned regions. NO soft/hard clippings!
-                        uint32_t length = r2->p->cigar[k] >> 4;
-                        char operation = MM_CIGAR_STR[r2->p->cigar[k] & 0xf];
-
-                        if (operation == '='){
-                            block.n_matches += length;
-                        }
-                        else if (operation == 'X'){
-                            block.n_mismatches += length;
-                        }
-                        else if (operation == 'I'){
-                            block.n_inserts += length;
-                        }
-                        else if (operation == 'D'){
-                            block.n_deletes += length;
-                        }
-                    }
-
-                    result.chain.emplace_back(block);
-
-                    free(r2->p);
-                }
-            }
-            free(reg);
-        }
-        mm_tbuf_destroy(tbuf);
-        mm_idx_destroy(mi);
+        map_sequence_pair(target_name, seq_a, query_name, seq_b, result);
 
         result.sort_chains(true);
 
@@ -487,9 +501,9 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
     // Only align the top n hits
     size_t max_hits = 5;
 
-    // Hash results must have at least this percent similarity (A U B)/A, where A is larger
-    // Sequence lengths must be at least this ratio
-    // Resulting alignment coverage must be at least this amount on larger node
+    // Hash results must have at least this percent similarity (A U B)/A, where A is larger.
+    // Sequence lengths must be at least this ratio.
+    // Resulting alignment coverage must be at least this amount on larger node.
     double min_similarity = 0.2;
 
     vector <pair <string,string> > to_be_aligned;
@@ -518,7 +532,7 @@ void phase_hic(path output_dir, path gfa_path, size_t n_threads){
     for (uint64_t n=0; n<n_threads; n++){
         try {
             threads.emplace_back(thread(
-                    map_sequences,
+                    construct_alignment_graph,
                     ref(to_be_aligned),
                     ref(sequences),
                     ref(id_map),
