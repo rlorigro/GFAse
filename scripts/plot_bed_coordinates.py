@@ -205,24 +205,23 @@ def plot_bed_regions(figure, axes, n_rows, regions_per_chromosome):
         column_index = 3*(i % n_rows)
 
         print(n_rows, axes.shape)
-
         print(name, row_index, column_index)
 
         for r in positive_regions:
-            rect = Rectangle((r.start,-1),(r.stop-r.start),1.4,linewidth=0,facecolor="C0", zorder=1)
+            rect = Rectangle((r.start,0),(r.stop-r.start),1.4,linewidth=0,facecolor="C0", alpha=0.6, zorder=1)
 
             # Add the patch to the Axes
             axes[column_index][row_index].add_patch(rect)
 
         for r in negative_regions:
-            rect = Rectangle((r.start,-1),(r.stop-r.start),1.4,linewidth=0,facecolor="C0", zorder=1)
+            rect = Rectangle((r.start,0),(r.stop-r.start),-1.4,linewidth=0,facecolor="C0", alpha=0.6, zorder=1)
 
             # Add the patch to the Axes
             axes[column_index+2][row_index].add_patch(rect)
 
-        # axes[column_index][row_index].set_ylim([0,20])
+        axes[column_index][row_index].set_ylim([0,2])
         axes[column_index+1][row_index].set_ylim([-1.2,1.2])
-        # axes[column_index+2][row_index].set_ylim([-20,0])
+        axes[column_index+2][row_index].set_ylim([-2,0])
 
 
 def main(negative_bed_path, positive_bed_path, ideogram_path):
@@ -252,7 +251,21 @@ def main(negative_bed_path, positive_bed_path, ideogram_path):
                 else:
                     print("WARNING: ideogram name not found in VCF: " + e.chrom)
 
+    ideogram_keys = set(ideograms_per_chromosome.keys())
+    bed_keys = set(regions_per_chromosome.keys())
+    ideogram_not_in_bed = ideogram_keys - bed_keys
+    bed_not_in_ideogram = bed_keys - ideogram_keys
+
+    for key in ideogram_not_in_bed:
+        del ideograms_per_chromosome[key]
+
+    for key in bed_not_in_ideogram:
+        del regions_per_chromosome[key]
+
     n_rows = int(math.ceil(float(len(regions_per_chromosome))/2))
+
+    print(n_rows)
+
     figure, axes = pyplot.subplots(nrows=n_rows*3, ncols=2, sharey=False, sharex=True, gridspec_kw={'height_ratios': [2, 1, 2]*n_rows})
 
     max_ylim = 2
@@ -265,7 +278,8 @@ def main(negative_bed_path, positive_bed_path, ideogram_path):
             axes[i][j].set_xlim([0,250000000])
 
     figure.set_size_inches(24,32)
-    pyplot.savefig("vcf_distribution.png", dpi=200)
+    pyplot.savefig("bed_ideogram.png", dpi=200)
+    pyplot.savefig("bed_ideogram.pdf", dpi=200)
 
     pyplot.show()
     pyplot.close()
