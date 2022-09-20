@@ -47,6 +47,7 @@ include_directories(
 
 # Define our shared library sources. NOT test/executables.
 set(SOURCES
+        src/align.cpp
         src/Bam.cpp
         src/BinaryIO.cpp
         src/BinarySequence.cpp
