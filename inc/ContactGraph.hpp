@@ -8,6 +8,7 @@
 #include "bdsg/hash_graph.hpp"
 #include "sparsepp/spp.h"
 #include "Filesystem.hpp"
+#include "edge.hpp"
 
 using ghc::filesystem::path;
 using spp::sparse_hash_map;
@@ -98,7 +99,7 @@ public:
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const Node& n)>& f) const;
     void for_each_node(const function<void(int32_t id, const Node& n)>& f) const;
-    void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
+    void for_each_edge(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const;
     void get_node_ids(vector<int32_t>& ids);
     bool has_alt(int32_t id) const;
     bool has_node(int32_t id) const;
@@ -121,9 +122,6 @@ public:
     void validate_alts();
     size_t size();
 };
-
-
-pair<int32_t,int32_t> edge(int32_t a, int32_t b);
 
 ostream& operator<<(ostream& o, const gfase::Node& n);
 

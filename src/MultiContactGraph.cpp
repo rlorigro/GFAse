@@ -125,11 +125,6 @@ MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const Inc
 }
 
 
-pair<int32_t,int32_t> edge(int32_t a, int32_t b){
-    return {min(a,b), max(a,b)};
-}
-
-
 void MultiContactGraph::insert_edge(int32_t a, int32_t b, int32_t weight){
     edge_weights.emplace(edge(a,b),weight);
     nodes.at(a).neighbors.emplace(b);

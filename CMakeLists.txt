@@ -55,6 +55,7 @@ set(SOURCES
         src/BubbleGraph.cpp
         src/ContactGraph.cpp
         src/Color.cpp
+        src/edge.cpp
         src/FixedBinarySequence.cpp
         src/GfaReader.cpp
         src/gfa_to_handle.cpp

@@ -8,6 +8,7 @@
 #include "bdsg/hash_graph.hpp"
 #include "sparsepp/spp.h"
 #include "Filesystem.hpp"
+#include "edge.hpp"
 
 using ghc::filesystem::path;
 using spp::sparse_hash_map;
@@ -128,9 +129,6 @@ public:
     void validate_alts();
     size_t size();
 };
-
-
-pair<int32_t,int32_t> edge(int32_t a, int32_t b);
 
 ostream& operator<<(ostream& o, const gfase::MultiNode& n);
 
