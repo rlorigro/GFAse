@@ -13,11 +13,15 @@ def align(ref_path, query_path, n_threads, as_bam=False):
 
     ref_prefix = '_'.join(os.path.basename(ref_path).split('.')[:-1])
     query_prefix = '_'.join(os.path.basename(query_path).split('.')[:-1])
-    output_name = query_prefix + '_' + "VS" + '_' + ref_prefix + ".paf"
 
     output_arg = "-c"
+    output_extension = ".paf"
+
     if as_bam:
         output_arg = "-a"
+        output_extension = ".sam"
+
+    output_name = query_prefix + '_' + "VS" + '_' + ref_prefix + output_extension
 
     command = ["minimap2",
                "-x", "asm20",
@@ -31,40 +35,62 @@ def align(ref_path, query_path, n_threads, as_bam=False):
                query_path]
 
     print("Running: " + ' '.join(command))
+    print("Redirecting to: " + output_name)
 
     with open(output_name, 'w') as file:
         result = subprocess.run(command, check=True, stdout=file, stderr=sys.stderr, universal_newlines=True)
         print(result.stderr)
 
+    if as_bam:
+        input_name = output_name
+
+        command = ["samtools", "view",
+                   "-b",
+                   "-h",
+                   "-@", str(n_threads),
+                   input_name,
+                   ]
+
+        output_name = input_name.replace(output_extension,".bam")
+
+        print("Running: " + ' '.join(command))
+        print("Redirecting to: " + output_name)
+
+        with open(output_name, 'w') as file:
+            result = subprocess.run(command, check=True, stdout=file, stderr=sys.stderr, universal_newlines=True)
+            print(result.stderr)
+
+        os.remove(input_name)
+
     return output_name
 
 
-def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, unphased_query_path, n_threads):
+def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, unphased_query_path, n_threads, as_bam):
     if n_threads is None:
         n_threads = os.cpu_count()
 
     if paternal_query_path is not None and paternal_ref_path is not None:
-        output_name = align(ref_path=paternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
+        output_name = align(ref_path=paternal_ref_path, query_path=paternal_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     if paternal_query_path is not None and maternal_ref_path is not None:
-        output_name = align(ref_path=maternal_ref_path, query_path=paternal_query_path, n_threads=n_threads)
+        output_name = align(ref_path=maternal_ref_path, query_path=paternal_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     if maternal_query_path is not None and paternal_ref_path is not None:
-        output_name = align(ref_path=paternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
+        output_name = align(ref_path=paternal_ref_path, query_path=maternal_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     if maternal_query_path is not None and maternal_ref_path is not None:
-        output_name = align(ref_path=maternal_ref_path, query_path=maternal_query_path, n_threads=n_threads)
+        output_name = align(ref_path=maternal_ref_path, query_path=maternal_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     if unphased_query_path is not None and paternal_ref_path is not None:
-        output_name = align(ref_path=paternal_ref_path, query_path=unphased_query_path, n_threads=n_threads)
+        output_name = align(ref_path=paternal_ref_path, query_path=unphased_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     if unphased_query_path is not None and maternal_ref_path is not None:
-        output_name = align(ref_path=maternal_ref_path, query_path=unphased_query_path, n_threads=n_threads)
+        output_name = align(ref_path=maternal_ref_path, query_path=unphased_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     return
@@ -117,7 +143,6 @@ if __name__ == "__main__":
         "--as_bam",
         required=False,
         action="store_true",
-        type=bool
     )
 
     args = parser.parse_args()
@@ -137,5 +162,4 @@ python3 ../scripts/cross_align_phases.py \
 --ref_mat [ref_mat].fasta \
 --query_pat [query_pat].fasta \
 --query_mat [query_mat].fasta
-
 '''
