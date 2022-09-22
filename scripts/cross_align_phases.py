@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import subprocess
 import argparse
 import sys
@@ -65,7 +66,7 @@ def align(ref_path, query_path, n_threads, as_bam=False):
     return output_name
 
 
-def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, unphased_query_path, n_threads, as_bam):
+def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, maternal_query_path, query_path, n_threads, as_bam):
     if n_threads is None:
         n_threads = os.cpu_count()
 
@@ -85,12 +86,12 @@ def cross_align(paternal_ref_path, maternal_ref_path, paternal_query_path, mater
         output_name = align(ref_path=maternal_ref_path, query_path=maternal_query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
-    if unphased_query_path is not None and paternal_ref_path is not None:
-        output_name = align(ref_path=paternal_ref_path, query_path=unphased_query_path, n_threads=n_threads, as_bam=as_bam)
+    if query_path is not None and paternal_ref_path is not None:
+        output_name = align(ref_path=paternal_ref_path, query_path=query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
-    if unphased_query_path is not None and maternal_ref_path is not None:
-        output_name = align(ref_path=maternal_ref_path, query_path=unphased_query_path, n_threads=n_threads, as_bam=as_bam)
+    if query_path is not None and maternal_ref_path is not None:
+        output_name = align(ref_path=maternal_ref_path, query_path=query_path, n_threads=n_threads, as_bam=as_bam)
         print("Output file name: " + output_name)
 
     return
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--query_unphased",
+        "--query",
         required=False,
         default=None,
         type=str
@@ -151,15 +152,8 @@ if __name__ == "__main__":
                 maternal_ref_path=args.ref_mat,
                 paternal_query_path=args.query_pat,
                 maternal_query_path=args.query_mat,
-                unphased_query_path=args.query_unphased,
+                query_path=args.query_unphased,
                 n_threads=args.threads,
                 as_bam=args.as_bam)
 
 
-'''
-python3 ../scripts/cross_align_phases.py \
---ref_pat [ref_pat].fasta \
---ref_mat [ref_mat].fasta \
---query_pat [query_pat].fasta \
---query_mat [query_mat].fasta
-'''
