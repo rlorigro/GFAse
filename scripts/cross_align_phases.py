@@ -4,7 +4,7 @@ import sys
 import os
 
 
-def align(ref_path, query_path, n_threads):
+def align(ref_path, query_path, n_threads, as_bam=False):
     if not ref_path.endswith(".fasta") and not ref_path.endswith(".fa"):
         exit("ERROR: input file is not in FASTA format: " + ref_path)
 
@@ -15,13 +15,17 @@ def align(ref_path, query_path, n_threads):
     query_prefix = '_'.join(os.path.basename(query_path).split('.')[:-1])
     output_name = query_prefix + '_' + "VS" + '_' + ref_prefix + ".paf"
 
+    output_arg = "-c"
+    if as_bam:
+        output_arg = "-a"
+
     command = ["minimap2",
                "-x", "asm20",
                "-t", str(n_threads),
                "-K", "10g",
                "--secondary=no",
                "-n", "10",
-               "-c",
+               output_arg,
                "--eqx",
                ref_path,
                query_path]
@@ -109,6 +113,13 @@ if __name__ == "__main__":
         type=int
     )
 
+    parser.add_argument(
+        "--as_bam",
+        required=False,
+        action="store_true",
+        type=bool
+    )
+
     args = parser.parse_args()
 
     cross_align(paternal_ref_path=args.ref_pat,
@@ -116,7 +127,8 @@ if __name__ == "__main__":
                 paternal_query_path=args.query_pat,
                 maternal_query_path=args.query_mat,
                 unphased_query_path=args.query_unphased,
-                n_threads=args.threads)
+                n_threads=args.threads,
+                as_bam=args.as_bam)
 
 
 '''
