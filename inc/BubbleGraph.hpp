@@ -158,6 +158,7 @@ public:
     // Constructors and constructor-helpers
     BubbleGraph();
     BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& contact_map);
+    BubbleGraph(IncrementalIdMap<string>& id_map);
     BubbleGraph(const HandleGraph& graph, const contact_map_t& contact_map);
     BubbleGraph(const HandleGraph& graph);
     BubbleGraph(path csv_path, IncrementalIdMap<string>& id_map);

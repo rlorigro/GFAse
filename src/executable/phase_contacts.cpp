@@ -561,8 +561,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
         cerr << t << "Constructing bubble graph..." << '\n';
 
-        // Initialize using graph topology to find bubbles from scratch
-        bubble_graph = BubbleGraph(graph, contact_map);
+        // Initialize using shasta naming convention
+        bubble_graph = BubbleGraph(id_map, contact_map);
     }
 
     cerr << t << "Phasing " << bubble_graph.size() << " bubbles" << '\n';

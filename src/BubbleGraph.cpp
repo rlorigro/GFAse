@@ -81,6 +81,16 @@ BubbleGraph::BubbleGraph(IncrementalIdMap<string>& id_map, const contact_map_t& 
 }
 
 
+// Strictly adds ids to the id map if pairs (bubble sides) in the shasta convention (.0 or .1 suffix) are incomplete
+BubbleGraph::BubbleGraph(IncrementalIdMap<string>& id_map) :
+        bubbles(),
+        node_id_to_bubble_id(),
+        bubble_to_bubble(),
+        bubble_edges() {
+    generate_bubbles_from_shasta_names(id_map);
+}
+
+
 // Topology based bubble finding
 BubbleGraph::BubbleGraph(const HandleGraph& graph, const contact_map_t& contact_map) :
         bubbles(),
@@ -416,11 +426,19 @@ void BubbleGraph::generate_bubbles_from_shasta_names(IncrementalIdMap<string>& i
             continue;
         }
 
+        // Skip any "UR" prefixed nodes
+        if (name.empty()){
+            continue;
+        }
+        else if (name[0] == 'U'){
+            continue;
+        }
+
         // Split to find last field, which should be 0/1 for shasta PR segments
         auto i = name.find_last_of('.');
 
-        if (i < 2) {
-            throw std::runtime_error("ERROR: shasta phase field unconventional: " + name);
+        if (i < 2 or i > name.size()) {
+            continue;
         }
 
         auto prefix = name.substr(0, i);
