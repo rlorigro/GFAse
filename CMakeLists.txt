@@ -53,6 +53,7 @@ set(SOURCES
         src/BinarySequence.cpp
         src/Bipartition.cpp
         src/BubbleGraph.cpp
+        src/chain.cpp
         src/ContactGraph.cpp
         src/Color.cpp
         src/edge.cpp

@@ -58,11 +58,13 @@ public:
     void for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f);
     nid_t get_id_of_parent_handle(const handle_t& h);
     nid_t get_id_of_parent_handle(const string& name);
+    size_t get_degree_of_parent_handle(const handle_t& h, bool left) const;
     string get_name_of_parent_node(nid_t id);
     void merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index_b);
     void partition();
     size_t get_subgraph_size(size_t subgraph_index) const;
     size_t get_subgraph_index_of_parent_node(nid_t id) const;
+    void get_boundary_nodes(size_t subgraph_index, bool left, unordered_set<handle_t>& boundary_nodes) const;
     nid_t get_id(handle_t meta_handle) const;
     void write_parent_graph_csv(ostream& file) const;
     void write_meta_graph_csv(ostream& file) const;

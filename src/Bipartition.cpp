@@ -91,26 +91,18 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         throw runtime_error("ERROR: cannot merge subgraphs of differing partitions");
     }
 
-    cerr << 'a' << '\n';
     subgraphs.at(subgraph_index_b).for_each_handle([&](const handle_t& h){
-        cerr << 'b' << '\n';
-
         // Add all the b nodes to a
         subgraphs.at(subgraph_index_a).add_node(h);
-        cerr << 'c' << '\n';
 
         // Overwrite mappings from parent to subgraph
         node_to_subgraph[graph.get_id(h)] = subgraph_index_a;
     });
 
-    cerr << 'd' << '\n';
-
     auto metagraph_handle_b = metagraph.get_handle(nid_t(subgraph_index_b));
     auto metagraph_handle_a = metagraph.get_handle(nid_t(subgraph_index_a));
 
     unordered_set<edge_t> to_be_deleted;
-
-    cerr << 'e' << '\n';
 
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (LEFT)
     metagraph.follow_edges(metagraph_handle_b, true, [&](const handle_t & h){
@@ -124,8 +116,6 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         to_be_deleted.emplace(e_b);
     });
 
-    cerr << 'f' << '\n';
-
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (RIGHT)
     metagraph.follow_edges(metagraph_handle_b, false, [&](const handle_t & h){
         edge_t e_a = metagraph.edge_handle(metagraph_handle_a, h);
@@ -138,13 +128,9 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         to_be_deleted.emplace(e_b);
     });
 
-    cerr << 'g' << '\n';
-
     for (auto& e: to_be_deleted){
         meta_edge_to_edges.erase(e);
     }
-
-    cerr << 'h' << '\n';
 
     subgraphs.erase(subgraph_index_b);
     metagraph.destroy_handle(metagraph_handle_b);
@@ -206,68 +192,70 @@ void Bipartition::follow_subgraph_edges(size_t subgraph_index, bool go_left, con
 }
 
 
-void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f) const{
+void Bipartition::get_boundary_nodes(size_t subgraph_index, bool left, unordered_set<handle_t>& boundary_nodes) const{
     auto n = nid_t(subgraph_index);
     auto h = metagraph.get_handle(n, false);
 
-    unordered_set <handle_t> boundary_nodes;
-
 //    cerr << "Looking for boundary nodes of subgraph: " << subgraph_index << '\n';
 
-    for (auto& l: {true,false}){
 //        cerr << (l ? "checking left" : "checking right") << '\n';
 
-        metagraph.follow_edges(h, l, [&](const handle_t& h_other){
-            edge_t e;
-            if (l) {
-                e = metagraph.edge_handle(h_other, h);
-            }
-            else{
-                e = metagraph.edge_handle(h, h_other);
-            }
+    metagraph.follow_edges(h, left, [&](const handle_t& h_other){
+        edge_t e;
+        if (left) {
+            e = metagraph.edge_handle(h_other, h);
+        }
+        else{
+            e = metagraph.edge_handle(h, h_other);
+        }
 
 //            cerr << "\tmeta-edge: "
 //                 << graph.get_id(e.first) << (graph.get_is_reverse(e.first) ? '-' : '+') << " -> "
 //                 << graph.get_id(e.second) << (graph.get_is_reverse(e.second) ? '-' : '+') << '\n';
 
-            for (auto parent_edge: meta_edge_to_edges.at(e)){
+        for (auto parent_edge: meta_edge_to_edges.at(e)){
 //                cerr << "\t\tparent edge: "
 //                     << id_map.get_name(graph.get_id(parent_edge.first)) << (graph.get_is_reverse(parent_edge.first) ? '-' : '+') << " -> "
 //                     << id_map.get_name(graph.get_id(parent_edge.second)) << (graph.get_is_reverse(parent_edge.second) ? '-' : '+') << '\n';
 
-                auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
-                auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
+            auto first_index = node_to_subgraph.at(graph.get_id(parent_edge.first));
+            auto second_index = node_to_subgraph.at(graph.get_id(parent_edge.second));
 
-                if (first_index == subgraph_index and second_index != subgraph_index){
-                    // Verify that the edge has the handle-of-interest in the F orientation
-                    if (graph.get_is_reverse(parent_edge.first)){
-                        if (left){
+            if (first_index == subgraph_index and second_index != subgraph_index){
+                // Verify that the edge has the handle-of-interest in the F orientation
+                if (graph.get_is_reverse(parent_edge.first)){
+                    if (left){
 //                            cerr << "\t\t\tfound: " << id_map.get_name(graph.get_id(parent_edge.first)) << '\n';
-                            boundary_nodes.emplace(graph.flip(parent_edge.first));
-                        }
-                    }
-                    else if (not left){
-                        boundary_nodes.emplace(parent_edge.first);
+                        boundary_nodes.emplace(graph.flip(parent_edge.first));
                     }
                 }
-                else if (first_index != subgraph_index and second_index == subgraph_index){
-                    // Verify that the edge has the handle-of-interest in the F orientation
-                    if (graph.get_is_reverse(parent_edge.second)){
-                        if (not left){
-//                            cerr << "\t\t\tfound: " << id_map.get_name(graph.get_id(parent_edge.second)) << '\n';
-                            boundary_nodes.emplace(graph.flip(parent_edge.second));
-                        }
-                    }
-                    else if (left){
-                        boundary_nodes.emplace(parent_edge.second);
-                    }
-                }
-                else{
-                    throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+                else if (not left){
+                    boundary_nodes.emplace(parent_edge.first);
                 }
             }
-        });
-    }
+            else if (first_index != subgraph_index and second_index == subgraph_index){
+                // Verify that the edge has the handle-of-interest in the F orientation
+                if (graph.get_is_reverse(parent_edge.second)){
+                    if (not left){
+//                            cerr << "\t\t\tfound: " << id_map.get_name(graph.get_id(parent_edge.second)) << '\n';
+                        boundary_nodes.emplace(graph.flip(parent_edge.second));
+                    }
+                }
+                else if (left){
+                    boundary_nodes.emplace(parent_edge.second);
+                }
+            }
+            else{
+                throw runtime_error("ERROR: self-edge crosses subgraph boundary: " + to_string(first_index) + "->" + to_string(second_index));
+            }
+        }
+    });
+}
+
+
+void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool left, const function<void(const handle_t& h)>& f) const{
+    unordered_set<handle_t> boundary_nodes;
+    get_boundary_nodes(subgraph_index, left, boundary_nodes);
 
     for (auto& item: boundary_nodes){
         f(item);
@@ -277,6 +265,11 @@ void Bipartition::for_each_boundary_node_in_subgraph(size_t subgraph_index, bool
 
 void Bipartition::for_each_handle_in_subgraph(size_t subgraph_index, const function<void(const handle_t& h)>& f){
     subgraphs.at(subgraph_index).for_each_handle(f);
+}
+
+
+size_t Bipartition::get_degree_of_parent_handle(const handle_t& h, bool left) const{
+    return graph.get_degree(h, left);
 }
 
 
@@ -353,63 +346,113 @@ void generate_chain_critera(
         Bipartition& ploidy_bipartition,
         unordered_set<nid_t>& chain_nodes
 ){
+    unordered_set<nid_t> chainable_subgraphs;
+
     ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-        // Find singletons
+        // Singletons are always chainable
         if (subgraph.get_node_count() == 1){
             if (partition == 0){
                 subgraph.for_each_handle([&](const handle_t& h){
                     chain_nodes.emplace(subgraph.get_id(h));
                 });
-            }
-            else{
-                // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
-                // subgraphs, by doing a two-edge walk right/left and left/right
-                unordered_set<size_t> second_degree_neighbors;
 
-                // Make sure it isn't possible to visit more than 2 phased bubble sides from this unphased node
-                unordered_set<size_t> left_first_degree_neighbors;
-                unordered_set<size_t> right_first_degree_neighbors;
-
-                ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
-                    auto id = ploidy_bipartition.get_id(h);
-                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
-
-                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
-                        left_first_degree_neighbors.emplace(adjacent_subgraph_index);
-                    }
-
-                    ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
-                        auto id2 = ploidy_bipartition.get_id(h2);
-                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
-                        second_degree_neighbors.emplace(adjacent_subgraph_index2);
-                    });
-                });
-
-                ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
-                    auto id = ploidy_bipartition.get_id(h);
-                    auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
-
-                    if (ploidy_bipartition.get_partition_of_subgraph(adjacent_subgraph_index) == 0) {
-                        right_first_degree_neighbors.emplace(adjacent_subgraph_index);
-                    }
-
-                    ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
-                        auto id2 = ploidy_bipartition.get_id(h2);
-                        auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
-                        second_degree_neighbors.emplace(adjacent_subgraph_index2);
-                    });
-                });
-
-                // If there are no second degree neighbors, this unphased subgraph passes
-                if (second_degree_neighbors.size() == 1 and right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3){
-                    ploidy_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h) {
-                        chain_nodes.emplace(subgraph.get_id(h));
-                    });
-                }
+                chainable_subgraphs.emplace(subgraph_index);
             }
         }
         else if(subgraph.get_node_count() == 0){
             throw runtime_error("ERROR: subgraph in metagraph contains no nodes: " + to_string(subgraph_index));
+        }
+        // Sometimes there are subgraphs with more than one node which are all inside bubbles.
+        // Make a weak test to see if it will be chainable (probably subject to failure in the case of a
+        // binary tree-like structure)
+        else if (partition == 0){
+            bool chainable = true;
+            subgraph.for_each_handle([&](const handle_t& h){
+                if (ploidy_bipartition.get_degree_of_parent_handle(h,false) > 2){
+                    chainable = false;
+                }
+                if (ploidy_bipartition.get_degree_of_parent_handle(h,true) > 2){
+                    chainable = false;
+                }
+            });
+
+            if (chainable){
+                subgraph.for_each_handle([&](const handle_t& h) {
+                    chain_nodes.emplace(subgraph.get_id(h));
+                });
+
+                chainable_subgraphs.emplace(subgraph_index);
+            }
+        }
+    });
+
+    ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
+        // Find singletons
+        if (subgraph.get_node_count() == 1){
+            // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
+            // subgraphs, by doing a two-edge walk right/left and left/right
+            unordered_set<size_t> second_degree_neighbors;
+
+            // Make sure it isn't possible to visit more than 2 phased bubble sides from this unphased node
+            unordered_set<size_t> left_first_degree_neighbors;
+            unordered_set<size_t> right_first_degree_neighbors;
+            unordered_set<size_t> left_boundary_nodes;
+            unordered_set<size_t> right_boundary_nodes;
+
+            ploidy_bipartition.follow_subgraph_edges(subgraph_index, true, [&](const handle_t& h){
+                auto id = ploidy_bipartition.get_id(h);
+                auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
+
+                if (chainable_subgraphs.count(adjacent_subgraph_index) > 0) {
+                    left_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                }
+
+                ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, false, [&](const handle_t& h2){
+                    auto id2 = ploidy_bipartition.get_id(h2);
+                    auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
+
+                    if (adjacent_subgraph_index2 == subgraph_index){
+                        left_boundary_nodes.emplace(id);
+                        auto a = ploidy_bipartition.get_name_of_parent_node(id);
+                        auto b = ploidy_bipartition.get_name_of_parent_node(id2);
+                    }
+
+                    second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                });
+            });
+
+            ploidy_bipartition.follow_subgraph_edges(subgraph_index, false, [&](const handle_t& h){
+                auto id = ploidy_bipartition.get_id(h);
+                auto adjacent_subgraph_index = ploidy_bipartition.get_subgraph_index_of_parent_node(id);
+
+                if (chainable_subgraphs.count(adjacent_subgraph_index) > 0) {
+                    right_first_degree_neighbors.emplace(adjacent_subgraph_index);
+                }
+
+                ploidy_bipartition.follow_subgraph_edges(adjacent_subgraph_index, true, [&](const handle_t& h2){
+                    auto id2 = ploidy_bipartition.get_id(h2);
+                    auto adjacent_subgraph_index2 = ploidy_bipartition.get_subgraph_index_of_parent_node(id2);
+
+                    if (adjacent_subgraph_index2 == subgraph_index){
+                        right_boundary_nodes.emplace(id);
+                        auto a = ploidy_bipartition.get_name_of_parent_node(id);
+                        auto b = ploidy_bipartition.get_name_of_parent_node(id2);
+                    }
+
+                    second_degree_neighbors.emplace(adjacent_subgraph_index2);
+                });
+            });
+
+            // Various criteria for passing a homozygous node as chainable
+            bool has_chainable_neighbor = left_first_degree_neighbors.size() + right_first_degree_neighbors.size() > 0;
+            bool has_no_double_adjacencies = second_degree_neighbors.size() == 1;
+            bool has_diploid_neighbors = right_first_degree_neighbors.size() < 3 and left_first_degree_neighbors.size() < 3 and left_boundary_nodes.size() < 3 and right_boundary_nodes.size() < 3;
+
+            if (has_chainable_neighbor and has_no_double_adjacencies and has_diploid_neighbors){
+                ploidy_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h) {
+                    chain_nodes.emplace(subgraph.get_id(h));
+                });
+            }
         }
     });
 }
