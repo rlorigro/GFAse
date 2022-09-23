@@ -388,7 +388,7 @@ void generate_chain_critera(
 
     ploidy_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
         // Find singletons
-        if (subgraph.get_node_count() == 1){
+        if (subgraph.get_node_count() == 1 and partition == 1){
             // If this is an unphased subgraph, check that it is not sharing its phased neighbors with any other
             // subgraphs, by doing a two-edge walk right/left and left/right
             unordered_set<size_t> second_degree_neighbors;
