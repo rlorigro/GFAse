@@ -91,18 +91,26 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         throw runtime_error("ERROR: cannot merge subgraphs of differing partitions");
     }
 
+    cerr << 'a' << '\n';
     subgraphs.at(subgraph_index_b).for_each_handle([&](const handle_t& h){
+        cerr << 'b' << '\n';
+
         // Add all the b nodes to a
         subgraphs.at(subgraph_index_a).add_node(h);
+        cerr << 'c' << '\n';
 
         // Overwrite mappings from parent to subgraph
         node_to_subgraph[graph.get_id(h)] = subgraph_index_a;
     });
 
+    cerr << 'd' << '\n';
+
     auto metagraph_handle_b = metagraph.get_handle(nid_t(subgraph_index_b));
     auto metagraph_handle_a = metagraph.get_handle(nid_t(subgraph_index_a));
 
     unordered_set<edge_t> to_be_deleted;
+
+    cerr << 'e' << '\n';
 
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (LEFT)
     metagraph.follow_edges(metagraph_handle_b, true, [&](const handle_t & h){
@@ -116,6 +124,8 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         to_be_deleted.emplace(e_b);
     });
 
+    cerr << 'f' << '\n';
+
     // Duplicate the metagraph boundary edges to a and remove the existing ones from b (RIGHT)
     metagraph.follow_edges(metagraph_handle_b, false, [&](const handle_t & h){
         edge_t e_a = metagraph.edge_handle(metagraph_handle_a, h);
@@ -128,9 +138,13 @@ void Bipartition::merge_subgraphs(size_t subgraph_index_a, size_t subgraph_index
         to_be_deleted.emplace(e_b);
     });
 
+    cerr << 'g' << '\n';
+
     for (auto& e: to_be_deleted){
         meta_edge_to_edges.erase(e);
     }
+
+    cerr << 'h' << '\n';
 
     subgraphs.erase(subgraph_index_b);
     metagraph.destroy_handle(metagraph_handle_b);

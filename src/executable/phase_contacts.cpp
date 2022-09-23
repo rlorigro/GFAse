@@ -227,7 +227,7 @@ void merge_diploid_singletons(const BubbleGraph& bubble_graph, Bipartition& chai
     unordered_set <pair <size_t,size_t> > to_be_merged;
 
     chain_bipartition.for_each_subgraph([&](const HandleGraph& subgraph, size_t subgraph_index, bool partition){
-
+        cerr << "subgraph_index " << subgraph_index << '\n';
         // Look for phaseable subgraphs only (they contain at least one diploid node) and size == 1 (singleton)
         if (chain_bipartition.get_partition_of_subgraph(subgraph_index) == 0 and chain_bipartition.get_subgraph_size(subgraph_index) == 1){
             nid_t singleton_id;
@@ -235,11 +235,15 @@ void merge_diploid_singletons(const BubbleGraph& bubble_graph, Bipartition& chai
 
             chain_bipartition.for_each_handle_in_subgraph(subgraph_index, [&](const handle_t& h){
                 singleton_id = chain_bipartition.get_id_of_parent_handle(h);
+                cerr << "Found singleton, id=" << singleton_id << '\n';
                 singleton_name = chain_bipartition.get_name_of_parent_node(singleton_id);
+                cerr << "name=" << singleton_name << '\n';
             });
 
             // Find other diploid node and verify is also singleton
             nid_t other_id = bubble_graph.get_other_side(int32_t(singleton_id));
+
+            cerr << "getting other" << '\n';
 
             auto other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
 
@@ -248,6 +252,7 @@ void merge_diploid_singletons(const BubbleGraph& bubble_graph, Bipartition& chai
         }
     });
 
+    cerr << "merging" << '\n';
     for (auto& item: to_be_merged){
         chain_bipartition.merge_subgraphs(item.first, item.second);
     }
