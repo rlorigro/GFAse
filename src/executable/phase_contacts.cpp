@@ -342,19 +342,19 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
     path provenance_csv_file_path = output_dir / "phase_chains.csv";
     ofstream provenance_csv_file(provenance_csv_file_path);
 
-    if (not (phase_0_fasta.is_open() and provenance_csv_file.good())){
+    if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
         throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
     }
 
-    if (not (phase_1_fasta.is_open() and provenance_csv_file.good())){
+    if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
         throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
     }
 
-    if (not (unphased_initial_fasta.is_open() and provenance_csv_file.good())){
+    if (not (unphased_initial_fasta.is_open() and unphased_initial_fasta.good())){
         throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
     }
 
-    if (not (unphased_fasta.is_open() and provenance_csv_file.good())){
+    if (not (unphased_fasta.is_open() and unphased_fasta.good())){
         throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
     }
 
@@ -365,20 +365,29 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
     provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
     for (size_t c=0; c<connected_components.size(); c++){
+        cerr << c << '\n';
         unzip(connected_components[c], connected_component_ids[c], false);
 
         auto& cc_graph = connected_components[c];
+
+        cerr << "Generating diploid criteria" << '\n';
 
         // Generate criteria for diploid node BFS
         unordered_set<nid_t> diploid_nodes;
         generate_ploidy_criteria_from_bubble_graph(cc_graph, id_map, bubble_graph, diploid_nodes);
 
+        cerr << "Doing ploidy partition" << '\n';
+
         Bipartition ploidy_bipartition(cc_graph, id_map, diploid_nodes);
         ploidy_bipartition.partition();
+
+        cerr << "Generating chaining criteria" << '\n';
 
         // Generate criteria for node-chaining BFS
         unordered_set<nid_t> chain_nodes;
         generate_chain_critera(ploidy_bipartition, chain_nodes);
+
+        cerr << "Doing chain partition" << '\n';
 
         Bipartition chain_bipartition(cc_graph, id_map, chain_nodes);
         chain_bipartition.partition();
@@ -388,7 +397,11 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
         unordered_set<string> phase_0_node_names;
         unordered_set<string> phase_1_node_names;
 
+        cerr << "Merging singletons" << '\n';
+
         merge_diploid_singletons(bubble_graph, chain_bipartition);
+
+        cerr << "Writing results" << '\n';
 
         string filename_prefix = "component_" + to_string(c) + "_";
 
