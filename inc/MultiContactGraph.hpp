@@ -102,6 +102,7 @@ public:
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const MultiNode& n)>& f) const;
     void for_each_node(const function<void(int32_t id, const MultiNode& n)>& f) const;
+    void for_each_node(const function<void(int32_t id)>& f) const;
     void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
     void for_each_alt(int32_t id, const function<void(int32_t alt_id, MultiNode& alt_node)>& f);
     void for_each_double_alt(int32_t id, const function<void(int32_t alt_id, MultiNode& alt_node)>& f);

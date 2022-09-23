@@ -251,7 +251,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     );
 
 
-    // TODO: convert edges to alts instead of using two parallel graphs...
+    // TODO: convert edges to alts instead of using two parallel graphs... ?
     ContactGraph alignment_graph;
     ContactGraph symmetrical_alignment_graph;
 
@@ -314,31 +314,34 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         }
     }
 
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
-    // TODO: find segfault
+    // Remove nodes that don't have any involvement in bubbles
+    vector<int32_t> to_be_deleted;
+    contact_graph.for_each_node([&](int32_t id){
+        if (not symmetrical_alignment_graph.has_node(id)){
+            to_be_deleted.emplace_back(id);
+        }
+    });
 
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+    for (auto& id: to_be_deleted){
+        contact_graph.remove_node(id);
+    }
+
+    // Add alts to graph
+    symmetrical_alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
         auto [a,b] = edge;
 
-        auto is_alt = symmetrical_alignment_graph.has_edge(a,b);
-
-        if (is_alt){
+        if (contact_graph.has_edge(a,b)){
             contact_graph.add_alt(a,b);
         }
     });
+
 
     vector <pair <int32_t,int8_t> > best_partitions;
     vector <int32_t> ids;
     atomic<double> best_score = std::numeric_limits<double>::min();
     job_index = 0;
     mutex phase_mutex;
-    size_t m_iterations = 10;
+    size_t m_iterations = 10000;
 
     contact_graph.get_node_ids(ids);
     contact_graph.randomize_partitions();

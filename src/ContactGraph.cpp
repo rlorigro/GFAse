@@ -201,6 +201,13 @@ void ContactGraph::for_each_node(const function<void(int32_t id, const Node& n)>
 }
 
 
+void ContactGraph::for_each_node(const function<void(int32_t id)>& f) const{
+    for (auto& [id,node]: nodes){
+        f(id);
+    }
+}
+
+
 void ContactGraph::for_each_edge(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const{
     for (auto& [e, weight]: edge_weights){
         f(e, weight);

@@ -99,6 +99,7 @@ public:
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const Node& n)>& f) const;
     void for_each_node(const function<void(int32_t id, const Node& n)>& f) const;
+    void for_each_node(const function<void(int32_t id)>& f) const;
     void for_each_edge(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const;
     void get_node_ids(vector<int32_t>& ids);
     bool has_alt(int32_t id) const;
