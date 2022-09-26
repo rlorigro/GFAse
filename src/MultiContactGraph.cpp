@@ -70,7 +70,7 @@ void MultiContactGraph::assert_component_is_valid(const alt_component_t& compone
 }
 
 
-void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_component_t& component){
+void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_component_t& component) const{
     component = {};
 
     queue <pair <int32_t,int32_t> > q;
@@ -389,6 +389,17 @@ void MultiContactGraph::validate_alts() {
             }
         }
     }
+}
+
+
+int8_t MultiContactGraph::get_partition(int32_t id) const{
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: cannot find partition for nonexistent node ID: " + to_string(id));
+    }
+
+    return result->second.partition;
 }
 
 

@@ -113,7 +113,8 @@ public:
     int64_t get_node_coverage(int32_t id) const;
     int32_t get_node_length(int32_t id) const;
     int32_t get_edge_weight(int32_t a, int32_t b) const;
-    void get_alt_component(int32_t id, bool validate, alt_component_t& component);
+    void get_alt_component(int32_t id, bool validate, alt_component_t& component) const;
+    int8_t get_partition(int32_t id) const;
 
     // Optimization
     double get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const;

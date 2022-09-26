@@ -5,6 +5,7 @@
 #include "BubbleGraph.hpp"
 #include "Filesystem.hpp"
 #include "CLI11.hpp"
+#include "chain.hpp"
 
 #include "bdsg/hash_graph.hpp"
 
@@ -16,6 +17,7 @@ using gfase::for_each_connected_component;
 using gfase::split_connected_components;
 using gfase::handle_graph_to_gfa;
 using gfase::print_graph_paths;
+using gfase::chain_phased_gfa;
 using gfase::plot_graph;
 using ghc::filesystem::path;
 
@@ -48,6 +50,8 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
 
     path output_path = output_dir / "bubbles.csv";
     bubble_graph.write_bandage_csv(output_path, id_map);
+
+    chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
 }
 
 
