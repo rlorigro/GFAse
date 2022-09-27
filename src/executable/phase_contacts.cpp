@@ -263,10 +263,6 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     int64_t score = compute_total_consistency_score(bubble_graph, contact_map);
 
-    string suffix1 = "p" + required_prefix;
-    string suffix2 = "m" + to_string(int(min_mapq));
-    string suffix3 = "s" + to_string(int(score));
-
     cerr << t << "Writing phasing results to file... " << '\n';
 
     path contacts_output_path = output_dir / "contacts.csv";

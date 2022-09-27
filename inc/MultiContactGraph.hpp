@@ -134,7 +134,7 @@ public:
 
 ostream& operator<<(ostream& o, const gfase::MultiNode& n);
 
-void random_phase_search(
+void random_multicontact_phase_search(
         MultiContactGraph contact_graph,
         const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,

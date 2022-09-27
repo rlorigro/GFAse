@@ -17,6 +17,7 @@
 #include "SvgPlot.hpp"
 
 using gfase::for_element_in_sam_file;
+using gfase::random_multicontact_phase_search;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;
 using gfase::contact_map_t;
@@ -39,9 +40,15 @@ using bdsg::HashGraph;
 using ghc::filesystem::path;
 using CLI::App;
 
+
 #include <unordered_map>
+#include <thread>
 
 using std::unordered_map;
+using std::thread;
+using std::cref;
+using std::ref;
+
 
 void write_contact_map(
         path output_path,
@@ -198,6 +205,54 @@ void parse_unpaired_bam_file(
 }
 
 
+void phase_contacts(
+        const IncrementalIdMap<string>& id_map,
+        MultiContactGraph& contact_graph,
+        size_t n_threads
+        ){
+
+    vector<thread> threads;
+    vector <pair <int32_t,int8_t> > best_partitions;
+    vector<int32_t> ids;
+    atomic<double> best_score = std::numeric_limits<double>::min();
+    atomic<size_t> job_index = 0;
+    mutex phase_mutex;
+    size_t m_iterations = 10000;
+
+    contact_graph.get_node_ids(ids);
+    contact_graph.randomize_partitions();
+    contact_graph.get_partitions(best_partitions);
+
+    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
+
+    // Launch threads
+    for (uint64_t i=0; i<n_threads; i++){
+        try {
+            threads.emplace_back(thread(
+                    random_multicontact_phase_search,
+                    contact_graph,
+                    cref(ids),
+                    ref(best_partitions),
+                    ref(best_score),
+                    ref(job_index),
+                    ref(phase_mutex),
+                    m_iterations
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& t: threads){
+        t.join();
+    }
+
+    contact_graph.set_partitions(best_partitions);
+}
+
+
 void phase_hic(path output_dir, path sam_path, path gfa_path, string required_prefix, int8_t min_mapq, size_t n_threads){
     Timer t;
 
@@ -335,27 +390,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         }
     });
 
-
-    vector <pair <int32_t,int8_t> > best_partitions;
-    vector <int32_t> ids;
-    atomic<double> best_score = std::numeric_limits<double>::min();
-    job_index = 0;
-    mutex phase_mutex;
-    size_t m_iterations = 10000;
-
-    contact_graph.get_node_ids(ids);
-    contact_graph.randomize_partitions();
-    contact_graph.get_partitions(best_partitions);
-
-    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
-
-    random_phase_search(contact_graph, ids, best_partitions, best_score, job_index, phase_mutex, m_iterations);
-
-    contact_graph.set_partitions(best_partitions);
-
-    string suffix1 = "p" + required_prefix;
-    string suffix2 = "m" + to_string(int(min_mapq));
-    string suffix3 = "s" + to_string(best_score);
+    phase_contacts(id_map, contact_graph, n_threads);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 

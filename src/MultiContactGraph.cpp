@@ -650,7 +650,7 @@ void MultiContactGraph::write_node_data(path output_path, IncrementalIdMap<strin
 }
 
 
-void random_phase_search(
+void random_multicontact_phase_search(
         MultiContactGraph contact_graph,
         const vector<int32_t>& ids,
         vector <pair <int32_t,int8_t> >& best_partitions,
