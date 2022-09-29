@@ -1,7 +1,14 @@
 #include "align.hpp"
 
 
-void infer_bubbles_from_alignment(path output_dir, path gfa_path, size_t n_threads){
+void infer_bubbles_from_alignment(
+        path output_dir,
+        path gfa_path,
+        double min_similarity,
+        size_t max_hits,
+        size_t n_threads
+        ){
+
     Timer t;
 
     if (exists(output_dir)){
@@ -31,12 +38,12 @@ void infer_bubbles_from_alignment(path output_dir, path gfa_path, size_t n_threa
     size_t n_iterations = 6;
 
     // Only align the top n hits
-    size_t max_hits = 5;
+//    size_t max_hits = 5;
 
     // Hash results must have at least this percent similarity (A U B)/A, where A is larger.
     // Sequence lengths must be at least this ratio.
     // Resulting alignment coverage must be at least this amount on larger node.
-    double min_similarity = 0.2;
+//    double min_similarity = 0.2;
 
     vector <pair <string,string> > to_be_aligned;
 
@@ -96,6 +103,8 @@ int main (int argc, char* argv[]){
     path gfa_path;
     path output_dir;
     size_t n_threads = 1;
+    size_t max_hits = 1;
+    double min_similarity;
 
     CLI::App app{"App description"};
 
@@ -115,9 +124,19 @@ int main (int argc, char* argv[]){
             n_threads,
             "Maximum number of threads to use");
 
+    app.add_option(
+            "-n,--max_hits",
+            max_hits,
+            "Maximum number of threads to use");
+
+    app.add_option(
+            "-s,--min_similarity",
+            min_similarity,
+            "Maximum number of threads to use");
+
     CLI11_PARSE(app, argc, argv);
 
-    infer_bubbles_from_alignment(output_dir, gfa_path, n_threads);
+    infer_bubbles_from_alignment(output_dir, gfa_path, min_similarity, max_hits, n_threads);
 
     return 0;
 }
