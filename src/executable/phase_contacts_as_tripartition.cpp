@@ -193,7 +193,7 @@ void parse_unpaired_bam_file(
         }
 
         if (valid_prefix) {
-            // Only allow reads with mapq > 0 and not secondary
+            // Only allow reads with mapq > min_mapq and not secondary
             if (a.mapq >= min_mapq and a.is_primary()) {
                 alignments.emplace_back(a);
             }
@@ -274,8 +274,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     GfaReader reader(gfa_path);
 
     // TODO: move this into domain of bdsg graph instead of GFA reader
-    string dummy_name = "";
-    string dummy_seq = "";
+    string dummy_name;
+    string dummy_seq;
     vector<Sequence> sequences = {Sequence(dummy_name,dummy_seq)};
     reader.for_each_sequence([&](string& name, string& sequence){
         id_map.insert(name);
@@ -293,7 +293,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     // Hash results must have at least this percent similarity (A U B)/A, where A is larger.
     // Sequence lengths must be at least this ratio.
     // Resulting alignment coverage must be at least this amount on larger node.
-    double min_similarity = 0.2;
+    double min_similarity = 0.05;
 
     vector <pair <string,string> > to_be_aligned;
 
