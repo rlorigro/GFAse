@@ -386,6 +386,9 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         contact_graph.remove_node(id);
     }
 
+    // Reallocate sparse hash map because something is going wrong during copying
+    contact_graph.resize();
+
     // Add alts to graph
     symmetrical_alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
         auto [a,b] = edge;

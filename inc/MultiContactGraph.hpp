@@ -130,6 +130,7 @@ public:
     void assert_component_is_valid(const alt_component_t& component) const;
     void validate_alts();
     size_t size();
+    void resize();
 };
 
 ostream& operator<<(ostream& o, const gfase::MultiNode& n);

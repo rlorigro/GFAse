@@ -502,6 +502,11 @@ size_t MultiContactGraph::size(){
 }
 
 
+void MultiContactGraph::resize(){
+    nodes.resize(0);
+}
+
+
 double MultiContactGraph::get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const{
     double score = 0;
 
