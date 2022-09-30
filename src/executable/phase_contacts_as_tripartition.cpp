@@ -263,6 +263,11 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         create_directories(output_dir);
     }
 
+    // Check that input bam is readable before doing time-consuming steps
+    {
+        Bam reader(sam_path);
+    }
+
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
 
@@ -339,7 +344,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         n.join();
     }
 
-    get_best_overlaps(id_map, alignment_graph, symmetrical_alignment_graph);
+    get_best_overlaps(min_similarity, id_map, alignment_graph, symmetrical_alignment_graph);
     write_alignment_results_to_file(id_map, alignment_graph, symmetrical_alignment_graph, output_dir);
 
     cerr << t << "Done" << '\n';

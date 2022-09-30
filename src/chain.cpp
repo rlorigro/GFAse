@@ -38,7 +38,15 @@ void merge_diploid_singletons(const BubbleGraph& bubble_graph, Bipartition& chai
             // Find other diploid node and verify is also singleton
             nid_t other_id = bubble_graph.get_other_side(int32_t(singleton_id));
 
-            auto other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
+            size_t other_subgraph_index = -1;
+            try {
+                other_subgraph_index = chain_bipartition.get_subgraph_index_of_parent_node(other_id);
+            }
+            catch (exception& e){
+                cerr << e.what() << '\n';
+                cerr << "WARNING: skipping node because alt not found in graph: " << singleton_name << '\n';
+                return;
+            }
 
             // Use a defined ordering of singleton pairs to keep track of which have been visited
             to_be_merged.emplace(min(subgraph_index,other_subgraph_index), max(subgraph_index,other_subgraph_index));

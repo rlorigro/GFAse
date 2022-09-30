@@ -131,6 +131,7 @@ size_t AlignmentChain::get_approximate_non_overlapping_matches(){
 
     // Don't double count overlaps, use identity to approximate # matches in the overlapping regions
     int32_t prev_stop = -1;
+    int32_t prev_start = -1;
     double prev_identity = 0;
     for (auto& c: sorted_chain.chain){
         auto identity = c.get_identity();
@@ -138,10 +139,18 @@ size_t AlignmentChain::get_approximate_non_overlapping_matches(){
         total_matches += c.n_matches;
 
         if (prev_stop > c.ref_start){
-            total_matches -= (prev_stop - c.ref_start)*(max(prev_identity, identity));
+            if (prev_start < c.ref_stop){
+                // Skip chains that are entirely contained in previous chains
+                // Don't update the prev ref start/stop
+                continue;
+            }
+            else {
+                total_matches -= (prev_stop - c.ref_start) * (max(prev_identity, identity));
+            }
         }
 
         prev_stop = c.ref_stop;
+        prev_start = c.ref_start;
         prev_identity = identity;
     }
 

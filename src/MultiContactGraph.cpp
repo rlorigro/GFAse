@@ -70,6 +70,11 @@ void MultiContactGraph::assert_component_is_valid(const alt_component_t& compone
 }
 
 
+
+/// Use BFS on node alts to get connected component that represents a bubble
+/// \param id
+/// \param validate
+/// \param component
 void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_component_t& component) const{
     component = {};
 
@@ -77,16 +82,22 @@ void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_compone
     q.emplace(id,0);
 
     while(not q.empty()){
-        auto& [curent_id,distance] = q.front();
+        auto& [current_id,distance] = q.front();
         q.pop();
 
-        auto& node = nodes.at(curent_id);
+        auto result = nodes.find(current_id);
+
+        if (result == nodes.end()){
+            throw runtime_error("ERROR: MultiContactGraph::get_alt_component: nonexistent id while iterating: " + to_string(id));
+        }
+
+        auto& node = result->second;
 
         if (distance % 2 == 0){
-            component.first.emplace(curent_id);
+            component.first.emplace(current_id);
         }
         else{
-            component.second.emplace(curent_id);
+            component.second.emplace(current_id);
         }
 
         for (auto& alt_id: node.alts) {
@@ -318,15 +329,31 @@ void MultiContactGraph::remove_edge(int32_t a, int32_t b){
 
 
 void MultiContactGraph::for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const MultiNode& n)>& f) const{
-    for (auto& id_other: nodes.at(id).neighbors){
-        f(id_other, nodes.at(id_other));
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: MultiContactGraph::for_each_node_neighbor: cannot iterate neighbors for id not in contact graph: " + to_string(id));
+    }
+
+    auto& node = result->second;
+
+    for (auto& id_other: node.neighbors){
+        auto result_other = nodes.find(id_other);
+
+        if (result_other == nodes.end()){
+            throw runtime_error("ERROR: MultiContactGraph::for_each_node_neighbor: cannot find neighbor node for id not in contact graph: " + to_string(id));
+        }
+
+        auto& node_other = result_other->second;
+
+        f(id_other, node_other);
     }
 }
 
 
 void MultiContactGraph::for_each_node(const function<void(int32_t id, const MultiNode& n)>& f) const{
     for (auto& [id,node]: nodes){
-        f(id, nodes.at(id));
+        f(id, node);
     }
 }
 
@@ -404,7 +431,13 @@ int8_t MultiContactGraph::get_partition(int32_t id) const{
 
 
 void MultiContactGraph::set_partition(int32_t id, int8_t partition) {
-    auto& node = nodes.at(id);
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: MultiContactGraph::set_partition: cannot set partition for id not in contact graph: " + to_string(id));
+    }
+
+    auto& node = result->second;
     node.partition = partition;
 
     // If this node is linked to an alt, alt must be maintained in an opposite state,
@@ -575,7 +608,13 @@ void MultiContactGraph::get_node_ids(vector<int32_t>& ids){
 
 
 bool MultiContactGraph::has_alt(int32_t id) const{
-    return nodes.at(id).has_alt();
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: cannot find alt for id not in contact graph: " + to_string(id));
+    }
+
+    return result->second.has_alt();
 }
 
 

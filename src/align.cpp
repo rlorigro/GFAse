@@ -184,8 +184,16 @@ void construct_alignment_graph(
 
             auto alignment_coverage = double(total_matches) / double(length_a);
 
+            output_mutex.lock();
+            cerr << "total_matches: " << total_matches << '\n';
+            cerr << "alignment_coverage: " << alignment_coverage << '\n';
+            cerr << "length_a: " << length_a << '\n';
+            cerr << "length_b: " << length_b << '\n';
+            output_mutex.unlock();
+
             if (alignment_coverage < min_similarity){
                 // Skip alignments which don't have at least min_similarity matches relative to larger node
+                cerr << "Skipping alignment with insufficient matches: " << target_name << ',' << query_name << '\n';
                 continue;
             }
 
@@ -290,6 +298,7 @@ void get_alignment_candidates(
 
 
 void get_best_overlaps(
+        double min_similarity,
         const IncrementalIdMap<string>& id_map,
         ContactGraph& alignment_graph,
         ContactGraph& symmetrical_alignment_graph
@@ -354,8 +363,8 @@ void get_best_overlaps(
 
                 bool a_max = double(a_coverage) + double(capped_weight_a) < double(a_length);
                 bool b_max = double(b_coverage) + double(capped_weight_b) < double(b_length);
-                bool a_min = double(capped_weight_a) > double(a_length)*0.2;
-                bool b_min = double(capped_weight_b) > double(b_length)*0.2;
+                bool a_min = double(capped_weight_a) > double(a_length)*min_similarity;
+                bool b_min = double(capped_weight_b) > double(b_length)*min_similarity;
 
                 cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ", capped_weight=" << capped_weight_a << ")" << '\n';
                 cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ", capped_weight=" << capped_weight_b << ")" << '\n';

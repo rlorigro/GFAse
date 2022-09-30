@@ -92,7 +92,7 @@ void infer_bubbles_from_alignment(
         n.join();
     }
 
-    get_best_overlaps(id_map, alignment_graph, symmetrical_alignment_graph);
+    get_best_overlaps(min_similarity, id_map, alignment_graph, symmetrical_alignment_graph);
     write_alignment_results_to_file(id_map, alignment_graph, symmetrical_alignment_graph, output_dir);
 
     cerr << t << "Done" << '\n';
@@ -127,12 +127,12 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-n,--max_hits",
             max_hits,
-            "Maximum number of threads to use");
+            "Maximum number of overlap hits to consider");
 
     app.add_option(
             "-s,--min_similarity",
             min_similarity,
-            "Maximum number of threads to use");
+            "Minimum required similarity to consider it in the bubble graph");
 
     CLI11_PARSE(app, argc, argv);
 

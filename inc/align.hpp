@@ -86,9 +86,11 @@ void get_alignment_candidates(
 
 
 void get_best_overlaps(
+        double min_similarity,
         const IncrementalIdMap<string>& id_map,
         ContactGraph& alignment_graph,
-        ContactGraph& symmetrical_alignment_graph);
+        ContactGraph& symmetrical_alignment_graph
+        );
 
 
 void write_alignment_results_to_file(
