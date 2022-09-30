@@ -80,7 +80,7 @@ class MultiContactGraph {
 public:
     // Constructors
     MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map);
-    MultiContactGraph()=default;
+    MultiContactGraph();
 
     // Editing
     void remove_edge(int32_t a, int32_t b);

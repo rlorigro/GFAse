@@ -122,7 +122,9 @@ void MultiContactGraph::get_alt_component(int32_t id, bool validate, alt_compone
 const array<string,3> MultiContactGraph::colors = {"Cornflower Blue", "Plum", "Tomato"};
 
 
-MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map) {
+MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map){
+    nodes.set_deleted_key(-1);
+
     string s;
 
     for (const auto& [a,sub_map]: contact_map){
@@ -133,6 +135,11 @@ MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const Inc
             insert_edge(a,b,count);
         }
     }
+}
+
+
+MultiContactGraph::MultiContactGraph(){
+    nodes.set_deleted_key(-1);
 }
 
 
