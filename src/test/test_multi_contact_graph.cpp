@@ -69,12 +69,23 @@ int main(){
 
         g.add_alt(0,1);
         g.add_alt(1,2);
+
         try {
             g.add_alt(2,0);
         }
-        catch(exception& e){
+        catch(NonBipartiteEdgeException& e){
             cerr << e.what() << '\n';
             cerr << "successfully caught invalid component" <<'\n';
+
+            cerr << "Testing exception data: " << '\n';
+
+            for (auto& item: e.component.first){
+                cerr << "0 " << item << '\n';
+            }
+            for (auto& item: e.component.second){
+                cerr << "1 " << item << '\n';
+            }
+            cerr << '\n';
         }
 
         alt_component_t c;
@@ -93,7 +104,15 @@ int main(){
         }
         catch (NonBipartiteEdgeException& e){
             cerr << e.what() << '\n';
-            cerr << "successfully caught invalid component" <<'\n';
+            cerr << "successfully caught invalid component" << '\n';
+            cerr << "Testing exception data: " << '\n';
+
+            for (auto& item: e.component.first){
+                cerr << "0 " << item << '\n';
+            }
+            for (auto& item: e.component.second){
+                cerr << "1 " << item << '\n';
+            }
         }
 
         g.validate_alts();

@@ -23,10 +23,10 @@ const char* NonBipartiteEdgeException::what() const noexcept{
 
 NonBipartiteEdgeException::NonBipartiteEdgeException(alt_component_t& c, int32_t a, int32_t b):
         runtime_error(""),
-        component(c),
         a(a),
         b(b)
 {
+    component = c;
 
     message += "ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component:\n";
     for (auto& item: component.first){
@@ -225,7 +225,7 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
     }
     else{
         is_bipartite = false;
-        NonBipartiteEdgeException e(component, a,b);
+        NonBipartiteEdgeException e(component, a, b);
         throw e;
     }
     if (component.second.count(a) == 0) {
@@ -233,7 +233,7 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
     }
     else{
         is_bipartite = false;
-        NonBipartiteEdgeException e(component, a,b);
+        NonBipartiteEdgeException e(component, a, b);
         throw e;
     }
 

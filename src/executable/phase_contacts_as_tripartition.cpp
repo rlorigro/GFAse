@@ -401,10 +401,10 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         }
         catch (NonBipartiteEdgeException& e){
             for (auto& item: e.component.first){
-                e.message += "0 " + id_map.get_name(item) + "\n";
+                cerr << "0 " << id_map.get_name(item) << '\n';
             }
             for (auto& item: e.component.second){
-                e.message += "1 " + id_map.get_name(item) + "\n";
+                cerr << "1 " << id_map.get_name(item) << '\n';
             }
 
             cerr << "WARNING: Skipping inconsistent edge: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
