@@ -1,5 +1,6 @@
 #include "MultiContactGraph.hpp"
 
+using gfase::NonBipartiteEdgeException;
 using gfase::MultiContactGraph;
 using gfase::alt_component_t;
 
@@ -90,7 +91,7 @@ int main(){
         try {
             g.get_alt_component(0, true, c);
         }
-        catch (exception& e){
+        catch (NonBipartiteEdgeException& e){
             cerr << e.what() << '\n';
             cerr << "successfully caught invalid component" <<'\n';
         }

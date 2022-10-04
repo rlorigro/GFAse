@@ -43,6 +43,19 @@ namespace gfase{
 using alt_component_t = pair <set<int32_t>, set<int32_t> >;
 
 
+class NonBipartiteEdgeException : public std::runtime_error{
+public:
+    alt_component_t component;
+    int32_t a;
+    int32_t b;
+    string message;
+
+    const char* what() const noexcept override;
+
+    NonBipartiteEdgeException(alt_component_t& c, int32_t a, int32_t b);
+};
+
+
 class MultiNode {
 public:
     // To find adjacent nodes

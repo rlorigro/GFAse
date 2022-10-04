@@ -6,6 +6,7 @@
 using std::ofstream;
 using std::ostream;
 using std::set_intersection;
+using std::runtime_error;
 using std::queue;
 using std::cerr;
 using std::min;
@@ -13,6 +14,28 @@ using std::max;
 
 
 namespace gfase{
+
+
+const char* NonBipartiteEdgeException::what() const noexcept{
+    return message.c_str();
+}
+
+
+NonBipartiteEdgeException::NonBipartiteEdgeException(alt_component_t& c, int32_t a, int32_t b):
+        runtime_error(""),
+        component(c),
+        a(a),
+        b(b)
+{
+
+    message += "ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component:\n";
+    for (auto& item: component.first){
+        message += "0 " + to_string(item) + "\n";
+    }
+    for (auto& item: component.second){
+        message += "1 " + to_string(item) + "\n";
+    }
+}
 
 
 MultiNode::MultiNode(int8_t partition):
@@ -199,27 +222,15 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
         component.second.emplace(b);
     }
     else{
-        for (auto& item: component.first){
-            cerr << 0 << ' ' << item << '\n';
-        }
-        for (auto& item: component.second){
-            cerr << 1 << ' ' << item << '\n';
-        }
-
-        throw runtime_error("ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component, see above for details");
+        NonBipartiteEdgeException e(component, a,b);
+        throw e;
     }
     if (component.second.count(a) == 0) {
         component.first.emplace(a);
     }
     else{
-        for (auto& item: component.first){
-            cerr << 0 << ' ' << item << '\n';
-        }
-        for (auto& item: component.second){
-            cerr << 1 << ' ' << item << '\n';
-        }
-
-        throw runtime_error("ERROR: adding alt for " + to_string(a) + ',' + to_string(b) + " would result in non-bipartite component, see above for details");
+        NonBipartiteEdgeException e(component, a,b);
+        throw e;
     }
 
     auto& node_b = nodes.at(b);

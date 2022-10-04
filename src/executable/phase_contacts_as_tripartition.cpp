@@ -17,6 +17,7 @@
 #include "SvgPlot.hpp"
 
 using gfase::for_element_in_sam_file;
+using gfase::NonBipartiteEdgeException;
 using gfase::random_multicontact_phase_search;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;
@@ -393,8 +394,20 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     symmetrical_alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
         auto [a,b] = edge;
 
-        if (contact_graph.has_edge(a,b)){
-            contact_graph.add_alt(a,b);
+        try {
+            if (contact_graph.has_edge(a, b)) {
+                contact_graph.add_alt(a, b);
+            }
+        }
+        catch (NonBipartiteEdgeException& e){
+            for (auto& item: e.component.first){
+                e.message += "0 " + id_map.get_name(item) + "\n";
+            }
+            for (auto& item: e.component.second){
+                e.message += "1 " + id_map.get_name(item) + "\n";
+            }
+
+            cerr << "WARNING: Skipping inconsistent edge: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
         }
     });
 
