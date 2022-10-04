@@ -218,10 +218,13 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
     alt_component_t component;
     get_alt_component(a, false, component);
 
+    bool is_bipartite  = true;
+
     if (component.first.count(b) == 0){
         component.second.emplace(b);
     }
     else{
+        is_bipartite = false;
         NonBipartiteEdgeException e(component, a,b);
         throw e;
     }
@@ -229,38 +232,41 @@ void MultiContactGraph::add_alt(int32_t a, int32_t b){
         component.first.emplace(a);
     }
     else{
+        is_bipartite = false;
         NonBipartiteEdgeException e(component, a,b);
         throw e;
     }
 
-    auto& node_b = nodes.at(b);
-    auto& node_a = nodes.at(a);
+    if (is_bipartite){
+        auto& node_b = nodes.at(b);
+        auto& node_a = nodes.at(a);
 
-    for (auto& id: component.first){
-        auto& node_n = nodes.at(id);
+        for (auto& id: component.first){
+            auto& node_n = nodes.at(id);
 
-        // Enforce all-vs-all connectivity in alt components
-        node_n.alts.emplace(b);
-        node_b.alts.emplace(id);
+            // Enforce all-vs-all connectivity in alt components
+            node_n.alts.emplace(b);
+            node_b.alts.emplace(id);
 
-        // No valid edge can exist between alts
-        remove_edge(id, b);
+            // No valid edge can exist between alts
+            remove_edge(id, b);
 
-        // Assign arbitrary partition
-        node_n.partition = -1;
-    }
-    for (auto& id: component.second){
-        auto& node_n = nodes.at(id);
+            // Assign arbitrary partition
+            node_n.partition = -1;
+        }
+        for (auto& id: component.second){
+            auto& node_n = nodes.at(id);
 
-        // Enforce all-vs-all connectivity in alt components
-        node_n.alts.emplace(a);
-        node_a.alts.emplace(id);
+            // Enforce all-vs-all connectivity in alt components
+            node_n.alts.emplace(a);
+            node_a.alts.emplace(id);
 
-        // No valid edge can exist between alts
-        remove_edge(a, id);
+            // No valid edge can exist between alts
+            remove_edge(a, id);
 
-        // Assign arbitrary partition
-        node_n.partition = 1;
+            // Assign arbitrary partition
+            node_n.partition = 1;
+        }
     }
 }
 

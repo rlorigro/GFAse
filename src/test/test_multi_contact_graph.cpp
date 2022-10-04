@@ -95,6 +95,8 @@ int main(){
             cerr << e.what() << '\n';
             cerr << "successfully caught invalid component" <<'\n';
         }
+
+        g.validate_alts();
     }
 
     return 0;
