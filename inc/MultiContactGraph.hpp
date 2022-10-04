@@ -82,8 +82,8 @@ class MultiContactGraph {
     // Edge map which will only store edges in sorted order {min(a,b), max(a,b)}
     // This is maintained in duplicate with node-level adjacency because there needs to be a 1x fast iteration method
     // to compute total consistency scores
-    sparse_hash_map<pair<int32_t,int32_t>, int32_t> edge_weights;
-    sparse_hash_map<int32_t,MultiNode> nodes;
+    unordered_map<pair<int32_t,int32_t>, int32_t> edge_weights;
+    unordered_map<int32_t,MultiNode> nodes;
 
     static const array<string,3> colors;
 
@@ -93,7 +93,7 @@ class MultiContactGraph {
 public:
     // Constructors
     MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map);
-    MultiContactGraph();
+    MultiContactGraph()=default;
 
     // Editing
     void remove_edge(int32_t a, int32_t b);

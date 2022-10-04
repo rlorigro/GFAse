@@ -146,7 +146,7 @@ const array<string,3> MultiContactGraph::colors = {"Cornflower Blue", "Plum", "T
 
 
 MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map){
-    nodes.set_deleted_key(-1);
+//    nodes.set_deleted_key(-1);
 
     string s;
 
@@ -161,9 +161,9 @@ MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const Inc
 }
 
 
-MultiContactGraph::MultiContactGraph(){
-    nodes.set_deleted_key(-1);
-}
+//MultiContactGraph::MultiContactGraph(){
+//    nodes.set_deleted_key(-1);
+//}
 
 
 void MultiContactGraph::insert_edge(int32_t a, int32_t b, int32_t weight){
@@ -519,9 +519,9 @@ size_t MultiContactGraph::size(){
 }
 
 
-void MultiContactGraph::resize(){
-    nodes.resize(0);
-}
+//void MultiContactGraph::resize(){
+//    nodes.resize(0);
+//}
 
 
 double MultiContactGraph::get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const{
