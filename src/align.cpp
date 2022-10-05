@@ -311,7 +311,7 @@ void get_best_overlaps(
     while (symmetrical_edges_found){
         sparse_hash_set <pair <int32_t, int32_t> > to_be_deleted;
 
-        alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        alignment_graph.for_each_edge_in_order_of_weight([&](const pair<int32_t,int32_t> edge, int32_t weight){
             int32_t a = edge.first;
             int32_t b = edge.second;
 
@@ -360,22 +360,29 @@ void get_best_overlaps(
                 auto a_length = alignment_graph.get_node_length(a);
                 auto b_length = alignment_graph.get_node_length(b);
 
-//                // Sometimes supplementaries overlap and extend longer than the node length
-//                auto capped_weight_a = min(weight, a_length - 1);
-//                auto capped_weight_b = min(weight, b_length - 1);
-
                 bool a_not_covered = double(a_coverage) < double(a_length);
                 bool b_not_covered = double(b_coverage) < double(b_length);
+
+                auto a_cost = (a_coverage + weight) - a_length;
+                auto b_cost = (b_coverage + weight) - b_length;
+
+                // The alignment must be sane, i.e. not overhanging more than it adds for either node
+                auto a_sane = double(a_cost) < 0.5*double(weight);
+                auto b_sane = double(b_cost) < 0.5*double(weight);
+
+                // Sometimes supplementaries overlap and extend longer than the node length
                 bool a_max = double(a_coverage) + double(weight) < double(a_length)*(1.0+overflow_tolerance);
                 bool b_max = double(b_coverage) + double(weight) < double(b_length)*(1.0+overflow_tolerance);
+
+                // First node should be a significant portion of the alt's length, subsequent nodes can be smaller
                 bool a_min = double(weight) > double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
                 bool b_min = double(weight) > double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
 
-                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ", capped_weight=" << weight << ")" << '\n';
-                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ", capped_weight=" << weight << ")" << '\n';
-                cerr << int(a_not_covered) << ',' << int(b_not_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
+                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ")" << '\n';
+                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ")" << '\n';
+                cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(a_not_covered) << ',' << int(b_not_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
 
-                if (a_not_covered and b_not_covered and a_max and b_max and a_min and b_min){
+                if (a_sane and b_sane and a_not_covered and b_not_covered and a_max and b_max and a_min and b_min){
                     symmetrical_alignment_graph.try_insert_node(a);
                     symmetrical_alignment_graph.try_insert_node(b);
 

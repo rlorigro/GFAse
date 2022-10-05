@@ -208,6 +208,25 @@ void ContactGraph::for_each_node(const function<void(int32_t id)>& f) const{
 }
 
 
+void ContactGraph::for_each_edge_in_order_of_weight(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const{
+    vector <pair <pair<int32_t,int32_t>, int32_t> > sorted_edges(edge_weights.size());
+
+    size_t i = 0;
+    for (const auto& item: edge_weights){
+        sorted_edges[i] = item;
+        i++;
+    }
+
+    std::sort(sorted_edges.begin(), sorted_edges.end(), [&](pair <pair<int32_t,int32_t>, int32_t>& a, pair <pair<int32_t,int32_t>, int32_t>& b){
+        return a.second > b.second;
+    });
+
+    for (const auto& [e, weight]: sorted_edges){
+        f(e, weight);
+    }
+}
+
+
 void ContactGraph::for_each_edge(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const{
     for (auto& [e, weight]: edge_weights){
         f(e, weight);
