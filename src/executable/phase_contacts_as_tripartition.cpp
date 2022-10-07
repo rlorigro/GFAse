@@ -321,7 +321,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
             k,
             n_iterations,
             max_hits,
-            min_similarity,
+            min_ab_over_a,
             min_ab_over_b
     );
 
