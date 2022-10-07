@@ -1,5 +1,8 @@
 #include "align.hpp"
 
+namespace gfase{
+
+
 void print_minimap_alignment_block(mm_mapopt_t& map_options, mm_idx_t* mi, mm_reg1_t* r2, const string& name, const string& query){
     string type;
     if (r2->id == r2->parent) type = r2->inv? 'I' : 'P';
@@ -124,7 +127,7 @@ void map_sequence_pair(
 
 
 void construct_alignment_graph(
-        const vector <pair <string,string> >& to_be_aligned,
+        const vector <HashResult>& to_be_aligned,
         const vector<Sequence>& sequences,
         const IncrementalIdMap<string>& id_map,
         ContactGraph& alignment_graph,
@@ -139,7 +142,9 @@ void construct_alignment_graph(
 
         AlignmentChain result;
 
-        auto&[target_name, query_name] = to_be_aligned.at(thread_index);
+        auto& item = to_be_aligned.at(thread_index);
+        auto& target_name = item.a;
+        auto& query_name = item.b;
 
         output_mutex.lock();
         cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
@@ -223,23 +228,24 @@ void construct_alignment_graph(
 void get_alignment_candidates(
         const vector<Sequence>& sequences,
         const IncrementalIdMap<string>& id_map,
-        vector <pair <string,string> >& to_be_aligned,
+        vector <HashResult>& to_be_aligned,
         path output_dir,
         size_t n_threads,
         double sample_rate,
         size_t k,
         size_t n_iterations,
         size_t max_hits,
-        double min_similarity
+        double min_ab_over_a,
+        double min_ab_over_b
         ){
 
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
     hasher.hash(sequences);
     hasher.write_results(output_dir);
 
-    unordered_set <pair <string,string> > ordered_pairs;
+    unordered_map <pair <string,string>, HashResult> ordered_pairs;
 
-    hasher.for_each_overlap(max_hits, min_similarity,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
+    hasher.for_each_overlap(max_hits, min_ab_over_a,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
         // Skip self hits
         if (a == b){
             return;
@@ -251,45 +257,37 @@ void get_alignment_candidates(
         pair<string,string> ordered_pair;
         if (seq_a.size() > seq_b.size()){
             ordered_pair = {a,b};
+            ordered_pairs[ordered_pair].ab_over_a = double(n_hashes)/double(total_hashes);
         }
         else{
             ordered_pair = {b,a};
-        }
-
-        auto result = ordered_pairs.find(ordered_pair);
-
-        if (result == ordered_pairs.end()) {
-            ordered_pairs.emplace(ordered_pair);
-        }
-        else{
-            // Don't align pairs twice
-            return;
+            ordered_pairs[ordered_pair].ab_over_b = double(n_hashes)/double(total_hashes);
         }
     });
 
-    to_be_aligned.resize(ordered_pairs.size());
-    size_t i = 0;
-    for (const auto& item: ordered_pairs){
-        to_be_aligned[i] = item;
-        i++;
+    // Filter once both directional hash similarities are established
+    for (const auto& [edge,result]: ordered_pairs){
+        if (result.ab_over_a > min_ab_over_a and result.ab_over_b > min_ab_over_b) {
+            to_be_aligned.emplace_back(edge.first, edge.second, result.ab_over_a, result.ab_over_b);
+        }
     }
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
-    sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const pair <string,string>& a, const pair <string,string>& b){
-        auto length_a_0 = sequences[id_map.get_id(a.first)].sequence.size();
-        auto length_a_1 = sequences[id_map.get_id(a.second)].sequence.size();
-        auto length_b_0 = sequences[id_map.get_id(b.first)].sequence.size();
-        auto length_b_1 = sequences[id_map.get_id(b.second)].sequence.size();
+    sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const HashResult& a, const HashResult& b){
+        auto length_a_0 = sequences[id_map.get_id(a.a)].sequence.size();
+        auto length_a_1 = sequences[id_map.get_id(a.b)].sequence.size();
+        auto length_b_0 = sequences[id_map.get_id(b.a)].sequence.size();
+        auto length_b_1 = sequences[id_map.get_id(b.b)].sequence.size();
         auto a_avg = (length_a_0 + length_a_1) / 2;
         auto b_avg = (length_b_0 + length_b_1) / 2;
         return a_avg > b_avg;
     });
 
-    for (const auto& [a,b]: to_be_aligned) {
-        auto length_a = sequences[id_map.get_id(a)].sequence.size();
-        auto length_b = sequences[id_map.get_id(b)].sequence.size();
+    for (const auto& item: to_be_aligned) {
+        auto length_a = sequences[id_map.get_id(item.a)].sequence.size();
+        auto length_b = sequences[id_map.get_id(item.b)].sequence.size();
 
-        cerr << a << ',' << b << ',' << length_a << ',' << length_b << '\n';
+        cerr << item.a << ',' << item.b << ',' << length_a << ',' << length_b << '\n';
     }
 
     cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
@@ -304,12 +302,13 @@ void get_best_overlaps(
         ContactGraph& symmetrical_alignment_graph
         ){
 
+    // TODO: properly parameterize this
     double overflow_tolerance = 0.15;
     double first_node_penalty = 0.15;
 
     bool symmetrical_edges_found = true;
     while (symmetrical_edges_found){
-        sparse_hash_set <pair <int32_t, int32_t> > to_be_deleted;
+        sparse_hash_set <pair <int32_t, int32_t> > symmetrical_edges;
 
         alignment_graph.for_each_edge_in_order_of_weight([&](const pair<int32_t,int32_t> edge, int32_t weight){
             int32_t a = edge.first;
@@ -320,6 +319,20 @@ void get_best_overlaps(
 
             cerr << "Testing: " << a_name << ',' << b_name << '\n';
 
+            auto a_coverage = alignment_graph.get_node_coverage(a);
+            auto b_coverage = alignment_graph.get_node_coverage(b);
+
+            auto a_length = alignment_graph.get_node_length(a);
+            auto b_length = alignment_graph.get_node_length(b);
+
+            bool a_covered = double(a_coverage) > double(a_length);
+            bool b_covered = double(b_coverage) > double(b_length);
+
+            if (a_covered or b_covered){
+                cerr << "skipping covered node: " << a_covered << ',' << b_covered << '\n';
+                return;
+            }
+
             int32_t a_best_neighbor = -1;
             int32_t a_best_value = -1;
             int32_t b_best_neighbor = -1;
@@ -327,12 +340,14 @@ void get_best_overlaps(
 
             cerr << '\t' << "-- a --" <<'\n';
             alignment_graph.for_each_node_neighbor(a, [&](int32_t other, const Node& n){
+                bool other_covered = alignment_graph.get_node_coverage(other) > alignment_graph.get_node_length(other);
+
                 auto w = alignment_graph.get_edge_weight(a, other);
 
                 string other_name = id_map.get_name(other);
                 cerr << '\t' << a_name << ',' << other_name << ',' << w << '\n';
 
-                if (w > a_best_value){
+                if (w > a_best_value and not other_covered){
                     cerr << "\tbest!" << '\n';
                     a_best_value = w;
                     a_best_neighbor = other;
@@ -341,12 +356,14 @@ void get_best_overlaps(
 
             cerr << '\t' << "-- b --" <<'\n';
             alignment_graph.for_each_node_neighbor(b, [&](int32_t other, const Node& n){
+                bool other_covered = alignment_graph.get_node_coverage(other) > alignment_graph.get_node_length(other);
+
                 auto w = alignment_graph.get_edge_weight(b, other);
 
                 string other_name = id_map.get_name(other);
                 cerr << '\t' << b_name << ',' << other_name << ',' << w << '\n';
 
-                if (w > b_best_value){
+                if (w > b_best_value and not other_covered){
                     cerr << "\tbest!" << '\n';
                     b_best_value = w;
                     b_best_neighbor = other;
@@ -355,14 +372,6 @@ void get_best_overlaps(
 
             // Cheap way to check existing overlap
             if (b_best_neighbor == a and a_best_neighbor == b){
-                auto a_coverage = alignment_graph.get_node_coverage(a);
-                auto b_coverage = alignment_graph.get_node_coverage(b);
-                auto a_length = alignment_graph.get_node_length(a);
-                auto b_length = alignment_graph.get_node_length(b);
-
-                bool a_not_covered = double(a_coverage) < double(a_length);
-                bool b_not_covered = double(b_coverage) < double(b_length);
-
                 auto a_cost = (a_coverage + weight) - a_length;
                 auto b_cost = (b_coverage + weight) - b_length;
 
@@ -380,9 +389,9 @@ void get_best_overlaps(
 
                 cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ")" << '\n';
                 cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ")" << '\n';
-                cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(a_not_covered) << ',' << int(b_not_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
+                cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(not a_covered) << ',' << int(not b_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
 
-                if (a_sane and b_sane and a_not_covered and b_not_covered and a_max and b_max and a_min and b_min){
+                if (a_sane and b_sane and a_max and b_max and a_min and b_min){
                     symmetrical_alignment_graph.try_insert_node(a);
                     symmetrical_alignment_graph.try_insert_node(b);
 
@@ -395,19 +404,19 @@ void get_best_overlaps(
                     alignment_graph.increment_coverage(b,weight);
 
                     cerr << "good edge: " << a_name << ',' << b_name << '\n';
-                    to_be_deleted.emplace(a,b);
+                    symmetrical_edges.emplace(a,b);
                 }
             }
         });
 
         symmetrical_edges_found = false;
-        for (auto& [a,b]: to_be_deleted){
+        for (auto& [a,b]: symmetrical_edges){
             alignment_graph.remove_edge(a,b);
             symmetrical_edges_found = true;
             cerr << "removing: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
         }
 
-        to_be_deleted.clear();
+        symmetrical_edges.clear();
     }
 }
 
@@ -442,4 +451,6 @@ void write_alignment_results_to_file(
         alignment_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << ',' << 1 << ',' << colors.first << '\n';
         alignment_file << id_map.get_name(edge.second) << ',' << id_map.get_name(edge.first) << ',' << weight << ',' << 1 << ',' << colors.second << '\n';
     });
+}
+
 }

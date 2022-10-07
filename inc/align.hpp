@@ -15,35 +15,16 @@
 #include "Sam.hpp"
 #include "Bam.hpp"
 #include "minimap.h"
-
 #include "SvgPlot.hpp"
 
-using gfase::for_element_in_sam_file;
-using gfase::unpaired_mappings_t;
-using gfase::paired_mappings_t;
-using gfase::contact_map_t;
-using gfase::AlignmentBlock;
-using gfase::AlignmentChain;
-
-using gfase::gfa_to_handle_graph;
-using gfase::IncrementalIdMap;
-using gfase::ContactGraph;
-using gfase::Node;
-using gfase::Bipartition;
-using gfase::SamElement;
-using gfase::Sequence;
-using gfase::Hasher2;
-using gfase::Bubble;
-using gfase::Timer;
-using gfase::Bam;
-
-using bdsg::HashGraph;
 using ghc::filesystem::path;
 using CLI::App;
 
 #include <unordered_map>
 
 using std::unordered_map;
+
+namespace gfase {
 
 
 void print_minimap_alignment_block(
@@ -63,7 +44,7 @@ void map_sequence_pair(
 
 
 void construct_alignment_graph(
-        const vector <pair <string,string> >& to_be_aligned,
+        const vector<HashResult>& to_be_aligned,
         const vector<Sequence>& sequences,
         const IncrementalIdMap<string>& id_map,
         ContactGraph& alignment_graph,
@@ -75,14 +56,16 @@ void construct_alignment_graph(
 void get_alignment_candidates(
         const vector<Sequence>& sequences,
         const IncrementalIdMap<string>& id_map,
-        vector <pair <string,string> >& to_be_aligned,
+        vector <HashResult>& to_be_aligned,
         path output_dir,
         size_t n_threads,
         double sample_rate,
         size_t k,
         size_t n_iterations,
         size_t max_hits,
-        double min_similarity);
+        double min_ab_over_a,
+        double min_ab_over_b
+        );
 
 
 void get_best_overlaps(
@@ -100,5 +83,6 @@ void write_alignment_results_to_file(
         path output_dir);
 
 
+}
 
 #endif //GFASE_ALIGN_HPP

@@ -2,6 +2,7 @@
 #include "gfa_to_handle.hpp"
 #include "graph_utility.hpp"
 #include "MultiContactGraph.hpp"
+#include "ContactGraph.hpp"
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
@@ -16,25 +17,32 @@
 
 #include "SvgPlot.hpp"
 
+using gfase::gfa_to_handle_graph;
 using gfase::for_element_in_sam_file;
-using gfase::NonBipartiteEdgeException;
+
+
 using gfase::random_multicontact_phase_search;
+using gfase::construct_alignment_graph;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;
 using gfase::contact_map_t;
+using gfase::MultiContactGraph;
+using gfase::ContactGraph;
+using gfase::NonBipartiteEdgeException;
+
 using gfase::AlignmentBlock;
 using gfase::AlignmentChain;
 
-using gfase::gfa_to_handle_graph;
+using gfase::HashResult;
+using gfase::Hasher2;
+
 using gfase::IncrementalIdMap;
-using gfase::MultiContactGraph;
-using gfase::Node;
 using gfase::Bipartition;
 using gfase::SamElement;
 using gfase::Sequence;
-using gfase::Hasher2;
 using gfase::Bubble;
 using gfase::Timer;
+using gfase::Node;
 using gfase::Bam;
 
 using bdsg::HashGraph;
@@ -285,18 +293,23 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     // Hashing params
     double sample_rate = 0.04;
-    size_t k = 22;
     size_t n_iterations = 6;
+    size_t k = 22;
 
     // Only align the top n hits
     size_t max_hits = 5;
 
-    // Hash results must have at least this percent similarity (A U B)/A, where A is larger.
     // Sequence lengths must be at least this ratio.
     // Resulting alignment coverage must be at least this amount on larger node.
     double min_similarity = 0.05;
 
-    vector <pair <string,string> > to_be_aligned;
+    // Hash results must have at least this percent similarity (A & B)/A, where A is larger.
+    double min_ab_over_a = min_similarity;
+
+    // Hash results must have at least this percent similarity (A & B)/B, where A is larger.
+    double min_ab_over_b = 0.7;
+
+    vector <HashResult> to_be_aligned;
 
     get_alignment_candidates(
             sequences,
@@ -308,7 +321,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
             k,
             n_iterations,
             max_hits,
-            min_similarity
+            min_similarity,
+            min_ab_over_b
     );
 
 

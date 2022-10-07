@@ -1,10 +1,21 @@
 #include "align.hpp"
+#include "Timer.hpp"
+#include "Hasher2.hpp"
+#include "Sequence.hpp"
+#include "ContactGraph.hpp"
+
+using gfase::Timer;
+using gfase::Sequence;
+using gfase::ContactGraph;
+using gfase::HashResult;
+using gfase::construct_alignment_graph;
 
 
 void infer_bubbles_from_alignment(
         path output_dir,
         path gfa_path,
-        double min_similarity,
+        double min_ab_over_a,
+        double min_ab_over_b,
         size_t max_hits,
         size_t n_threads
         ){
@@ -45,7 +56,7 @@ void infer_bubbles_from_alignment(
     // Resulting alignment coverage must be at least this amount on larger node.
 //    double min_similarity = 0.2;
 
-    vector <pair <string,string> > to_be_aligned;
+    vector <HashResult> to_be_aligned;
 
     get_alignment_candidates(
             sequences,
@@ -57,7 +68,8 @@ void infer_bubbles_from_alignment(
             k,
             n_iterations,
             max_hits,
-            min_similarity
+            min_ab_over_a,
+            min_ab_over_b
     );
 
     ContactGraph alignment_graph;
@@ -77,7 +89,7 @@ void infer_bubbles_from_alignment(
                     ref(sequences),
                     ref(id_map),
                     ref(alignment_graph),
-                    min_similarity,
+                    min_ab_over_a,
                     ref(output_mutex),
                     ref(job_index)
             ));
@@ -92,7 +104,7 @@ void infer_bubbles_from_alignment(
         n.join();
     }
 
-    get_best_overlaps(min_similarity, id_map, alignment_graph, symmetrical_alignment_graph);
+    get_best_overlaps(min_ab_over_a, id_map, alignment_graph, symmetrical_alignment_graph);
     write_alignment_results_to_file(id_map, alignment_graph, symmetrical_alignment_graph, output_dir);
 
     cerr << t << "Done" << '\n';
@@ -104,7 +116,8 @@ int main (int argc, char* argv[]){
     path output_dir;
     size_t n_threads = 1;
     size_t max_hits = 1;
-    double min_similarity;
+    double min_ab_over_a;
+    double min_ab_over_b;
 
     CLI::App app{"App description"};
 
@@ -130,13 +143,18 @@ int main (int argc, char* argv[]){
             "Maximum number of overlap hits to consider");
 
     app.add_option(
-            "-s,--min_similarity",
-            min_similarity,
+            "-a,--min_ab_over_a",
+            min_ab_over_a,
+            "Minimum required similarity to consider it in the bubble graph");
+
+    app.add_option(
+            "-b,--min_ab_over_b",
+            min_ab_over_b,
             "Minimum required similarity to consider it in the bubble graph");
 
     CLI11_PARSE(app, argc, argv);
 
-    infer_bubbles_from_alignment(output_dir, gfa_path, min_similarity, max_hits, n_threads);
+    infer_bubbles_from_alignment(output_dir, gfa_path, min_ab_over_a, min_ab_over_b, max_hits, n_threads);
 
     return 0;
 }

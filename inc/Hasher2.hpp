@@ -39,6 +39,17 @@ using std::max;
 
 namespace gfase{
 
+class HashResult{
+public:
+    string a;
+    string b;
+    double ab_over_a;
+    double ab_over_b;
+
+    HashResult(const string& a, const string& b, double ab_over_a, double ab_over_b);
+    HashResult();
+};
+
 
 // Override the hash function for integer hashing because the hash is provided as the key already
 class Hash{

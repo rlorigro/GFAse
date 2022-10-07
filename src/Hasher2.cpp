@@ -4,6 +4,22 @@
 namespace gfase{
 
 
+HashResult::HashResult(const string& a, const string& b, double ab_over_a, double ab_over_b):
+        a(a),
+        b(b),
+        ab_over_a(ab_over_a),
+        ab_over_b(ab_over_b)
+{}
+
+
+HashResult::HashResult():
+        a(),
+        b(),
+        ab_over_a(0),
+        ab_over_b(0)
+{}
+
+
 Hasher2::Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads):
         k(k),
         n_possible_bins(numeric_limits<uint64_t>::max()),
@@ -366,17 +382,6 @@ int64_t Hasher2::get_intersection_size(const string& a, const string& b) const{
     }
 
     return intersection;
-}
-
-
-void Hasher2::for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const{
-    for (const auto& [a, result]: overlaps){
-        for (const auto& [b, count]: result){
-            if (a < b){
-                f({a,b}, count);
-            }
-        }
-    }
 }
 
 
