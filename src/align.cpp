@@ -239,6 +239,8 @@ void get_alignment_candidates(
         double min_ab_over_b
         ){
 
+    to_be_aligned.clear();
+
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
     hasher.hash(sequences);
     hasher.write_results(output_dir);
@@ -257,19 +259,24 @@ void get_alignment_candidates(
         pair<string,string> ordered_pair;
         if (seq_a.size() > seq_b.size()){
             ordered_pair = {a,b};
-            ordered_pairs[ordered_pair].ab_over_a = double(n_hashes)/double(total_hashes);
+
+            auto& result = ordered_pairs[ordered_pair];
+            result.ab_over_a = double(n_hashes)/double(total_hashes);
         }
         else{
             ordered_pair = {b,a};
-            ordered_pairs[ordered_pair].ab_over_b = double(n_hashes)/double(total_hashes);
+
+            auto& result = ordered_pairs[ordered_pair];
+            result.ab_over_b = double(n_hashes)/double(total_hashes);
         }
     });
 
     // Filter once both directional hash similarities are established
     for (const auto& [edge,result]: ordered_pairs){
-        if (result.ab_over_a > min_ab_over_a and result.ab_over_b > min_ab_over_b) {
+        if (result.ab_over_a >= min_ab_over_a and result.ab_over_b >= min_ab_over_b) {
             to_be_aligned.emplace_back(edge.first, edge.second, result.ab_over_a, result.ab_over_b);
         }
+        cerr << edge.first << ',' << edge.second << ',' << result.ab_over_a << ',' << min_ab_over_a << ',' << result.ab_over_b << ',' << min_ab_over_b << '\n';
     }
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
@@ -304,29 +311,48 @@ void get_best_overlaps(
 
     // TODO: properly parameterize this
     double overflow_tolerance = 0.15;
-    double first_node_penalty = 0.15;
+    double first_node_penalty = 0.10;
 
     bool symmetrical_edges_found = true;
     while (symmetrical_edges_found){
         sparse_hash_set <pair <int32_t, int32_t> > symmetrical_edges;
 
         alignment_graph.for_each_edge_in_order_of_weight([&](const pair<int32_t,int32_t> edge, int32_t weight){
-            int32_t a = edge.first;
-            int32_t b = edge.second;
+            int32_t a;
+            int32_t b;
+
+            int32_t x = edge.first;
+            int32_t y = edge.second;
+
+            auto x_length = alignment_graph.get_node_length(x);
+            auto y_length = alignment_graph.get_node_length(y);
+
+            int32_t a_length;
+            int32_t b_length;
+
+            if (x_length > y_length){
+                a = x;
+                b = y;
+                a_length = x_length;
+                b_length = y_length;
+            }
+            else{
+                a = y;
+                b = x;
+                a_length = y_length;
+                b_length = x_length;
+            }
+
+            auto a_coverage = alignment_graph.get_node_coverage(a);
+            auto b_coverage = alignment_graph.get_node_coverage(b);
 
             string a_name = id_map.get_name(a);
             string b_name = id_map.get_name(b);
 
             cerr << "Testing: " << a_name << ',' << b_name << '\n';
 
-            auto a_coverage = alignment_graph.get_node_coverage(a);
-            auto b_coverage = alignment_graph.get_node_coverage(b);
-
-            auto a_length = alignment_graph.get_node_length(a);
-            auto b_length = alignment_graph.get_node_length(b);
-
-            bool a_covered = double(a_coverage) > double(a_length);
-            bool b_covered = double(b_coverage) > double(b_length);
+            bool a_covered = double(a_coverage) >= double(a_length);
+            bool b_covered = double(b_coverage) >= double(b_length);
 
             if (a_covered or b_covered){
                 cerr << "skipping covered node: " << a_covered << ',' << b_covered << '\n';
@@ -340,7 +366,7 @@ void get_best_overlaps(
 
             cerr << '\t' << "-- a --" <<'\n';
             alignment_graph.for_each_node_neighbor(a, [&](int32_t other, const Node& n){
-                bool other_covered = alignment_graph.get_node_coverage(other) > alignment_graph.get_node_length(other);
+                bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(a, other);
 
@@ -356,7 +382,7 @@ void get_best_overlaps(
 
             cerr << '\t' << "-- b --" <<'\n';
             alignment_graph.for_each_node_neighbor(b, [&](int32_t other, const Node& n){
-                bool other_covered = alignment_graph.get_node_coverage(other) > alignment_graph.get_node_length(other);
+                bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(b, other);
 
@@ -387,8 +413,8 @@ void get_best_overlaps(
                 bool a_min = double(weight) > double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
                 bool b_min = double(weight) > double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
 
-                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << ")" << '\n';
-                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << ")" << '\n';
+                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << "), weight needed = " << double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
+                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << "), weight needed = " << double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
                 cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(not a_covered) << ',' << int(not b_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
 
                 if (a_sane and b_sane and a_max and b_max and a_min and b_min){

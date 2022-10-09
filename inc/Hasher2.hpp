@@ -101,7 +101,7 @@ private:
     size_t n_bins;  // Computed from the above values
 
     // Don't iterate bins with too many hashes
-    const size_t max_bin_size = 10;
+    const size_t max_bin_size = 30;
 
     // Skip assigning pairs for any match that has fewer than this many hashes
     const size_t min_hashes = 40;

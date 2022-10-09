@@ -304,7 +304,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     double min_similarity = 0.05;
 
     // Hash results must have at least this percent similarity (A & B)/A, where A is larger.
-    double min_ab_over_a = min_similarity;
+    double min_ab_over_a = 0;
 
     // Hash results must have at least this percent similarity (A & B)/B, where A is larger.
     double min_ab_over_b = 0.7;
