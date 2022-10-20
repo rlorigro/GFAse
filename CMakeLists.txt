@@ -715,11 +715,13 @@ set(TESTS
         test_gfareader
         test_htslib
         test_htslib_bam_reader
+        test_incremental_id_io
         test_kmer_unordered_set
         test_phase_haplotype_paths
         test_minimap2
         test_minimap2_no_io
         test_multi_contact_graph
+        test_multi_contact_graph_io
 #        test_mummer
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
@@ -766,6 +768,7 @@ set(EXECUTABLES
         locate_kmer_matches
         phase_haplotype_paths
         phase_contacts
+        rephase_tripartition
         phase_contacts_as_tripartition
         remove_empty_nodes
         split_connected_components

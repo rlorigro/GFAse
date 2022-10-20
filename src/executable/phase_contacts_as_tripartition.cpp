@@ -59,22 +59,6 @@ using std::cref;
 using std::ref;
 
 
-void write_contact_map(
-        path output_path,
-        const MultiContactGraph& contact_graph,
-        const IncrementalIdMap<string>& id_map){
-    ofstream output_file(output_path);
-
-    if (not output_file.is_open() or not output_file.good()){
-        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
-    }
-
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
-        output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << '\n';
-    });
-}
-
-
 void write_graph_data(
         path output_directory,
         const Hasher2& hasher,
@@ -214,54 +198,6 @@ void parse_unpaired_bam_file(
 }
 
 
-void phase_contacts(
-        const IncrementalIdMap<string>& id_map,
-        MultiContactGraph& contact_graph,
-        size_t n_threads
-        ){
-
-    vector<thread> threads;
-    vector <pair <int32_t,int8_t> > best_partitions;
-    vector<int32_t> ids;
-    atomic<double> best_score = std::numeric_limits<double>::min();
-    atomic<size_t> job_index = 0;
-    mutex phase_mutex;
-    size_t m_iterations = 10000;
-
-    contact_graph.get_node_ids(ids);
-    contact_graph.randomize_partitions();
-    contact_graph.get_partitions(best_partitions);
-
-    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
-
-    // Launch threads
-    for (uint64_t i=0; i<n_threads; i++){
-        try {
-            threads.emplace_back(thread(
-                    random_multicontact_phase_search,
-                    contact_graph,
-                    cref(ids),
-                    ref(best_partitions),
-                    ref(best_score),
-                    ref(job_index),
-                    ref(phase_mutex),
-                    m_iterations
-            ));
-        } catch (const exception &e) {
-            cerr << e.what() << "\n";
-            exit(1);
-        }
-    }
-
-    // Wait for threads to finish
-    for (auto& t: threads){
-        t.join();
-    }
-
-    contact_graph.set_partitions(best_partitions);
-}
-
-
 void phase_hic(path output_dir, path sam_path, path gfa_path, string required_prefix, int8_t min_mapq, size_t n_threads){
     Timer t;
 
@@ -377,6 +313,9 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         throw runtime_error("ERROR: unrecognized extension for BAM input file: " + sam_path.extension().string());
     }
 
+    path id_csv_path = output_dir / "ids.csv";
+    id_map.write_to_csv(id_csv_path);
+
     for (auto& s: sequences){
         if (s.name.empty()){
             continue;
@@ -401,15 +340,12 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         contact_graph.remove_node(id);
     }
 
-    // Reallocate sparse hash map because something is going wrong during copying
-//    contact_graph.resize();
-
     // Add alts to graph
     symmetrical_alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
         auto [a,b] = edge;
 
         try {
-            if (contact_graph.has_edge(a, b)) {
+            if (contact_graph.has_node(a) and contact_graph.has_node(b)) {
                 contact_graph.add_alt(a, b);
             }
         }
@@ -425,7 +361,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         }
     });
 
-    phase_contacts(id_map, contact_graph, n_threads);
+    phase_contacts(contact_graph, n_threads);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 
@@ -434,8 +370,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     path config_output_path = output_dir / "config.csv";
 
     contact_graph.write_bandage_csv(phases_output_path, id_map);
-
-    write_contact_map(contacts_output_path, contact_graph, id_map);
+    contact_graph.write_contact_map(contacts_output_path, id_map);
 
     // In lieu of actual chaining, dump some fasta files with the original GFA segments
     path phase_0_fasta_path = output_dir / "phase_0.fasta";

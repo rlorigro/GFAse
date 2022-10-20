@@ -1,12 +1,19 @@
 #ifndef GFASE_INCREMENTALIDMAP_HPP
 #define GFASE_INCREMENTALIDMAP_HPP
 
+#include "Filesystem.hpp"
+
+using ghc::filesystem::path;
+
+#include <ostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <unordered_map>
 #include <memory>
 
+using std::ofstream;
+using std::ifstream;
 using std::string;
 using std::vector;
 using std::unordered_map;
@@ -32,6 +39,7 @@ public:
     /// Methods ///
 
     IncrementalIdMap<T>(bool zero_based=false);
+    IncrementalIdMap<T>(path csv_path);
 
     // Add a node ID to the running list, do whatever needs to be done to make sure the mapping is reversible, and then
     // return its incremental ID, based on the number of nodes added so far
@@ -47,9 +55,76 @@ public:
     bool exists(const T& name);
     bool exists(int64_t id);
 
+    void write_to_csv(path output_path) const;
     size_t size();
 };
 
+
+template<class T> void IncrementalIdMap<T>::write_to_csv(path output_path) const{
+    ofstream file(output_path);
+
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    for (const auto& name: names){
+        file << get_id(name) << ',' << name << '\n';
+    }
+}
+
+
+template<class T> IncrementalIdMap<T>::IncrementalIdMap(path csv_path){
+    ifstream file(csv_path);
+
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not read file: " + csv_path.string());
+    }
+
+    char c;
+    string name;
+    string id_token;
+    size_t n_delimiters = 0;
+    size_t n_lines = 0;
+
+    while (file.get(c)){
+        if (c == '\n'){
+            if (n_lines == 0){
+                size_t id = stoll(id_token);
+                if (id == 0){
+                    zero_based = true;
+                }
+                else if (id == 1){
+                    zero_based = false;
+                }
+                else{
+                    throw runtime_error("ERROR: first id is not 0 or 1: " + csv_path.string());
+                }
+            }
+
+            insert(name);
+            n_lines++;
+
+            n_delimiters = 0;
+
+            name.clear();
+            id_token.clear();
+        }
+        else if (c == ','){
+            n_delimiters++;
+        }
+        else{
+            if (n_delimiters == 0){
+                id_token += c;
+            }
+            else if (n_delimiters == 1){
+                name += c;
+            }
+            else{
+                throw runtime_error("ERROR: too many delimiters for line in file: " + csv_path.string());
+            }
+        }
+    }
+}
 
 
 template<class T> size_t IncrementalIdMap<T>::size(){

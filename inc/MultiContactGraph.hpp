@@ -93,6 +93,7 @@ class MultiContactGraph {
 public:
     // Constructors
     MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map);
+    MultiContactGraph(path csv_path, const IncrementalIdMap<string>& id_map);
     MultiContactGraph()=default;
 
     // Editing
@@ -137,10 +138,13 @@ public:
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
     void randomize_partitions();
 
-    // Misc
-    void write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map) const;
-    void write_node_data(path output_path, IncrementalIdMap<string>& id_map) const;
+    // IO
+    void write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const;
+    void write_bandage_csv(path output_path, const IncrementalIdMap<string>& id_map) const;
+    void write_node_data(path output_path, const IncrementalIdMap<string>& id_map) const;
     void assert_component_is_valid(const alt_component_t& component) const;
+
+    // Misc
     void validate_alts();
     size_t size();
     void resize();
@@ -156,6 +160,12 @@ void random_multicontact_phase_search(
         atomic<size_t>& job_index,
         mutex& phase_mutex,
         size_t m_iterations);
+
+
+void phase_contacts(
+        MultiContactGraph& contact_graph,
+        size_t n_threads
+);
 
 }
 

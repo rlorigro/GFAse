@@ -1,8 +1,11 @@
 #include "MultiContactGraph.hpp"
 
+#include <thread>
 #include <ostream>
 #include <queue>
 
+using std::thread;
+using std::exception;
 using std::ofstream;
 using std::ostream;
 using std::set_intersection;
@@ -156,6 +159,64 @@ MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const Inc
         for (const auto& [b,count]: sub_map){
             try_insert_node(b);
             insert_edge(a,b,count);
+        }
+    }
+}
+
+
+MultiContactGraph::MultiContactGraph(path csv_path, const IncrementalIdMap<string>& id_map){
+    ifstream file(csv_path);
+
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not read file: " + csv_path.string());
+    }
+
+    char c;
+
+    string a;
+    string b;
+    string weight_token;
+    int32_t weight;
+
+    size_t n_delimiters = 0;
+    size_t n_lines = 0;
+
+    while (file.get(c)){
+        if (c == '\n'){
+            if (n_lines > 0){
+                auto id_a = int32_t(id_map.get_id(a));
+                auto id_b = int32_t(id_map.get_id(b));
+
+                weight = stoi(weight_token);
+
+                try_insert_node(id_a);
+                try_insert_node(id_b);
+                try_insert_edge(id_a, id_b, weight);
+            }
+
+            a.clear();
+            b.clear();
+            weight_token.clear();
+
+            n_delimiters = 0;
+            n_lines++;
+        }
+        else if (c == ','){
+            n_delimiters++;
+        }
+        else{
+            if (n_delimiters == 0){
+                a += c;
+            }
+            else if (n_delimiters == 1){
+                b += c;
+            }
+            else if (n_delimiters == 2){
+                weight_token += c;
+            }
+            else{
+                throw runtime_error("ERROR: too many delimiters for line in file: " + csv_path.string());
+            }
         }
     }
 }
@@ -625,13 +686,11 @@ void MultiContactGraph::set_partitions(const vector <pair <int32_t,int8_t> >& pa
 
 
 void MultiContactGraph::get_node_ids(vector<int32_t>& ids){
-    ids.resize(nodes.size());
-
-    size_t i = 0;
+    ids.reserve(nodes.size());
 
     for (auto& [id,node]: nodes){
-        ids[i] = id;
-        i++;
+        cerr << id << '\n';
+        ids.emplace_back(id);
     }
 }
 
@@ -686,7 +745,7 @@ ostream& operator<<(ostream& o, const MultiNode& n){
 }
 
 
-void MultiContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<string>& id_map) const{
+void MultiContactGraph::write_bandage_csv(path output_path, const IncrementalIdMap<string>& id_map) const{
     ofstream file(output_path);
 
     if (not file.is_open() or not file.good()) {
@@ -702,7 +761,7 @@ void MultiContactGraph::write_bandage_csv(path output_path, IncrementalIdMap<str
 }
 
 
-void MultiContactGraph::write_node_data(path output_path, IncrementalIdMap<string>& id_map) const{
+void MultiContactGraph::write_node_data(path output_path, const IncrementalIdMap<string>& id_map) const{
     ofstream file(output_path);
 
     if (not file.is_open() or not file.good()) {
@@ -715,6 +774,21 @@ void MultiContactGraph::write_node_data(path output_path, IncrementalIdMap<strin
         auto name = id_map.get_name(id);
         file << id << ',' << name << ',' << node.coverage << ',' << node.length << '\n';
     }
+}
+
+
+void MultiContactGraph::write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const{
+    ofstream output_file(output_path);
+
+    if (not output_file.is_open() or not output_file.good()) {
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    output_file << "name_a" << ',' << "name_b" << ',' << "weight" << '\n';
+
+    for_each_edge([&](const pair<int32_t, int32_t> edge, int32_t weight) {
+        output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << '\n';
+    });
 }
 
 
@@ -735,7 +809,7 @@ void random_multicontact_phase_search(
 
     // Pseudorandom generator with true random seed
     std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> uniform_distribution(0,int(contact_graph.size()-1));
+    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
 
     contact_graph.set_partitions(best_partitions);
 
@@ -820,6 +894,53 @@ void random_multicontact_phase_search(
     contact_graph.set_partitions(best_partitions);
 }
 
+
+
+void phase_contacts(
+        MultiContactGraph& contact_graph,
+        size_t n_threads
+){
+
+    vector<thread> threads;
+    vector <pair <int32_t,int8_t> > best_partitions;
+    vector<int32_t> ids;
+    atomic<double> best_score = std::numeric_limits<double>::min();
+    atomic<size_t> job_index = 0;
+    mutex phase_mutex;
+    size_t m_iterations = 100000;
+
+    contact_graph.get_node_ids(ids);
+    contact_graph.randomize_partitions();
+    contact_graph.get_partitions(best_partitions);
+
+    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
+
+    // Launch threads
+    for (uint64_t i=0; i<n_threads; i++){
+        try {
+            threads.emplace_back(thread(
+                    random_multicontact_phase_search,
+                    contact_graph,
+                    cref(ids),
+                    ref(best_partitions),
+                    ref(best_score),
+                    ref(job_index),
+                    ref(phase_mutex),
+                    m_iterations
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& t: threads){
+        t.join();
+    }
+
+    contact_graph.set_partitions(best_partitions);
+}
 
 
 }
