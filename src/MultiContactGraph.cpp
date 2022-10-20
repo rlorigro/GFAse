@@ -818,7 +818,7 @@ void random_multicontact_phase_search(
     while (m < m_iterations) {
         // Randomly perturb
         for (size_t i=0; i<((contact_graph.size()/30) + 1); i++) {
-            auto r = ids[uniform_distribution(rng)];
+            auto r = ids.at(uniform_distribution(rng));
 
             int8_t p;
             if (contact_graph.has_alt(r)){
@@ -838,7 +838,7 @@ void random_multicontact_phase_search(
         }
 
         for (size_t i=0; i<contact_graph.size(); i++) {
-            auto n = ids[uniform_distribution(rng)];
+            auto n = ids.at(uniform_distribution(rng));
 
             int64_t max_score = std::numeric_limits<int64_t>::min();
             int8_t p_max = 0;
@@ -903,11 +903,11 @@ void phase_contacts(
 
     vector<thread> threads;
     vector <pair <int32_t,int8_t> > best_partitions;
-    vector<int32_t> ids;
+    vector<int32_t> ids = {};
     atomic<double> best_score = std::numeric_limits<double>::min();
     atomic<size_t> job_index = 0;
     mutex phase_mutex;
-    size_t m_iterations = 100000;
+    size_t m_iterations = 10000;
 
     contact_graph.get_node_ids(ids);
     contact_graph.randomize_partitions();
