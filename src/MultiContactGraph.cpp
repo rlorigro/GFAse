@@ -638,12 +638,10 @@ double MultiContactGraph::compute_total_consistency_score() const{
 
 void MultiContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) const{
     partitions.clear();
-    partitions.resize(nodes.size());
+    partitions.reserve(nodes.size());
 
-    size_t i = 0;
-    for (auto& [n, node]: nodes){
-        partitions[i] = {n,node.partition};
-        i++;
+    for (const auto& [n, node]: nodes){
+        partitions.emplace_back(n,node.partition);
     }
 }
 
@@ -656,7 +654,7 @@ void MultiContactGraph::randomize_partitions(){
     std::mt19937 rng(rd());
     std::uniform_int_distribution<int> uniform_distribution(0,2);
 
-    for (auto& [id,node]: nodes){
+    for (const auto& [id,node]: nodes){
         int8_t p;
         if (node.has_alt()){
             // Only allow {1,-1} for known bubbles
@@ -679,7 +677,7 @@ void MultiContactGraph::randomize_partitions(){
 
 
 void MultiContactGraph::set_partitions(const vector <pair <int32_t,int8_t> >& partitions){
-    for (auto& [n, p]: partitions){
+    for (const auto& [n, p]: partitions){
         set_partition(n, p);
     }
 }
@@ -688,7 +686,7 @@ void MultiContactGraph::set_partitions(const vector <pair <int32_t,int8_t> >& pa
 void MultiContactGraph::get_node_ids(vector<int32_t>& ids){
     ids.reserve(nodes.size());
 
-    for (auto& [id,node]: nodes){
+    for (const auto& [id,node]: nodes){
         cerr << id << '\n';
         ids.emplace_back(id);
     }
