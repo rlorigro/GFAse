@@ -186,6 +186,10 @@ void BubbleGraph::generate_diploid_symmetrical_bubbles_from_graph(const HandleGr
 void BubbleGraph::generate_bubbles_from_csv(path csv_path, IncrementalIdMap<string>& id_map){
     ifstream file(csv_path);
 
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not write to file: " + csv_path.string());
+    }
+
     string line;
     vector<string> tokens = {""};
 

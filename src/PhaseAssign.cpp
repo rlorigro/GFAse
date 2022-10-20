@@ -428,6 +428,10 @@ size_t get_total_length_of_phase_set(const map<string,size_t>& contig_lengths, c
 void load_tripartition_csv(path csv_path, array <set<string>,2>& inferred_phases){
     ifstream file(csv_path);
 
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not write to file: " + csv_path.string());
+    }
+
     string line;
     vector<string> tokens = {""};
 
