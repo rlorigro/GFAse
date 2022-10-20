@@ -86,10 +86,7 @@ void load_alts_from_alignment_csv(path alignment_csv_path, MultiContactGraph& co
 
                 bool symmetrical = stoi(symmetry_token);
 
-                cerr << symmetry_token << ',' << symmetrical << ',' << a << ',' << b << '\n';
-
                 if (symmetrical and contact_graph.has_node(id_a) and contact_graph.has_node(id_b)){
-                    cerr << "adding alt: " << a << ',' << b << '\n';
                     contact_graph.add_alt(id_a, id_b);
                 }
             }
