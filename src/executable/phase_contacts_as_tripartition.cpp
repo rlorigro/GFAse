@@ -198,6 +198,27 @@ void parse_unpaired_bam_file(
 }
 
 
+void remove_adjacencies_from_candidates(vector<HashResult>& to_be_aligned, GfaReader& reader){
+    vector <HashResult> valid_edges;
+
+    unordered_set <pair <string,string> > invalid_edges;
+    reader.for_each_link([&](string& node_a, bool reversal_a, string& node_b, bool reversal_b, string& cigar){
+        invalid_edges.emplace(node_a, node_b);
+        invalid_edges.emplace(node_b, node_a);
+    });
+
+    for (const auto& item: to_be_aligned){
+        pair <string,string> e = {item.a, item.b};
+
+        if (invalid_edges.count(e) == 0){
+            valid_edges.emplace_back(item);
+        }
+    }
+
+    to_be_aligned = valid_edges;
+}
+
+
 void phase_hic(path output_dir, path sam_path, path gfa_path, string required_prefix, int8_t min_mapq, size_t n_threads){
     Timer t;
 
@@ -261,6 +282,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
             min_ab_over_b
     );
 
+    remove_adjacencies_from_candidates(to_be_aligned, reader);
 
     // TODO: convert edges to alts instead of using two parallel graphs... ?
     ContactGraph alignment_graph;
@@ -350,27 +372,27 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
             }
         }
         catch (NonBipartiteEdgeException& e){
-            for (auto& item: e.component.first){
-                cerr << "0 " << id_map.get_name(item) << '\n';
-            }
-            for (auto& item: e.component.second){
-                cerr << "1 " << id_map.get_name(item) << '\n';
-            }
-
+            cerr << e.what() << '\n';
             cerr << "WARNING: Skipping inconsistent edge: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
         }
+    });
+
+    path contacts_output_path = output_dir / "contacts.csv";
+    contact_graph.write_contact_map(contacts_output_path, id_map);
+
+    // Remove self edges in contact graph (now that they have been written to disk)
+    contact_graph.for_each_node([&](int32_t id){
+        contact_graph.remove_edge(id,id);
     });
 
     phase_contacts(contact_graph, n_threads);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 
-    path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
-    path config_output_path = output_dir / "config.csv";
-
     contact_graph.write_bandage_csv(phases_output_path, id_map);
-    contact_graph.write_contact_map(contacts_output_path, id_map);
+
+    cerr << t << "Writing phased fasta files... " << '\n';
 
     // In lieu of actual chaining, dump some fasta files with the original GFA segments
     path phase_0_fasta_path = output_dir / "phase_0.fasta";
