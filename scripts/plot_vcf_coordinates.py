@@ -204,7 +204,7 @@ def plot_ideograms(axes, ideograms_per_chromosome, n_rows):
             axes[column_index][-1].set_xlabel("Coordinate (Mbp)")
 
 
-def plot_variants(figure, axes, n_rows, bin_size, variants_per_chromosome, lengths):
+def plot_variants(figure, axes, n_rows, bin_size, variants_per_chromosome, lengths, ymax=None):
 
     for i,item in enumerate(sorted(variants_per_chromosome.items(), key=lambda x: get_chromosome_ordering(x[0]))):
         name,[fn_iterative_histogram,fp_iterative_histogram] = item
@@ -228,16 +228,20 @@ def plot_variants(figure, axes, n_rows, bin_size, variants_per_chromosome, lengt
         axes[column_index][row_index].bar(x=x, height=fp_frequencies, width=bin_size, color="C1")
         axes[column_index+2][row_index].bar(x=x, height=fn_frequencies, width=bin_size, color="C1")
 
-        # axes[column_index][row_index].set_ylim([0,20])
         axes[column_index+1][row_index].set_ylim([-1.2,1.2])
-        # axes[column_index+2][row_index].set_ylim([-20,0])
+
+        if ymax is not None:
+            axes[column_index][row_index].set_ylim([0,ymax])
+            axes[column_index+2][row_index].set_ylim([-ymax,0])
 
         axes[column_index][row_index].set_xlim([-0.1*(max(lengths.values())),max(lengths.values())*1.1])
         axes[column_index+1][row_index].set_xlim([-0.1*(max(lengths.values())),max(lengths.values())*1.1])
         axes[column_index+2][row_index].set_xlim([-0.1*(max(lengths.values())),max(lengths.values())*1.1])
 
 
-def main(fn_vcf_path, fp_vcf_path, ideogram_path):
+def main(fn_vcf_path, fp_vcf_path, ideogram_path, ymax=None):
+    # This object will contain a mapping of chromosome ID --> [histogram_0, histrogram_1]
+    # where histograms show the number of items found in each bin.
     variants_per_chromosome = defaultdict(lambda: [None,None])
     lengths = dict()
 
@@ -245,9 +249,13 @@ def main(fn_vcf_path, fp_vcf_path, ideogram_path):
 
     ideograms_per_chromosome = defaultdict(list)
 
-    with open(fp_vcf_path, 'r') as fp_file, open(fn_vcf_path, 'r') as fn_file:
-        parse_vcf(fn_file, lengths, variants_per_chromosome, bin_size, 0)
-        parse_vcf(fp_file, lengths, variants_per_chromosome, bin_size, 1)
+    if fp_vcf_path is not None:
+        with open(fp_vcf_path, 'r') as fp_file:
+            parse_vcf(fp_file, lengths, variants_per_chromosome, bin_size, 1)
+
+    if fn_vcf_path is not None:
+        with open(fn_vcf_path, 'r') as fn_file:
+            parse_vcf(fn_file, lengths, variants_per_chromosome, bin_size, 0)
 
     if ideogram_path is not None:
         with open(ideogram_path, 'r') as file:
@@ -257,13 +265,17 @@ def main(fn_vcf_path, fp_vcf_path, ideogram_path):
 
                 e = IdeogramElement(line)
 
-                name = e.chrom.split("chr")[-1]
-                if name in variants_per_chromosome:
-                    ideograms_per_chromosome[e.chrom].append(e)
+                name = e.chrom
 
-                    print(e)
-                else:
-                    print("WARNING: ideogram name not found in VCF: " + name)
+                if name not in variants_per_chromosome:
+                    name = e.chrom.split("chr")[-1]
+
+                    if name not in variants_per_chromosome:
+                        print("WARNING: ideogram name not found in VCF: " + name)
+                        continue
+
+                ideograms_per_chromosome[name].append(e)
+                print(e)
 
     n_rows = int(math.ceil(float(len(variants_per_chromosome))/2))
     figure, axes = pyplot.subplots(nrows=n_rows*3, ncols=2, sharey=False, sharex=True, gridspec_kw={'height_ratios': [2, 1, 2]*n_rows})
@@ -276,8 +288,22 @@ def main(fn_vcf_path, fp_vcf_path, ideogram_path):
         if m > max_ylim:
             max_ylim = m
 
-    plot_variants(figure, axes, n_rows, bin_size, variants_per_chromosome, lengths)
+    plot_variants(figure, axes, n_rows, bin_size, variants_per_chromosome, lengths, ymax)
     plot_ideograms(axes, ideograms_per_chromosome, n_rows)
+
+    if fp_vcf_path is None:
+        for i in range(axes.shape[0]):
+            if i % 3 == 0:
+                axes[i][0].axis('off')
+                axes[i][1].axis('off')
+                axes[i][1].get_yaxis().set_visible(False)
+
+    if fn_vcf_path is None:
+        for i in range(axes.shape[0]):
+            if i % 3 == 2:
+                axes[i][0].axis('off')
+                axes[i][1].axis('off')
+                axes[i][1].get_yaxis().set_visible(False)
 
     figure.set_size_inches(24,32)
     pyplot.savefig("vcf_distribution.png", dpi=200)
@@ -297,16 +323,16 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-fp",
-        required=True,
+        required=False,
         type=str,
-        help="Input vcf file containing false positive records, can be a comma separated list"
+        help="Input vcf file containing false positive records"
     )
 
     parser.add_argument(
         "-fn",
-        required=True,
+        required=False,
         type=str,
-        help="Input vcf file containing false negative records, can be a comma separated list"
+        help="Input vcf file containing false negative records"
     )
 
     parser.add_argument(
@@ -317,6 +343,14 @@ if __name__ == "__main__":
         help="Ideogram 'cytoBandIdeo' table format from UCSC genome table browser"
     )
 
+    parser.add_argument(
+        "--ymax",
+        required=False,
+        type=int,
+        default=None,
+        help="manually set y limit for all plots"
+    )
+
     args = parser.parse_args()
 
-    main(fn_vcf_path=args.fn, fp_vcf_path=args.fp, ideogram_path=args.ideogram)
+    main(fn_vcf_path=args.fn, fp_vcf_path=args.fp, ideogram_path=args.ideogram, ymax=args.ymax)
