@@ -51,6 +51,7 @@ set(SOURCES
         src/Bam.cpp
         src/BinaryIO.cpp
         src/BinarySequence.cpp
+        src/binomial.cpp
         src/Bipartition.cpp
         src/BubbleGraph.cpp
         src/chain.cpp
@@ -702,6 +703,7 @@ find_package(Threads REQUIRED)
 set(TESTS
         test_alignment_chain
         test_assign_phase
+        test_binomial
         test_bfs
         test_bubble_graph
         test_bubble_align
@@ -769,6 +771,7 @@ set(EXECUTABLES
         phase_haplotype_paths
         phase_contacts
         rephase_tripartition
+        rephase_tripartition_with_monte_carlo
         phase_contacts_as_tripartition
         remove_empty_nodes
         split_connected_components

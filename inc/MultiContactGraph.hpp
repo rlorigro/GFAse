@@ -18,6 +18,7 @@ using handlegraph::nid_t;
 using bdsg::HashGraph;
 
 
+#include <unordered_set>
 #include <functional>
 #include <utility>
 #include <thread>
@@ -27,6 +28,7 @@ using bdsg::HashGraph;
 #include <map>
 #include <set>
 
+using std::unordered_set;
 using std::function;
 using std::atomic;
 using std::mutex;
@@ -45,14 +47,17 @@ using alt_component_t = pair <set<int32_t>, set<int32_t> >;
 
 class NonBipartiteEdgeException : public std::runtime_error{
 public:
-    alt_component_t component;
+    alt_component_t component_a;
+    alt_component_t component_b;
     int32_t a;
     int32_t b;
+    vector<int32_t> conflicts_0;
+    vector<int32_t> conflicts_1;
     string message;
 
-    const char* what() const noexcept override;
+    [[nodiscard]] const char* what() const noexcept override;
 
-    NonBipartiteEdgeException(alt_component_t& c, int32_t a, int32_t b);
+    NonBipartiteEdgeException(const alt_component_t& c_a, const alt_component_t& c_b, int32_t a, int32_t b);
 };
 
 
@@ -110,8 +115,11 @@ public:
     void try_insert_node(int32_t id, int8_t partition);
     void remove_node(int32_t id);
     void set_partition(int32_t id, int8_t partition);
+    void set_partition(const alt_component_t& component, int8_t partition);
     void add_alt(int32_t a, int32_t b);
+    void add_alt(const alt_component_t& a, const alt_component_t& b, bool remove_weights=true);
     size_t edge_count(int32_t id);
+    size_t edge_count();
 
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const MultiNode& n)>& f) const;
@@ -128,12 +136,15 @@ public:
     int32_t get_node_length(int32_t id) const;
     int32_t get_edge_weight(int32_t a, int32_t b) const;
     void get_alt_component(int32_t id, bool validate, alt_component_t& component) const;
+    void get_alt_components(vector <alt_component_t>& alt_components) const;
+    void get_alt_component_representatives(vector<int32_t>& representative_ids) const;
     int8_t get_partition(int32_t id) const;
 
     // Optimization
     double get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const;
     double compute_total_consistency_score() const;
     double compute_consistency_score(int32_t id) const;
+    double compute_consistency_score(alt_component_t& component) const;
     void get_partitions(vector <pair <int32_t,int8_t> >& partitions) const;
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
     void randomize_partitions();
@@ -142,13 +153,22 @@ public:
     void write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const;
     void write_bandage_csv(path output_path, const IncrementalIdMap<string>& id_map) const;
     void write_node_data(path output_path, const IncrementalIdMap<string>& id_map) const;
-    void assert_component_is_valid(const alt_component_t& component) const;
 
     // Misc
+    void assert_component_is_valid(const alt_component_t& component) const;
+    bool components_are_compatible(const alt_component_t& component_a, const alt_component_t& component_b) const;
+    bool of_same_component(int32_t id_a, int32_t id_b) const;
+    bool of_same_component_side(int32_t id_a, int32_t id_b) const;
     void validate_alts();
     size_t size();
-    void resize();
+
+    void merge_components(
+        const alt_component_t& component_a,
+        const alt_component_t& component_b,
+        alt_component_t& merged_component) const;
+
 };
+
 
 ostream& operator<<(ostream& o, const gfase::MultiNode& n);
 
@@ -164,8 +184,19 @@ void random_multicontact_phase_search(
 
 void phase_contacts(
         MultiContactGraph& contact_graph,
+        size_t n_threads,
+        size_t m_iterations = 10000,
+        bool component_scale = false
+);
+
+
+void monte_carlo_phase_contacts(
+        MultiContactGraph& contact_graph,
+        const IncrementalIdMap<string>& id_map,
+        path output_dir,
         size_t n_threads
 );
+
 
 }
 

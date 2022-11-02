@@ -212,7 +212,7 @@ void BubbleGraph::generate_bubbles_from_csv(path csv_path, IncrementalIdMap<stri
             if (tokens[2] != "Phase"){
                 throw runtime_error("ERROR: BubbleGraph CSV has incorrect headers");
             }
-            tokens.clear();
+            tokens = {""};
             l++;
             continue;
         }

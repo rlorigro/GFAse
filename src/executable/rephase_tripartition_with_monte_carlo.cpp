@@ -124,8 +124,6 @@ void rephase(
         path alignment_csv_path,
         path contacts_path,
         path output_dir,
-        size_t m_iterations,
-        size_t sample_size,
         size_t n_threads){
 
     if (exists(output_dir)){
@@ -140,28 +138,11 @@ void rephase(
 
     load_alts_from_alignment_csv(alignment_csv_path, contact_graph, id_map);
 
-    cerr << "Final phase:" << '\n';
-    vector <pair <int32_t,int8_t> > phase_state;
+    contact_graph.for_each_node([&](int32_t id){
+        contact_graph.remove_edge(id,id);
+    });
 
-    auto best_score = numeric_limits<double>::min();
-    vector <pair <int32_t,int8_t> > best_phase_state;
-
-    for (size_t i=0; i<sample_size; i++){
-        phase_contacts(contact_graph, n_threads, m_iterations);
-        contact_graph.get_partitions(phase_state);
-
-        auto score = contact_graph.compute_total_consistency_score();
-        cerr << i << ' ' << score << '\n';
-
-        if (score > best_score){
-            best_score = score;
-            best_phase_state = phase_state;
-        }
-    }
-
-    contact_graph.set_partitions(best_phase_state);
-
-    cerr << "Final score:" << ' ' << best_score << '\n';
+    monte_carlo_phase_contacts(contact_graph, id_map, output_dir, n_threads);
 
     path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
@@ -176,8 +157,6 @@ int main (int argc, char* argv[]){
     path alignment_csv_path;
     path contacts_path;
     path output_dir;
-    size_t m_iterations = 1;
-    size_t sample_size = 1;
     size_t n_threads = 1;
 
     CLI::App app{"App description"};
@@ -211,19 +190,9 @@ int main (int argc, char* argv[]){
             n_threads,
             "Maximum number of threads to use");
 
-    app.add_option(
-            "-m,--m_iterations",
-            m_iterations,
-            "How many iterations to allow convergence on local minima");
-
-    app.add_option(
-            "-s,--sample_size",
-            sample_size,
-            "How many times to sample from random seeds (best local minima is used for output)");
-
     CLI11_PARSE(app, argc, argv);
 
-    rephase(ids_csv_path, alignment_csv_path, contacts_path, output_dir, m_iterations, sample_size, n_threads);
+    rephase(ids_csv_path, alignment_csv_path, contacts_path, output_dir, n_threads);
 
     return 0;
 }
