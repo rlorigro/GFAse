@@ -706,6 +706,7 @@ set(TESTS
         test_binomial
         test_bfs
         test_bubble_graph
+        test_bubblegraph_chaining
         test_bubble_align
         test_binary_sequence
         test_binary_sequence_performance

@@ -93,14 +93,17 @@ void write_chaining_info_to_file(
         const PathHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         const string& filename_prefix,
-        size_t component_index);
+        size_t component_index,
+        bool write_gfa = true);
 
 
 void chain_phased_gfa(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
         const BubbleGraph& bubble_graph,
-        path output_dir);
+        path output_dir,
+        bool write_gfa = true,
+        bool write_fasta  = true);
 
 }
 

@@ -66,14 +66,17 @@ void write_chaining_info_to_file(
         const PathHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         const string& filename_prefix,
-        size_t component_index
+        size_t component_index,
+        bool write_gfa
 ){
 
     size_t c = component_index;
 
-    path file_path = output_dir / "components" / to_string(c) / (filename_prefix + ".gfa");
-    ofstream file(file_path);
-    handle_graph_to_gfa(graph, id_map, file);
+    if (write_gfa) {
+        path file_path = output_dir / "components" / to_string(c) / (filename_prefix + ".gfa");
+        ofstream file(file_path);
+        handle_graph_to_gfa(graph, id_map, file);
+    }
 
     path test_gfa_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph.gfa");
     ofstream test_gfa_chain(test_gfa_chain_path);
@@ -101,7 +104,14 @@ void write_chaining_info_to_file(
 }
 
 
-void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, const BubbleGraph& bubble_graph, path output_dir){
+void chain_phased_gfa(
+        MutablePathDeletableHandleGraph& graph,
+        IncrementalIdMap<string>& id_map, const
+        BubbleGraph& bubble_graph,
+        path output_dir,
+        bool write_gfa,
+        bool write_fasta
+        ){
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
@@ -111,39 +121,6 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
     split_connected_components(graph, id_map, connected_components, true);
 
     cerr << "Chaining phased bubbles..." << '\n';
-
-    path phase_0_fasta_path = output_dir / "phase_0.fasta";
-    ofstream phase_0_fasta(phase_0_fasta_path);
-    path phase_1_fasta_path = output_dir / "phase_1.fasta";
-    ofstream phase_1_fasta(phase_1_fasta_path);
-    path unphased_initial_fasta_path = output_dir / "unphased_initial.fasta";
-    ofstream unphased_initial_fasta(unphased_initial_fasta_path);
-    path unphased_fasta_path = output_dir / "unphased.fasta";
-    ofstream unphased_fasta(unphased_fasta_path);
-    path provenance_csv_file_path = output_dir / "phase_chains.csv";
-    ofstream provenance_csv_file(provenance_csv_file_path);
-
-    if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
-    }
-
-    if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
-    }
-
-    if (not (unphased_initial_fasta.is_open() and unphased_initial_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
-    }
-
-    if (not (unphased_fasta.is_open() and unphased_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
-    }
-
-    if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
-        throw runtime_error("ERROR: file could not be written: " + provenance_csv_file_path.string());
-    }
-
-    provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
     for (size_t c=0; c<connected_components.size(); c++){
         unzip(connected_components[c], connected_component_ids[c], false);
@@ -192,11 +169,9 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
         }
         ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
 
-        write_chaining_info_to_file(output_dir, ploidy_bipartition, chain_bipartition, cc_graph, id_map, filename_prefix, c);
-
+        write_chaining_info_to_file(output_dir, ploidy_bipartition, chain_bipartition, cc_graph, id_map, filename_prefix, c, write_gfa);
 
         merge_diploid_singletons(bubble_graph, chain_bipartition);
-
 
         path test_gfa_chain_merged_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph_merged.gfa");
         ofstream test_gfa_chain_merged(test_gfa_chain_merged_path);
@@ -288,35 +263,78 @@ void chain_phased_gfa(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<s
                     prev_subgraph_index = subgraph_index;
                 });
 
-        unzip(cc_graph, id_map, false);
-        write_paths_to_csv(cc_graph, id_map, provenance_csv_file);
+        // Write out chaining paths before unzipping
+        path provenance_csv_file_path = output_dir / "phase_chains.csv";
+        ofstream provenance_csv_file(provenance_csv_file_path);
 
-        path test_gfa_phased_path = output_dir / "components" / to_string(c) / (filename_prefix + "phased.gfa");
-        ofstream test_gfa_phased(test_gfa_phased_path);
-        if (not test_gfa_phased.is_open() or not test_gfa_phased.good()){
-            throw runtime_error("ERROR: could not write to file: " + test_gfa_phased_path.string());
+        if (not (provenance_csv_file.is_open() and provenance_csv_file.good())){
+            throw runtime_error("ERROR: file could not be written: " + provenance_csv_file_path.string());
         }
 
-        handle_graph_to_gfa(cc_graph, id_map, test_gfa_phased);
+        provenance_csv_file << "path_name" << ',' << "n_steps" << ',' << "nodes" << '\n';
 
-        cc_graph.for_each_handle([&](const handle_t& h){
-            auto id = cc_graph.get_id(h);
-            auto name = id_map.get_name(id);
+        write_paths_to_csv(cc_graph, id_map, provenance_csv_file);
 
-            if (phase_0_node_names.count(name) > 0){
-                phase_0_fasta << '>' << name << '\n';
-                phase_0_fasta << cc_graph.get_sequence(h) << '\n';
+        unzip(cc_graph, id_map, false);
+
+        if (write_gfa){
+            // Write phased + unzipped gfa to file
+            path test_gfa_phased_path = output_dir / "components" / to_string(c) / (filename_prefix + "phased.gfa");
+            ofstream test_gfa_phased(test_gfa_phased_path);
+            if (not test_gfa_phased.is_open() or not test_gfa_phased.good()){
+                throw runtime_error("ERROR: could not write to file: " + test_gfa_phased_path.string());
             }
-            else if (phase_1_node_names.count(name) > 0){
-                phase_1_fasta << '>' << name << '\n';
-                phase_1_fasta << cc_graph.get_sequence(h) << '\n';
+
+            handle_graph_to_gfa(cc_graph, id_map, test_gfa_phased);
+        }
+
+
+        if (write_fasta){
+            path phase_0_fasta_path = output_dir / "phase_0.fasta";
+            ofstream phase_0_fasta(phase_0_fasta_path);
+            path phase_1_fasta_path = output_dir / "phase_1.fasta";
+            ofstream phase_1_fasta(phase_1_fasta_path);
+            path unphased_initial_fasta_path = output_dir / "unphased_initial.fasta";
+            ofstream unphased_initial_fasta(unphased_initial_fasta_path);
+            path unphased_fasta_path = output_dir / "unphased.fasta";
+            ofstream unphased_fasta(unphased_fasta_path);
+
+            if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
+                throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
             }
-            else {
-                unphased_initial_fasta << '>' << name << '\n';
-                unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
-                unphased_handles_per_component[c].emplace_back(h);
+
+            if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
+                throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
             }
-        });
+
+            if (not (unphased_initial_fasta.is_open() and unphased_initial_fasta.good())){
+                throw runtime_error("ERROR: file could not be written: " + unphased_initial_fasta_path.string());
+            }
+
+            if (not (unphased_fasta.is_open() and unphased_fasta.good())){
+                throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
+            }
+
+            cc_graph.for_each_handle([&](const handle_t& h){
+                auto id = cc_graph.get_id(h);
+                auto name = id_map.get_name(id);
+
+                if (phase_0_node_names.count(name) > 0){
+                    phase_0_fasta << '>' << name << '\n';
+                    phase_0_fasta << cc_graph.get_sequence(h) << '\n';
+                }
+                else if (phase_1_node_names.count(name) > 0){
+                    phase_1_fasta << '>' << name << '\n';
+                    phase_1_fasta << cc_graph.get_sequence(h) << '\n';
+                }
+                else {
+                    unphased_initial_fasta << '>' << name << '\n';
+                    unphased_initial_fasta << cc_graph.get_sequence(h) << '\n';
+                    unphased_handles_per_component[c].emplace_back(h);
+                }
+            });
+
+        }
     }
 }
 
