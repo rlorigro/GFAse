@@ -195,7 +195,7 @@ void random_node_scale_phase_search(
             if (contact_graph.edge_count(n) == 0){
                 continue;
             }
-
+//            cerr << "---- " << n << " ----" << '\n';
             bool has_alt = contact_graph.has_alt(n);
             auto prev_score = contact_graph.compute_consistency_score(n);
             auto prev_partition = contact_graph.get_partition(n);
@@ -207,7 +207,14 @@ void random_node_scale_phase_search(
             // TODO: find convergence issue
             // TODO: cache components?
 
+//            cerr << "max_score: " << ' ' << max_score << '\n';
+//            cerr << "p_max: " << ' ' << int(p_max) << '\n';
+//            cerr << "prev_score: " << ' ' << prev_score << '\n';
+//            cerr << "prev_partition: " << ' ' << int(prev_partition) << '\n';
+
             if (prev_partition == -1 or prev_partition == 0) {
+//                cerr << "TEST P = 1" << '\n';
+
                 contact_graph.set_partition(n, 1);
                 auto score = contact_graph.compute_consistency_score(n);
 
@@ -215,9 +222,16 @@ void random_node_scale_phase_search(
                     max_score = score;
                     p_max = 1;
                 }
+
+//                cerr << "max_score: " << ' ' << max_score << '\n';
+//                cerr << "score: " << ' ' << score << '\n';
+//                cerr << "p_max: " << ' ' << int(p_max) << '\n';
+
             }
 
             if (prev_partition == 1 or prev_partition == 0) {
+//                cerr << "TEST P = -1" << '\n';
+
                 contact_graph.set_partition(n, -1);
                 auto score = contact_graph.compute_consistency_score(n);
 
@@ -225,6 +239,11 @@ void random_node_scale_phase_search(
                     max_score = score;
                     p_max = -1;
                 }
+
+//                cerr << "max_score: " << ' ' << max_score << '\n';
+//                cerr << "score: " << ' ' << score << '\n';
+//                cerr << "p_max: " << ' ' << int(p_max) << '\n';
+
             }
 
             // If the node has no "alt" it can be made neutral
@@ -252,18 +271,20 @@ void random_node_scale_phase_search(
             contact_graph.set_partitions(best_partitions);
         }
 
-        cerr << m << ' ' << best_score << ' ' << total_score << ' ';
+//        cerr << m << ' ' << best_score << ' ' << total_score << ' ';
+//        size_t x = 0;
 //        for (auto& [n,p]: best_partitions){
+//            if (++x > 10){
+//                break;
+//            }
 //            cerr << '(' << n << ',' << int(p) << ") ";
 //        }
-        cerr << '\n';
+//        cerr << '\n';
 
         phase_mutex.unlock();
 
         m = job_index.fetch_add(1);
     }
-
-    contact_graph.set_partitions(best_partitions);
 }
 
 

@@ -144,6 +144,7 @@ public:
 
     // Optimization
     double get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const;
+    double get_score(int32_t id_a, int32_t id_b) const;
     double compute_total_consistency_score() const;
     double compute_consistency_score(int32_t id) const;
     double compute_consistency_score(alt_component_t& component) const;

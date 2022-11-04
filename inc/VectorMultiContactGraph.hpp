@@ -59,7 +59,10 @@ public:
     // Which set does this node belong to
     int8_t partition;
 
-    VectorMultiNode()=default;
+    // For simplifying handling of missing nodes
+    bool is_null;
+
+    VectorMultiNode();
     VectorMultiNode(int8_t partition);
     VectorMultiNode(const MultiNode& node);
     bool has_alt() const;
@@ -67,7 +70,7 @@ public:
 
 
 class VectorMultiContactGraph {
-    vector <shared_ptr<VectorMultiNode> > nodes;
+    vector <VectorMultiNode> nodes;
     vector <unordered_map<int32_t,int32_t> > edge_weights;
 
 public:
@@ -87,9 +90,10 @@ public:
     bool has_alt(int32_t id) const;
 
     // Optimization
-    static double get_score(const shared_ptr<VectorMultiNode>& a, const shared_ptr<VectorMultiNode>& b, int32_t weight);
+    static double get_score(const VectorMultiNode& a, const VectorMultiNode& b, int32_t weight);
     double compute_consistency_score(int32_t id) const;
     double compute_total_consistency_score() const;
+    double compare_total_consistency_score(const MultiContactGraph& other_graph) const;
 };
 
 

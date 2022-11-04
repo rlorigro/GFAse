@@ -713,7 +713,7 @@ void MultiContactGraph::validate_alts() {
             for (auto& alt_id: node.alts){
                 auto& alt = nodes.at(alt_id);
 
-                cerr << id << ',' << alt_id << ',' << int(node.partition) << ',' << int(alt.partition) << '\n';
+//                cerr << id << ',' << alt_id << ',' << int(node.partition) << ',' << int(alt.partition) << '\n';
 
                 if (alt.partition == node.partition){
                     throw runtime_error("ERROR: (MultiContactGraph::set_partition) alt nodes in same partition: " + to_string(int(id)) + ',' + to_string(int(alt_id)));
@@ -757,7 +757,7 @@ void MultiContactGraph::set_partition(int32_t id, int8_t partition) {
 
         for (auto& alt_id: component.second){
             auto& alt = nodes.at(alt_id);
-            alt.partition = partition*int8_t(-1);
+            alt.partition = int8_t(int(partition)*-1);
         }
         for (auto& alt_id: component.first){
             auto& alt = nodes.at(alt_id);
@@ -839,17 +839,24 @@ size_t MultiContactGraph::get_max_id() const {
 double MultiContactGraph::get_score(const MultiNode& a, const MultiNode& b, int32_t weight) const{
     double score = 0;
 
-    auto p_a = a.partition;
-    auto p_b = b.partition;
+    double p_a = a.partition;
+    double p_b = b.partition;
 
     if (p_a != 0 and p_b != 0) {
-        score = p_a * p_b * weight;
+        score = p_a * p_b * double(weight);
     }
     else{
         score = 0;
     }
 
+//    cerr << p_a << 'x' << p_b << 'x' << weight << '=' << score << '\n' << std::flush;
+
     return score;
+}
+
+
+double MultiContactGraph::get_score(int32_t id_a, int32_t id_b) const{
+    return get_score(nodes.at(id_a), nodes.at(id_b), edge_weights.at(edge(id_a, id_b)));
 }
 
 
@@ -871,7 +878,12 @@ double MultiContactGraph::compute_consistency_score(int32_t id) const{
     for (auto& alt_id: n.alts){
         const auto& n_alt = nodes.at(alt_id);
         for_each_node_neighbor(alt_id, [&](int32_t id_other, const MultiNode& n_other){
+            if (alt_id == id_other) {
+                return;
+            }
+
             score += get_score(n_alt, n_other, edge_weights.at(edge(alt_id, id_other)));
+//            cerr << '\t' << alt_id << "<->" << id_other << ' ' << int(n_alt.partition) << 'x' << int(n_other.partition) << 'x' << edge_weights.at(edge(alt_id, id_other)) << ' ' << score << '\n';
         });
     }
 
@@ -901,7 +913,7 @@ double MultiContactGraph::compute_consistency_score(alt_component_t& component) 
 
         for_each_node_neighbor(id, [&](int32_t id_other, const MultiNode& n_other){
             // Skip self edges if there are any
-            if (id == id_other){
+            if (id == id_other) {
                 return;
             }
 
