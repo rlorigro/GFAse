@@ -3,6 +3,7 @@
 #include "graph_utility.hpp"
 #include "MultiContactGraph.hpp"
 #include "ContactGraph.hpp"
+#include "optimize.hpp"
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"

@@ -3,6 +3,7 @@
 #include "graph_utility.hpp"
 #include "MultiContactGraph.hpp"
 #include "ContactGraph.hpp"
+#include "optimize.hpp"
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
@@ -15,7 +16,6 @@
 #include "Bam.hpp"
 #include "minimap.h"
 
-#include "SvgPlot.hpp"
 
 using gfase::gfa_to_handle_graph;
 using gfase::for_element_in_sam_file;
@@ -385,7 +385,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         contact_graph.remove_edge(id,id);
     });
 
-    phase_contacts(contact_graph, n_threads);
+    phase_contacts(contact_graph, n_threads, 10);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 

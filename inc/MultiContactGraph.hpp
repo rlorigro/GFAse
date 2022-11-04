@@ -66,14 +66,14 @@ public:
     // To find adjacent nodes
     set<int32_t> neighbors;
 
+    // To find linked/opposing node in a bubble
+    set<int32_t> alts;
+
     // Total reads located on this node > mapQ threshold, regardless of pair mapQ
     int64_t coverage;
 
     // Sequence length of this node
     int32_t length;
-
-    // To find linked/opposing node in a bubble
-    set<int32_t> alts;
 
     // Which set does this node belong to
     int8_t partition;
@@ -91,6 +91,7 @@ class MultiContactGraph {
     unordered_map<int32_t,MultiNode> nodes;
 
     static const array<string,3> colors;
+    int32_t max_id;
 
     // No safety checks built in, only should be called when it's known that the nodes exist and the edge does not.
     void insert_edge(int32_t a, int32_t b, int32_t weight);
@@ -99,7 +100,7 @@ public:
     // Constructors
     MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map);
     MultiContactGraph(path csv_path, const IncrementalIdMap<string>& id_map);
-    MultiContactGraph()=default;
+    MultiContactGraph();
 
     // Editing
     void remove_edge(int32_t a, int32_t b);
@@ -118,11 +119,12 @@ public:
     void set_partition(const alt_component_t& component, int8_t partition);
     void add_alt(int32_t a, int32_t b);
     void add_alt(const alt_component_t& a, const alt_component_t& b, bool remove_weights=true);
-    size_t edge_count(int32_t id);
-    size_t edge_count();
+    size_t edge_count(int32_t id) const;
+    size_t edge_count() const;
 
     // Iterating and accessing
     void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other, const MultiNode& n)>& f) const;
+    void for_each_node_neighbor(int32_t id, const function<void(int32_t id_other)>& f) const;
     void for_each_node(const function<void(int32_t id, const MultiNode& n)>& f) const;
     void for_each_node(const function<void(int32_t id)>& f) const;
     void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
@@ -160,7 +162,8 @@ public:
     bool of_same_component(int32_t id_a, int32_t id_b) const;
     bool of_same_component_side(int32_t id_a, int32_t id_b) const;
     void validate_alts();
-    size_t size();
+    size_t size() const;
+    size_t get_max_id() const;
 
     void merge_components(
         const alt_component_t& component_a,
@@ -171,32 +174,6 @@ public:
 
 
 ostream& operator<<(ostream& o, const gfase::MultiNode& n);
-
-void random_multicontact_phase_search(
-        MultiContactGraph contact_graph,
-        const vector<int32_t>& ids,
-        vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<double>& best_score,
-        atomic<size_t>& job_index,
-        mutex& phase_mutex,
-        size_t m_iterations);
-
-
-void phase_contacts(
-        MultiContactGraph& contact_graph,
-        size_t n_threads,
-        size_t m_iterations = 10000,
-        bool component_scale = false
-);
-
-
-void monte_carlo_phase_contacts(
-        MultiContactGraph& contact_graph,
-        const IncrementalIdMap<string>& id_map,
-        path output_dir,
-        size_t n_threads
-);
-
 
 }
 

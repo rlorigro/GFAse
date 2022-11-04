@@ -1,5 +1,4 @@
 #include "MultiContactGraph.hpp"
-#include "binomial.hpp"
 
 #include <thread>
 #include <ostream>
@@ -274,7 +273,9 @@ bool MultiContactGraph::of_same_component(int32_t id_a, int32_t id_b) const{
 const array<string,3> MultiContactGraph::colors = {"Cornflower Blue", "Plum", "Tomato"};
 
 
-MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map){
+MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const IncrementalIdMap<string>& id_map):
+    max_id(-1)
+{
 //    nodes.set_deleted_key(-1);
 
     string s;
@@ -290,7 +291,14 @@ MultiContactGraph::MultiContactGraph(const contact_map_t& contact_map, const Inc
 }
 
 
-MultiContactGraph::MultiContactGraph(path csv_path, const IncrementalIdMap<string>& id_map){
+MultiContactGraph::MultiContactGraph():
+        max_id(-1)
+{}
+
+
+MultiContactGraph::MultiContactGraph(path csv_path, const IncrementalIdMap<string>& id_map):
+        max_id(-1)
+{
     ifstream file(csv_path);
 
     if (not (file.is_open() and file.good())){
@@ -617,6 +625,21 @@ void MultiContactGraph::for_each_node_neighbor(int32_t id, const function<void(i
 }
 
 
+void MultiContactGraph::for_each_node_neighbor(int32_t id, const function<void(int32_t id_other)>& f) const{
+    auto result = nodes.find(id);
+
+    if (result == nodes.end()){
+        throw runtime_error("ERROR: MultiContactGraph::for_each_node_neighbor: cannot iterate neighbors for id not in contact graph: " + to_string(id));
+    }
+
+    auto& node = result->second;
+
+    for (auto& id_other: node.neighbors){
+        f(id_other);
+    }
+}
+
+
 void MultiContactGraph::for_each_node(const function<void(int32_t id, const MultiNode& n)>& f) const{
     for (auto& [id,node]: nodes){
         f(id, node);
@@ -644,11 +667,19 @@ void MultiContactGraph::insert_node(int32_t id, int8_t partition){
     }
 
     nodes.emplace(id, partition);
+
+    if (id > max_id){
+        max_id = id;
+    }
 }
 
 
 void MultiContactGraph::insert_node(int32_t id){
     nodes.emplace(id, 0);
+
+    if (id > max_id){
+        max_id = id;
+    }
 }
 
 
@@ -656,12 +687,20 @@ void MultiContactGraph::try_insert_node(int32_t id){
     if (nodes.count(id) == 0) {
         nodes.emplace(id, 0);
     }
+
+    if (id > max_id){
+        max_id = id;
+    }
 }
 
 
 void MultiContactGraph::try_insert_node(int32_t id, int8_t partition){
     if (nodes.count(id) == 0) {
         nodes.emplace(id, partition);
+    }
+
+    if (id > max_id){
+        max_id = id;
     }
 }
 
@@ -760,21 +799,35 @@ void MultiContactGraph::remove_node(int32_t id){
     }
 
     nodes.erase(id);
+
+    // Expensive operation to keep track of the max id during deletion, if the max id is deleted
+    if (id == max_id){
+        for (auto& [id2,_]: nodes){
+            if (id2 > max_id){
+                max_id = id2;
+            }
+        }
+    }
 }
 
 
-size_t MultiContactGraph::edge_count(int32_t id){
+size_t MultiContactGraph::edge_count(int32_t id) const{
     return nodes.at(id).neighbors.size();
 }
 
 
-size_t MultiContactGraph::edge_count(){
+size_t MultiContactGraph::edge_count() const{
     return edge_weights.size();
 }
 
 
-size_t MultiContactGraph::size(){
+size_t MultiContactGraph::size() const{
     return nodes.size();
+}
+
+
+size_t MultiContactGraph::get_max_id() const {
+    return max_id;
 }
 
 
@@ -803,7 +856,7 @@ double MultiContactGraph::get_score(const MultiNode& a, const MultiNode& b, int3
 double MultiContactGraph::compute_consistency_score(int32_t id) const{
     double score = 0;
 
-    auto n = nodes.at(id);
+    const auto& n = nodes.at(id);
 
     for_each_node_neighbor(id, [&](int32_t id_other, const MultiNode& n_other){
         // Skip self edges if there are any
@@ -816,7 +869,7 @@ double MultiContactGraph::compute_consistency_score(int32_t id) const{
     });
 
     for (auto& alt_id: n.alts){
-        auto& n_alt = nodes.at(alt_id);
+        const auto& n_alt = nodes.at(alt_id);
         for_each_node_neighbor(alt_id, [&](int32_t id_other, const MultiNode& n_other){
             score += get_score(n_alt, n_other, edge_weights.at(edge(alt_id, id_other)));
         });
@@ -1081,524 +1134,6 @@ void MultiContactGraph::write_contact_map(path output_path, const IncrementalIdM
     for_each_edge([&](const pair<int32_t, int32_t> edge, int32_t weight) {
         output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weight << '\n';
     });
-}
-
-
-void random_node_scale_phase_search(
-        MultiContactGraph contact_graph,
-        const vector<int32_t>& ids,
-        vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<double>& best_score,
-        atomic<size_t>& job_index,
-        mutex& phase_mutex,
-        size_t m_iterations
-){
-
-    size_t m = job_index.fetch_add(1);
-
-    // True random number
-    std::random_device rd;
-
-    // Pseudorandom generator with true random seed
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
-
-    contact_graph.set_partitions(best_partitions);
-
-    double total_score;
-
-    while (m < m_iterations) {
-        // Randomly perturb
-        for (size_t i=0; i<((ids.size()/30) + 1); i++) {
-            auto r = ids.at(uniform_distribution(rng));
-
-            int8_t p;
-            if (contact_graph.has_alt(r)){
-                // Only allow {1,-1}
-                p = int8_t((uniform_distribution(rng) % 2));
-
-                if (p == 0){
-                    p = -1;
-                }
-            }
-            else{
-                // Allow {1,0,-1}
-                p = int8_t((uniform_distribution(rng) % 3) - 1);
-            }
-
-            contact_graph.set_partition(r, p);
-        }
-
-        for (size_t i=0; i<ids.size(); i++) {
-            auto n = ids.at(uniform_distribution(rng));
-
-            int64_t max_score = std::numeric_limits<int64_t>::min();
-            int8_t p_max = 0;
-
-            if (contact_graph.edge_count(n) == 0){
-                continue;
-            }
-
-            bool has_alt = contact_graph.has_alt(n);
-
-            for (int8_t p=-1; p<=1; p++) {
-                // If the node has an "alt" it can't be made neutral
-                if (has_alt and p==0){
-                    continue;
-                }
-
-                contact_graph.set_partition(n, p);
-                auto score = contact_graph.compute_consistency_score(n);
-
-                if (score > max_score) {
-                    max_score = score;
-                    p_max = p;
-                }
-
-//                cerr << n << ' ' << int(has_alt) << ' ' << int(p) << ' ' << score << ' ' << max_score << '\n';
-            }
-
-            contact_graph.set_partition(n, p_max);
-        }
-
-        total_score = contact_graph.compute_total_consistency_score();
-
-        phase_mutex.lock();
-        if (total_score > best_score) {
-            best_score = total_score;
-            contact_graph.get_partitions(best_partitions);
-        }
-        else {
-            contact_graph.set_partitions(best_partitions);
-        }
-
-//        cerr << m << ' ' << best_score << ' ' << total_score << ' ' << std::flush;
-//        for (auto& [n,p]: best_partitions){
-//            cerr << '(' << n << ',' << int(p) << ") ";
-//        }
-//        cerr << '\n';
-
-        phase_mutex.unlock();
-
-        m = job_index.fetch_add(1);
-    }
-
-    contact_graph.set_partitions(best_partitions);
-}
-
-
-
-void random_component_scale_phase_search(
-        MultiContactGraph contact_graph,
-        const vector<int32_t>& ids,
-        vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<double>& best_score,
-        atomic<size_t>& job_index,
-        mutex& phase_mutex,
-        size_t m_iterations
-){
-
-    size_t m = job_index.fetch_add(1);
-
-    // True random number
-    std::random_device rd;
-
-    // Pseudorandom generator with true random seed
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
-
-    contact_graph.set_partitions(best_partitions);
-
-    alt_component_t component;
-
-    double total_score;
-
-    while (m < m_iterations) {
-        // Randomly perturb
-        for (size_t i=0; i<((ids.size()/30) + 1); i++) {
-            auto r = ids.at(uniform_distribution(rng));
-
-            int8_t p;
-            if (contact_graph.has_alt(r)){
-                // Only allow {1,-1}
-                p = int8_t((uniform_distribution(rng) % 2));
-
-                if (p == 0){
-                    p = -1;
-                }
-            }
-            else{
-                // Allow {1,0,-1}
-                p = int8_t((uniform_distribution(rng) % 3) - 1);
-            }
-
-            contact_graph.set_partition(r, p);
-        }
-
-        for (size_t i=0; i<ids.size(); i++) {
-            auto n = ids.at(uniform_distribution(rng));
-
-            int64_t max_score = std::numeric_limits<int64_t>::min();
-            int8_t p_max = 0;
-
-            contact_graph.get_alt_component(n, false, component);
-            bool has_alt = not component.first.empty() and not component.second.empty();
-
-            for (int8_t p=-1; p<=1; p++) {
-                // If the node has an "alt" it can't be made neutral
-                if (has_alt and p==0){
-                    continue;
-                }
-
-                contact_graph.set_partition(component, p);
-
-                auto score = contact_graph.compute_consistency_score(component);
-
-                if (score > max_score) {
-                    max_score = score;
-                    p_max = p;
-                }
-
-//                cerr << n << ' ' << int(has_alt) << ' ' << int(p) << ' ' << score << ' ' << max_score << '\n';
-            }
-
-            contact_graph.set_partition(n, p_max);
-        }
-
-        total_score = contact_graph.compute_total_consistency_score();
-
-        phase_mutex.lock();
-        if (total_score > best_score) {
-            best_score = total_score;
-            contact_graph.get_partitions(best_partitions);
-        }
-        else {
-            contact_graph.set_partitions(best_partitions);
-        }
-
-//        cerr << m << ' ' << best_score << ' ' << total_score << ' ' << std::flush;
-//        for (auto& [n,p]: best_partitions){
-//            cerr << '(' << n << ',' << int(p) << ") ";
-//        }
-//        cerr << '\n';
-
-        phase_mutex.unlock();
-
-        m = job_index.fetch_add(1);
-    }
-
-    contact_graph.set_partitions(best_partitions);
-}
-
-using orientation_edge_t = pair <int32_t,int32_t>;
-using orientation_weight_t = array<int32_t, 2>;
-
-class OrientationDistribution{
-public:
-    unordered_map <orientation_edge_t, orientation_weight_t> edge_weights;
-    vector <alt_component_t> alt_components;
-
-    OrientationDistribution(const MultiContactGraph& contact_graph);
-    void write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const;
-    void update(const MultiContactGraph& contact_graph);
-};
-
-
-class OrientationEdgeComparator{
-public:
-    bool operator()(
-            const pair<orientation_edge_t,orientation_weight_t>& a,
-            const pair<orientation_edge_t,orientation_weight_t>& b
-            ){
-
-        auto a_ordinal = max(a.second[0], a.second[1]);
-        auto b_ordinal = max(b.second[0], b.second[1]);
-
-        bool result;
-
-        if (a_ordinal == b_ordinal){
-            result = a.second[0] < b.second[0];
-        }
-        else{
-            result = a_ordinal < b_ordinal;
-        }
-
-        return result;
-    }
-};
-
-
-void OrientationDistribution::write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const{
-    ofstream output_file(output_path);
-
-    if (not output_file.is_open() or not output_file.good()) {
-        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
-    }
-
-    output_file << "name_a" << ',' << "name_b" << ',' << "weight_0" << ',' << "weight_1" << ',' << "p_null" << '\n';
-
-    for(auto& [edge, weights]: edge_weights) {
-        double n = weights[0] + weights[1];
-        double k = min(weights[0], weights[1]);
-        output_file << id_map.get_name(edge.first) << ',' << id_map.get_name(edge.second) << ',' << weights[0] << ',' << weights[1] << ',' << binomial(0.5,n,k) << '\n';
-    }
-}
-
-
-OrientationDistribution::OrientationDistribution(const MultiContactGraph& contact_graph){
-    contact_graph.get_alt_components(alt_components);
-
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
-        edge_weights.insert({edge, {0,0}});
-    });
-}
-
-
-void OrientationDistribution::update(const MultiContactGraph& contact_graph){
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
-        auto [a,b] = edge;
-
-        bool orientation = contact_graph.get_partition(a) == contact_graph.get_partition(b);
-
-        edge_weights[edge][orientation]++;
-    });
-}
-
-
-void flip_component(alt_component_t& c){
-    auto temp = c.second;
-    c.second = c.first;
-    c.first = temp;
-}
-
-
-void monte_carlo_phase_contacts(
-        MultiContactGraph& contact_graph,
-        const IncrementalIdMap<string>& id_map,
-        path output_dir,
-        size_t n_threads
-){
-    auto unmerged_contact_graph = contact_graph;
-
-    size_t m_iterations = 200;
-    size_t sample_size = 30;
-    size_t n_rounds = 2;
-
-    unordered_set<orientation_edge_t> visited_edges;
-
-    vector <pair <int32_t,int8_t> > phase_state;
-
-    for (size_t i=0; i<n_rounds; i++){
-        OrientationDistribution orientation_distribution(contact_graph);
-
-        cerr << "---- " << i << " ----" << '\n';
-        for (size_t j=0; j<sample_size; j++){
-            phase_contacts(contact_graph, n_threads, m_iterations);
-            auto j_score = contact_graph.compute_total_consistency_score();
-
-            contact_graph.get_partitions(phase_state);
-            unmerged_contact_graph.set_partitions(phase_state);
-            auto j_score_unmerged = unmerged_contact_graph.compute_total_consistency_score();
-
-            cerr << j << ' ' << j_score << ' ' << j_score_unmerged << '\n';
-            orientation_distribution.update(contact_graph);
-        }
-
-        path output_path = output_dir / ("orientations_" + to_string(i) + ".csv");
-        orientation_distribution.write_contact_map(output_path, id_map);
-
-        vector <pair <orientation_edge_t, orientation_weight_t> > ordered_edges;
-        ordered_edges.reserve(contact_graph.edge_count());
-
-        for (const auto& [edge,weights]: orientation_distribution.edge_weights){
-            auto current_weight = max(weights[0],weights[1]);
-
-            if (current_weight == sample_size){
-                ordered_edges.emplace_back(edge, weights);
-            }
-        }
-
-        sort(ordered_edges.begin(), ordered_edges.end(), [&](
-                const pair<orientation_edge_t,orientation_weight_t>& a,
-                const pair<orientation_edge_t,orientation_weight_t>& b
-                ){
-
-            auto a_ordinal = max(a.second[0], a.second[1]);
-            auto b_ordinal = max(b.second[0], b.second[1]);
-
-            bool result = a_ordinal > b_ordinal;
-
-            if (a_ordinal == b_ordinal){
-                auto a0_consistency = contact_graph.compute_consistency_score(a.first.first);
-                auto a1_consistency = contact_graph.compute_consistency_score(a.first.second);
-                auto b0_consistency = contact_graph.compute_consistency_score(b.first.first);
-                auto b1_consistency = contact_graph.compute_consistency_score(b.first.second);
-                auto a_avg = (a0_consistency + a1_consistency) / 2;
-                auto b_avg = (b0_consistency + b1_consistency) / 2;
-
-                result = a_avg > b_avg;
-            }
-
-            return result;
-        });
-
-        auto top_result = ordered_edges.front().second;
-        auto max_weight = max(top_result[0],top_result[1]);
-        auto current_weight = max_weight;
-
-        alt_component_t component_a;
-        alt_component_t component_b;
-
-        unordered_set<int32_t> visited_nodes;
-
-        // TODO: Test stability
-
-//        cerr << "Starting with max_weight: " << max_weight << '\n';
-        size_t e = 0;
-        for (auto& [edge, weights]: ordered_edges){
-            if (double(e)/double(ordered_edges.size()) > 0.2){
-                break;
-            }
-
-            current_weight = max(weights[0],weights[1]);
-
-            if (current_weight < sample_size){
-                break;
-            }
-
-            auto partition = contact_graph.get_partition(edge.first);
-            bool flipped = weights[0] < weights[1];
-
-            if (visited_nodes.count(edge.first) + visited_nodes.count(edge.second) > 0){
-                continue;
-            }
-
-            cerr << id_map.get_name(edge.first) << ' ' << id_map.get_name(edge.second) << ' ' << weights[0] << ' ' << weights[1] << ' ' << current_weight << '\n';
-
-            contact_graph.get_alt_component(edge.first, false, component_a);
-            contact_graph.get_alt_component(edge.second, false, component_b);
-
-            if (flipped){
-                flip_component(component_b);
-            }
-
-            cerr << "merging:" << '\n';
-            cerr << "\ta" << '\n';
-            for (auto& id: component_a.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_a.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-            cerr << "\tb" << '\n';
-            for (auto& id: component_b.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_b.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-
-            contact_graph.add_alt(component_a, component_b, true);
-            contact_graph.set_partition(edge.first, partition);
-
-            alt_component_t component_merged;
-            contact_graph.get_alt_component(edge.first, false, component_merged);
-            cerr << "MERGED:" << '\n';
-            for (auto& id: component_merged.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_merged.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
-            }
-
-            for (auto& id: component_merged.first) {
-                visited_nodes.emplace(id);
-            }
-
-            for (auto& id: component_merged.second) {
-                visited_nodes.emplace(id);
-            }
-        }
-    }
-
-    cerr << "Final phase:" << '\n';
-    auto best_score = numeric_limits<double>::min();
-    auto best_phase_state = phase_state;
-
-    for (size_t i=0; i<sample_size; i++){
-        phase_contacts(contact_graph, n_threads, m_iterations*3);
-        contact_graph.get_partitions(phase_state);
-        unmerged_contact_graph.set_partitions(phase_state);
-
-        auto score_unmerged = unmerged_contact_graph.compute_total_consistency_score();
-        cerr << i << ' ' << score_unmerged << '\n';
-
-        if (score_unmerged > best_score){
-            best_score = score_unmerged;
-            best_phase_state = phase_state;
-        }
-    }
-
-    contact_graph.get_partitions(best_phase_state);
-
-    cerr << "Final score:" << ' ' << best_score << '\n';
-}
-
-
-void phase_contacts(
-        MultiContactGraph& contact_graph,
-        size_t n_threads,
-        size_t m_iterations,
-        bool component_scale
-){
-
-    vector<thread> threads;
-    vector <pair <int32_t,int8_t> > best_partitions;
-    vector<int32_t> ids = {};
-    atomic<double> best_score = std::numeric_limits<double>::min();
-    atomic<size_t> job_index = 0;
-    mutex phase_mutex;
-
-    contact_graph.randomize_partitions();
-    contact_graph.get_partitions(best_partitions);
-
-//    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
-
-    auto f = random_node_scale_phase_search;
-
-    if (component_scale){
-        f = random_component_scale_phase_search;
-        contact_graph.get_alt_component_representatives(ids);
-    }
-    else{
-        contact_graph.get_node_ids(ids);
-    }
-
-    // Launch threads
-    for (uint64_t i=0; i<n_threads; i++){
-        try {
-            threads.emplace_back(thread(
-                    f,
-                    contact_graph,
-                    cref(ids),
-                    ref(best_partitions),
-                    ref(best_score),
-                    ref(job_index),
-                    ref(phase_mutex),
-                    m_iterations
-            ));
-        } catch (const exception &e) {
-            cerr << e.what() << "\n";
-            exit(1);
-        }
-    }
-
-    // Wait for threads to finish
-    for (auto& t: threads){
-        t.join();
-    }
-
-    contact_graph.set_partitions(best_partitions);
 }
 
 
