@@ -414,6 +414,62 @@ void write_bandage_csv(
 }
 
 
+void split_intersections_by_refname(
+        const vector<string>& intersection_00,
+        const vector<string>& intersection_11,
+        const vector<string>& intersection_01,
+        const vector<string>& intersection_10,
+        const unordered_map <string, array<CigarSummary,2> >& phased_cigar_summaries,
+        map<string, array <array <vector <string>, 2>, 2> >& split_intersections
+        ){
+
+    for (const auto& name: intersection_00){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[0].primary_ref;
+        }
+
+        split_intersections[ref][0][0].emplace_back(name);
+    }
+    for (const auto& name: intersection_11){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[0].primary_ref;
+        }
+
+        split_intersections[ref][1][1].emplace_back(name);
+    }
+    for (const auto& name: intersection_01){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[1].primary_ref;
+        }
+
+        split_intersections[ref][0][1].emplace_back(name);
+    }
+    for (const auto& name: intersection_10){
+        string ref;
+
+        // Fetch the reference chromosome that this segment was aligned to
+        auto result = phased_cigar_summaries.find(name);
+        if (result != phased_cigar_summaries.end()){
+            ref = result->second[1].primary_ref;
+        }
+
+        split_intersections[ref][1][0].emplace_back(name);
+    }
+}
+
+
 size_t get_total_length_of_phase_set(const map<string,size_t>& contig_lengths, const vector<string>& s){
     size_t l = 0;
 
@@ -544,11 +600,23 @@ void evaluate_phasing(
                      inferred_phases[0].begin(), inferred_phases[0].end(),
                      std::back_inserter(intersection_10));
 
-    cerr << "Intersection" << '\n';
-    cerr << '\t' << "00" << ' ' << intersection_00.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_00) << '\n';
-    cerr << '\t' << "11" << ' ' << intersection_11.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_11) << '\n';
-    cerr << '\t' << "01" << ' ' << intersection_01.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_01) << '\n';
-    cerr << '\t' << "10" << ' ' << intersection_10.size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection_10) << '\n';
+    map<string, array <array <vector <string>, 2>, 2> > split_intersections;
+
+    split_intersections_by_refname(
+            intersection_00,
+            intersection_11,
+            intersection_01,
+            intersection_10,
+            phased_cigar_summaries,
+            split_intersections);
+
+    for (const auto& [name,intersection]: split_intersections){
+        cerr << name << '\n';
+        cerr << '\t' << "00" << ' ' << intersection[0][0].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[0][0]) << '\n';
+        cerr << '\t' << "11" << ' ' << intersection[1][1].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[1][1]) << '\n';
+        cerr << '\t' << "01" << ' ' << intersection[0][1].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[0][1]) << '\n';
+        cerr << '\t' << "10" << ' ' << intersection[1][0].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[1][0]) << '\n';
+    }
 
     write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, phased_cigar_summaries, output_dir / "phase_intersections.csv");
 
