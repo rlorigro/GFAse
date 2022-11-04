@@ -158,6 +158,75 @@ double VectorMultiContactGraph::get_score(const VectorMultiNode& a, const Vector
 }
 
 
+double VectorMultiContactGraph::get_score(int8_t p_a, int8_t p_b, int32_t weight){
+    double score = 0;
+
+    if (p_a != 0 and p_b != 0) {
+        score = double(p_a) * double(p_b) * double(weight);
+    }
+    else{
+        score = 0;
+    }
+
+//    cerr << p_a << 'x' << p_b << 'x' << weight << '=' << score << '\n' << std::flush;
+
+    return score;
+}
+
+
+double VectorMultiContactGraph::compute_consistency_score(int32_t id, int8_t p) const{
+    double score = 0;
+
+    const auto& n = nodes.at(id);
+
+    if (n.is_null){
+        throw runtime_error("ERROR: VectorMultiContactGraph::compute_consistency_score: nonexistent node ID: " + to_string(id));
+    }
+
+//    cerr << "primary edges" << '\n';
+    for (auto& [id_other, weight]: n.neighbors) {
+        // Skip self edges if there are any
+        if (id == id_other) {
+            continue;
+        }
+
+        const auto& n_other = nodes.at(id_other);
+        auto p_other = n_other.partition;
+
+        if (n_other.is_null){
+            throw runtime_error("ERROR: VectorMultiContactGraph::compute_consistency_score: nonexistent node ID: " + to_string(id_other));
+        }
+
+        score += get_score(p, p_other, weight);
+//        cerr << '\t' << id << "<->" << id_other << ' ' << int(n->partition) << 'x' << int(n_other->partition) << 'x' << weight << ' ' << score << '\n';
+    }
+
+//    cerr << "alts" << '\n';
+    for (auto alt_id: n.alts){
+        const auto& n_alt = nodes.at(alt_id);
+
+        if (n_alt.is_null){
+            throw runtime_error("ERROR: VectorMultiContactGraph::compute_consistency_score: nonexistent node ID: " + to_string(alt_id));
+        }
+
+        for (auto& [id_other,weight]: n_alt.neighbors) {
+            if (alt_id == id_other) {
+                continue;
+            }
+
+            auto p_alt = int8_t(-1*int(p));
+            auto& n_other = nodes.at(id_other);
+            auto& p_other = n_other.partition;
+
+            score += get_score(p_alt, p_other, weight);
+//            cerr << '\t' << alt_id << "<->" << id_other << ' ' << int(n_alt->partition) << 'x' << int(n_other->partition) << 'x' << weight << ' ' << score << '\n';
+        }
+    }
+
+    return score;
+}
+
+
 double VectorMultiContactGraph::compute_consistency_score(int32_t id) const{
     double score = 0;
 

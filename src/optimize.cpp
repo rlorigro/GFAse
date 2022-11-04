@@ -215,8 +215,7 @@ void random_node_scale_phase_search(
             if (prev_partition == -1 or prev_partition == 0) {
 //                cerr << "TEST P = 1" << '\n';
 
-                contact_graph.set_partition(n, 1);
-                auto score = contact_graph.compute_consistency_score(n);
+                auto score = contact_graph.compute_consistency_score(n, 1);
 
                 if (score > max_score) {
                     max_score = score;
@@ -232,8 +231,7 @@ void random_node_scale_phase_search(
             if (prev_partition == 1 or prev_partition == 0) {
 //                cerr << "TEST P = -1" << '\n';
 
-                contact_graph.set_partition(n, -1);
-                auto score = contact_graph.compute_consistency_score(n);
+                auto score = contact_graph.compute_consistency_score(n, -1);
 
                 if (score > max_score) {
                     max_score = score;
@@ -248,8 +246,7 @@ void random_node_scale_phase_search(
 
             // If the node has no "alt" it can be made neutral
             if ((not has_alt) and prev_partition != 0){
-                contact_graph.set_partition(n, 0);
-                auto score = contact_graph.compute_consistency_score(n);
+                auto score = contact_graph.compute_consistency_score(n, 0);
 
                 if (score > max_score) {
                     max_score = score;
@@ -426,6 +423,8 @@ void monte_carlo_phase_contacts(
             orientation_distribution.update(contact_graph);
         }
 
+        VectorMultiContactGraph vector_contact_graph(contact_graph);
+
         path output_path = output_dir / ("orientations_" + to_string(i) + ".csv");
         orientation_distribution.write_contact_map(output_path, id_map);
 
@@ -451,10 +450,10 @@ void monte_carlo_phase_contacts(
             bool result = a_ordinal > b_ordinal;
 
             if (a_ordinal == b_ordinal){
-                auto a0_consistency = contact_graph.compute_consistency_score(a.first.first);
-                auto a1_consistency = contact_graph.compute_consistency_score(a.first.second);
-                auto b0_consistency = contact_graph.compute_consistency_score(b.first.first);
-                auto b1_consistency = contact_graph.compute_consistency_score(b.first.second);
+                auto a0_consistency = vector_contact_graph.compute_consistency_score(a.first.first);
+                auto a1_consistency = vector_contact_graph.compute_consistency_score(a.first.second);
+                auto b0_consistency = vector_contact_graph.compute_consistency_score(b.first.first);
+                auto b1_consistency = vector_contact_graph.compute_consistency_score(b.first.second);
                 auto a_avg = (a0_consistency + a1_consistency) / 2;
                 auto b_avg = (b0_consistency + b1_consistency) / 2;
 
@@ -488,7 +487,7 @@ void monte_carlo_phase_contacts(
                 break;
             }
 
-            auto partition = contact_graph.get_partition(edge.first);
+            auto partition = vector_contact_graph.get_partition(edge.first);
             bool flipped = weights[0] < weights[1];
 
             if (visited_nodes.count(edge.first) + visited_nodes.count(edge.second) > 0){
@@ -497,8 +496,8 @@ void monte_carlo_phase_contacts(
 
             cerr << id_map.get_name(edge.first) << ' ' << id_map.get_name(edge.second) << ' ' << weights[0] << ' ' << weights[1] << ' ' << current_weight << '\n';
 
-            contact_graph.get_alt_component(edge.first, false, component_a);
-            contact_graph.get_alt_component(edge.second, false, component_b);
+            vector_contact_graph.get_alt_component(edge.first, false, component_a);
+            vector_contact_graph.get_alt_component(edge.second, false, component_b);
 
             if (flipped){
                 flip_component(component_b);
@@ -507,17 +506,17 @@ void monte_carlo_phase_contacts(
             cerr << "merging:" << '\n';
             cerr << "\ta" << '\n';
             for (auto& id: component_a.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
             for (auto& id: component_a.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
             cerr << "\tb" << '\n';
             for (auto& id: component_b.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
             for (auto& id: component_b.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
 
             contact_graph.add_alt(component_a, component_b, true);
@@ -527,10 +526,10 @@ void monte_carlo_phase_contacts(
             contact_graph.get_alt_component(edge.first, false, component_merged);
             cerr << "MERGED:" << '\n';
             for (auto& id: component_merged.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
             for (auto& id: component_merged.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(contact_graph.get_partition(id)) << '\n';
+                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
             }
 
             for (auto& id: component_merged.first) {

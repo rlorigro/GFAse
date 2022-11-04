@@ -91,7 +91,9 @@ public:
 
     // Optimization
     static double get_score(const VectorMultiNode& a, const VectorMultiNode& b, int32_t weight);
+    static double get_score(int8_t p_a, int8_t p_b, int32_t weight);
     double compute_consistency_score(int32_t id) const;
+    double compute_consistency_score(int32_t id, int8_t p) const;
     double compute_total_consistency_score() const;
     double compare_total_consistency_score(const MultiContactGraph& other_graph) const;
 };
