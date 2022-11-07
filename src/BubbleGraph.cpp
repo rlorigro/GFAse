@@ -343,8 +343,8 @@ void BubbleGraph::write_bandage_csv(path output_path, const IncrementalIdMap <st
         auto id0 = b.get(0);
         auto id1 = b.get(1);
 
-        file << id_map.get_name(id0) << ',' << i << ',' << 0 << ',' << "Dark Orange" << '\n';
-        file << id_map.get_name(id1) << ',' << i << ',' << 1 << ',' << "Green Yellow" << '\n';
+        file << id_map.get_name(id0) << ',' << i << ',' << 0 << ',' << "Light Salmon" << '\n';
+        file << id_map.get_name(id1) << ',' << i << ',' << 1 << ',' << "Light Green" << '\n';
     }
 }
 

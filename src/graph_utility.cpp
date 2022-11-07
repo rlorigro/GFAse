@@ -82,6 +82,7 @@ void for_node_in_bfs(
             f);
 }
 
+
 void for_node_in_bfs(const HandleGraph& graph, nid_t start_node, const function<void(const handle_t&)>& f) {
     unordered_set<nid_t> do_not_visit;
     for_node_in_bfs(graph, start_node, do_not_visit, f);
@@ -850,7 +851,7 @@ void un_extend_paths(
 }
 
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths){
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths, bool delete_islands){
     unordered_set<nid_t> nodes_to_be_destroyed;
     vector<string> path_names;
     string temporary_suffix = "_hap";
@@ -916,31 +917,33 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         return;
     }
 
-    // TODO: when creating haplotypes, maintain error bubbles?
-    // Search for islands that were created by unphased nodes when the haplotype paths were deleted,
-    // and delete the islands (assuming they were errors, and downstream applications won't want bubbles)
-    for_each_connected_component(graph, [&](unordered_set<nid_t>& component){
-        bool has_path = false;
+    if (delete_islands) {
+        // TODO: when creating haplotypes, maintain error bubbles?
+        // Search for islands that were created by unphased nodes when the haplotype paths were deleted,
+        // and delete the islands (assuming they were errors, and downstream applications won't want bubbles)
+        for_each_connected_component(graph, [&](unordered_set<nid_t>& component) {
+            bool has_path = false;
 
-        // Iterate the connected component and check if it has any haplotype info (if not, it was a unlabeled bubble)
-        for (auto& id: component){
-            auto h = graph.get_handle(id);
-
-            graph.for_each_step_on_handle(h, [&](const step_handle_t s){
-                has_path = true;
-                return false;
-            });
-
-        }
-
-        // Delete any component that has no path label
-        if (not has_path) {
+            // Iterate the connected component and check if it has any haplotype info (if not, it was a unlabeled bubble)
             for (auto& id: component) {
                 auto h = graph.get_handle(id);
-                graph.destroy_handle(h);
+
+                graph.for_each_step_on_handle(h, [&](const step_handle_t s) {
+                    has_path = true;
+                    return false;
+                });
+
             }
-        }
-    });
+
+            // Delete any component that has no path label
+            if (not has_path) {
+                for (auto& id: component) {
+                    auto h = graph.get_handle(id);
+                    graph.destroy_handle(h);
+                }
+            }
+        });
+    }
 
     // Go back and rename all the paths so they don't have the unnecessary added suffix
     for (const auto& name: path_names){

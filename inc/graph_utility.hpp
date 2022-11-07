@@ -137,7 +137,7 @@ void un_extend_paths(
         const vector <pair<path_handle_t, handle_t> >& to_be_prepended,
         const vector <pair<path_handle_t, handle_t> >& to_be_appended);
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths=false);
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths=false, bool delete_islands=true);
 
 void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& h, bool is_left, bool is_right)>& f);
 

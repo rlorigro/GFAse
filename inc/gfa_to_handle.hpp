@@ -32,7 +32,9 @@ void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
         path gfa_file_path,
-        bool ignore_singleton_paths=true);
+        bool ignore_singleton_paths=true,
+        bool ignore_paths=false
+        );
 
 
 }

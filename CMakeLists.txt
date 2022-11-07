@@ -55,6 +55,7 @@ set(SOURCES
         src/Bipartition.cpp
         src/BubbleGraph.cpp
         src/chain.cpp
+        src/Chainer.cpp
         src/ContactGraph.cpp
         src/Color.cpp
         src/edge.cpp
@@ -714,6 +715,7 @@ set(TESTS
         test_binary_sequence_performance
         test_connected_component_finder
         test_contact_graph
+        test_chainer
         test_fixed_binary_sequence
         test_fixed_binary_sequence_performance_2
         test_fixed_binary_sequence_sparsepp_performance

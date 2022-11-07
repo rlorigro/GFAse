@@ -28,7 +28,9 @@ void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
         path gfa_file_path,
-        bool ignore_singleton_paths){
+        bool ignore_singleton_paths,
+        bool ignore_paths
+        ){
 
     GfaReader gfa_reader(gfa_file_path);
 
@@ -69,6 +71,10 @@ void gfa_to_handle_graph(
 //                                "contains non-empty overlap: " + cigar);
 //        }
     });
+
+    if (ignore_paths){
+        return;
+    }
 
     cerr << "Creating paths..." << '\n';
     // Construct paths
