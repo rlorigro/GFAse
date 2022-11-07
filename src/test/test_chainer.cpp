@@ -62,9 +62,23 @@ void chain(path output_dir, path gfa_path){
     HashGraph graph;
     MultiContactGraph contact_graph;
 
+    vector<string> phase_0_names = {"b2", "c", "c3", "diploid_a1", "diploid_b1", "diploid_c0", "diploid_d1", "diploid_e1", "e2", "e3", "f", "h", "i2", "i3", "k2_1", "l", "l2_0", "l3", "n", "o2_1", "p2_0", "q", "s", "tip_b", "tip_f", "tree_c0", "tree_c2"};
+    vector<string> phase_1_names = {"b", "b3", "c2", "diploid_a0", "diploid_b0", "diploid_c1", "diploid_d0", "diploid_e0", "e", "f2", "f3", "h2", "h3", "i", "k", "k2_0", "k3", "l2_1", "o", "o2_0", "p2_1", "r", "t", "tip_c", "tip_e", "tree_c1", "tree_c3"};
+
     // Construct graph from GFA
     gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
-    graph.apply_orientation()
+
+    for (auto& item: phase_0_names){
+        auto id = int32_t(id_map.get_id(item));
+        contact_graph.try_insert_node(id);
+        contact_graph.set_partition(id, -1);
+    }
+
+    for (auto& item: phase_1_names){
+        auto id = int32_t(id_map.get_id(item));
+        contact_graph.try_insert_node(id);
+        contact_graph.set_partition(id, 1);
+    }
 
     Chainer chainer;
     chainer.generate_chain_paths(graph, id_map, contact_graph);

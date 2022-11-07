@@ -1,0 +1,215 @@
+H	VN:Z:1.0
+S	a	ATGGTTT
+S	b	T
+S	c	A
+S	d	TCACGAA
+S	e	T
+S	f	A
+S	g_a	CAGTACT
+S	g_b	CAGTACT
+S	tip_a	TAGCAGCTA
+S	tip_b	T
+S	tip_c	A
+S	tip_d	TTTGCATGGC
+S	tip_e	T
+S	tip_f	A
+S	h	T
+S	i	A
+S	j	CGTATGA
+S	k	T
+S	l	A
+S	m	AATGCTG
+S	n	T
+S	o	A
+S	p	GTTCCAG
+S	q	T
+S	r	A
+S	s	TCAAGTT
+S	t	TTGTGAC
+L	a	+	b	+	0M
+L	a	+	c	+	0M
+L	b	+	d	+	0M
+L	c	+	d	+	0M
+L	d	+	e	+	0M
+L	d	+	f	+	0M
+L	e	+	g_a	+	0M
+L	f	+	g_a	+	0M
+L	g_a	+	g_b	+	0M
+L	g_b	+	h	+	0M
+L	g_b	+	i	+	0M
+L	h	+	j	+	0M
+L	i	+	j	+	0M
+L	j	+	k	+	0M
+L	j	+	l	+	0M
+L	k	+	m	+	0M
+L	l	+	m	+	0M
+L	m	+	o	+	0M
+L	n	+	p	+	0M
+L	o	+	p	+	0M
+L	p	+	q	+	0M
+L	p	+	r	+	0M
+L	q	+	s	+	0M
+L	r	+	s	+	0M
+L	q	+	t	+	0M
+L	r	+	t	+	0M
+L	g_a	+	tip_a	+	0M
+L	tip_a	+	tip_b	+	0M
+L	tip_a	+	tip_c	+	0M
+L	tip_b	+	tip_d	+	0M
+L	tip_c	+	tip_d	+	0M
+L	tip_d	+	tip_e	+	0M
+L	tip_d	+	tip_f	+	0M
+P	0.0	b+,d+,e+	0M,0M
+P	0.1	c+,d+,f+	0M,0M
+P	1.0	h+,j+,k+	0M,0M
+P	1.1	i+,j+,l+	0M,0M
+P	4.0	n+,p+,q+	0M,0M
+P	4.1	o+,p+,r+	0M,0M
+P	tip.0	tip_b+,tip_d+,tip_e+	0M,0M
+P	tip.1	tip_c+,tip_d+,tip_f+	0M,0M
+S	a2	ATGGTTT
+S	b2	T
+S	c2	A
+S	d2	TCACGAA
+S	e2	T
+S	f2	A
+S	g2	CAGTACT
+S	h2	T
+S	i2	A
+S	j2	CGTATGA
+S	x2	CGTATGA
+S	k2_0	T
+S	l2_0	A
+S	m2_0	AATGCTG
+S	k2_1	T
+S	l2_1	A
+S	m2_1	AATGCTG
+S	o2_0	T
+S	p2_0	A
+S	q2_0	AATGCTG
+S	o2_1	T
+S	p2_1	A
+S	q2_1	AATGCTG
+L	a2	+	b2	+	0M
+L	a2	+	c2	+	0M
+L	b2	+	d2	+	0M
+L	c2	+	d2	+	0M
+L	d2	+	e2	+	0M
+L	d2	+	f2	+	0M
+L	e2	+	g2	+	0M
+L	f2	+	g2	+	0M
+L	g2	+	g2	+	0M
+L	g2	+	h2	+	0M
+L	g2	+	i2	+	0M
+L	h2	+	j2	+	0M
+L	i2	+	j2	+	0M
+L	j2	+	x2	+	0M
+L	x2	+	k2_0	+	0M
+L	x2	+	l2_0	+	0M
+L	k2_0	+	m2_0	+	0M
+L	l2_0	+	m2_0	+	0M
+L	x2	+	k2_1	+	0M
+L	x2	+	l2_1	+	0M
+L	k2_1	+	m2_1	+	0M
+L	l2_1	+	m2_1	+	0M
+L	m2_1	+	o2_1	+	0M
+L	m2_1	+	p2_1	+	0M
+L	m2_0	+	o2_0	+	0M
+L	m2_0	+	p2_0	+	0M
+L	o2_1	+	q2_1	+	0M
+L	p2_1	+	q2_1	+	0M
+L	o2_0	+	q2_0	+	0M
+L	p2_0	+	q2_0	+	0M
+P	2.0	b2+,d2+,e2+	0M,0M
+P	2.1	c2+,d2+,f2+	0M,0M
+P	3.0	h2+,j2+	0M
+P	3.1	i2+,j2+	0M
+P	3.0.0	l2_0+,m2_0+,o2_0+	0M,0M
+P	3.0.1	k2_0+,m2_0+,p2_0+	0M,0M
+P	3.1.0	l2_1+,m2_1+,o2_1+	0M,0M
+P	3.1.1	k2_1+,m2_1+,p2_1+	0M,0M
+S	a3	ATGGTTT
+S	b3	T
+S	c3	A
+S	d3	TCACGAA
+S	e3	T
+S	f3	A
+S	g3	CAGTACT
+S	h3	T
+S	i3	A
+S	j3	CGTATGA
+S	k3	T
+S	l3	A
+S	m3	AATGCTG
+L	a3	+	b3	+	0M
+L	a3	+	c3	+	0M
+L	b3	+	d3	+	0M
+L	c3	+	d3	+	0M
+L	d3	+	e3	+	0M
+L	d3	+	f3	+	0M
+L	e3	+	g3	+	0M
+L	f3	+	g3	+	0M
+L	g3	+	h3	+	0M
+L	g3	+	i3	+	0M
+L	h3	+	j3	+	0M
+L	i3	+	j3	+	0M
+L	j3	+	k3	+	0M
+L	j3	+	l3	+	0M
+L	k3	+	m3	+	0M
+L	l3	+	m3	+	0M
+L	m3	+	m3	+	0M
+S	unique	TGTCTCTTCTTAGGG
+S	unphased_pat	ATGGTTTTTCACG
+S	unphased_mat	ATGGTTTATCACG
+S	tree_a	ATGGTTTATCACG
+S	tree_b0	ATGGTTTATCACG
+S	tree_b1	ATGGTTTATCACG
+S	tree_c0	ATGGTTTATCACG
+S	tree_c1	ATGGTTTATCACG
+S	tree_c2	ATGGTTTATCACG
+S	tree_c3	ATGGTTTATCACG
+S	tree_d0	ATGGTTTATCACG
+S	tree_d1	ATGGTTTATCACG
+S	tree_e	ATGGTTTATCACG
+L	tree_a	+	tree_b0	+	0M
+L	tree_a	+	tree_b1	+	0M
+L	tree_b0	+	tree_c0	+	0M
+L	tree_b0	+	tree_c1	+	0M
+L	tree_b1	+	tree_c2	+	0M
+L	tree_b1	+	tree_c3	+	0M
+L	tree_c0	+	tree_d0	+	0M
+L	tree_c1	+	tree_d0	+	0M
+L	tree_c2	+	tree_d1	+	0M
+L	tree_c3	+	tree_d1	+	0M
+L	tree_d0	+	tree_e	+	0M
+L	tree_d1	+	tree_e	+	0M
+S	diploid_a0	ATGGTTTATCACG
+S	diploid_a1	ATGGTTTATCACG
+S	diploid_b0	ATGGTTTATCACG
+S	diploid_b1	ATGGTTTATCACG
+S	diploid_c0	ATGGTTTATCACG
+S	diploid_c1	ATGGTTTATCACG
+S	diploid_d0	ATGGTTTATCACG
+S	diploid_d1	ATGGTTTATCACG
+S	diploid_e0	ATGGTTTATCACG
+S	diploid_e1	ATGGTTTATCACG
+S	triploid_e0	ATGGTTTATCACG
+S	triploid_e1	ATGGTTTATCACG
+S	triploid_e2	ATGGTTTATCACG
+L	diploid_a0	+	diploid_b0	+	0M
+L	diploid_a1	+	diploid_b1	+	0M
+L	diploid_a0	+	diploid_b1	+	0M
+L	diploid_a1	+	diploid_b0	+	0M
+L	diploid_b0	+	diploid_c1	+	0M
+L	diploid_b1	+	diploid_c0	+	0M
+L	diploid_c0	+	diploid_d1	+	0M
+L	diploid_c0	+	diploid_d0	+	0M
+L	diploid_c1	+	diploid_d1	+	0M
+L	diploid_d0	+	diploid_e0	+	0M
+L	diploid_d1	+	diploid_e1	+	0M
+L	diploid_e0	+	triploid_e0	+	0M
+L	diploid_e0	+	triploid_e1	+	0M
+L	diploid_e0	+	triploid_e2	+	0M
+L	diploid_e1	+	triploid_e0	+	0M
+L	diploid_e1	+	triploid_e1	+	0M
+L	diploid_e1	+	triploid_e2	+	0M

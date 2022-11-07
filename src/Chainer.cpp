@@ -161,6 +161,85 @@ void Chainer::for_each_chain(
 }
 
 
+size_t Chainer::get_path_length(const PathHandleGraph& graph, const path_handle_t& p) const{
+    size_t length = 0;
+    graph.for_each_step_in_path(p, [&](const step_handle_t& s) {
+        length++;
+    });
+
+    return length;
+}
+
+
+void Chainer::new_paths(size_t chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty){
+    if (check_empty) {
+        size_t total_steps = 0;
+        for (auto& p: paths) {
+            total_steps += get_path_length(graph, p);
+        }
+
+        // Don't make new pair of paths if previous one was unused
+        if (total_steps == 0) {
+            return;
+        }
+    }
+
+    string name_0 = "gfase_hap_" + to_string(chain_index) +"_0";
+    string name_1 = "gfase_hap_" + to_string(chain_index) +"_1";
+
+    cerr << name_0 << ' ' << name_1 << '\n';
+
+    paths[0] = graph.create_path_handle(name_0);
+    paths[1] = graph.create_path_handle(name_1);
+}
+
+
+bool Chainer::process_diploid_chain_element(
+        const set<nid_t>& chain_element,
+        array<path_handle_t,2>& paths,
+        MutablePathDeletableHandleGraph& graph,
+        const MultiContactGraph& contact_graph
+        ){
+
+    auto a = *chain_element.begin();
+    auto b = *chain_element.rbegin();
+    array<nid_t,2> nodes = {-1,-1};
+
+    bool phasable = false;
+
+    if (contact_graph.has_node(int32_t(a)) and contact_graph.has_node(int32_t(b))){
+        auto phase_a = contact_graph.get_partition(int32_t(a));
+        auto phase_b = contact_graph.get_partition(int32_t(b));
+
+        if (phase_a != phase_b and phase_a != 0 and phase_b != 0) {
+            // from  -1 or 1
+            // to     0 or 1
+            nodes[phase_a == 1] = a;
+            nodes[phase_b == 1] = b;
+
+            graph.append_step(paths[0], graph.get_handle(nodes[0]));
+            graph.append_step(paths[1], graph.get_handle(nodes[1]));
+
+            phasable = true;
+        }
+    }
+
+    return phasable;
+}
+
+
+void Chainer::process_haploid_chain_element(
+        const set<nid_t>& chain_element,
+        array<path_handle_t,2>& paths,
+        MutablePathDeletableHandleGraph& graph
+        ){
+    auto n = *chain_element.begin();
+
+    graph.append_step(paths[0], graph.get_handle(n));
+    graph.append_step(paths[1], graph.get_handle(n));
+}
+
+
 void Chainer::generate_chain_paths(
         MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
@@ -176,25 +255,29 @@ void Chainer::generate_chain_paths(
             return;
         }
 
-        string name_0 = "gfase_hap_" + to_string(c) +"_0";
-        string name_1 = "gfase_hap_" + to_string(c) +"_1";
-
-        auto path_0 = graph.create_path_handle(name_0);
-        auto path_1 = graph.create_path_handle(name_1);
+        array<path_handle_t,2> paths;
+        new_paths(c, graph, paths, false);
 
         for (auto& item: chain){
-            if (item.size() == 2){
-                auto a = *item.begin();
-                auto b = *item.rbegin();
+            cerr << c << ' ';
+            for (auto n: item){
+                cerr << id_map.get_name(n) << ' ';
+            }
+            cerr << '\n';
 
-                graph.append_step(path_0, graph.get_handle(a));
-                graph.append_step(path_1, graph.get_handle(b));
+            if (item.size() == 2){
+                bool phasable = process_diploid_chain_element(item, paths, graph, contact_graph);
+
+                // If unphasable, don't append unannotated nodes to the path, don't try to assign phase,
+                // start new path.
+                if (not phasable) {
+                    cerr << "Warning: breaking chain at unphasable item" << '\n';
+                    new_paths(c, graph, paths, true);
+                    c++;
+                }
             }
             else if (item.size() == 1){
-                auto n = *item.begin();
-
-                graph.append_step(path_0, graph.get_handle(n));
-                graph.append_step(path_1, graph.get_handle(n));
+                process_haploid_chain_element(item, paths, graph);
             }
             else{
                 for (auto& id: item){
@@ -206,6 +289,28 @@ void Chainer::generate_chain_paths(
 
         c++;
     });
+
+    vector <path_handle_t> to_be_destroyed;
+
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        auto length = get_path_length(graph,p);
+
+        if (length < 2){
+            to_be_destroyed.emplace_back(p);
+        }
+
+        cerr << graph.get_path_name(p) << ' ';
+        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+            auto id = graph.get_id(graph.get_handle_of_step(s));
+            auto name = id_map.get_name(id);
+            cerr << name << ' ';
+        });
+        cerr << '\n';
+    });
+
+    for (auto& p: to_be_destroyed){
+        graph.destroy_path(p);
+    }
 }
 
 
