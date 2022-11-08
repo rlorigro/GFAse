@@ -202,6 +202,73 @@ void write_gfa_to_file(PathHandleGraph& graph, IncrementalIdMap<string>& id_map,
 }
 
 
+void write_nodes_to_fasta(
+        const HandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const MultiContactGraph& contact_graph,
+        const Chainer& chainer,
+        path output_dir
+        ){
+
+    path phase_0_fasta_path = output_dir / "phase_0.fasta";
+    path phase_1_fasta_path = output_dir / "phase_1.fasta";
+    path unphased_fasta_path = output_dir / "unphased.fasta";
+
+    ofstream phase_0_fasta(phase_0_fasta_path);
+    ofstream phase_1_fasta(phase_1_fasta_path);
+    ofstream unphased_fasta(unphased_fasta_path);
+
+    if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
+        throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
+    }
+
+    if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
+        throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
+    }
+
+    if (not (unphased_fasta.is_open() and unphased_fasta.good())){
+        throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
+    }
+
+    graph.for_each_handle([&](const handle_t& h){
+        auto id = graph.get_id(h);
+        auto name = id_map.get_name(id);
+
+        bool in_contact_graph = contact_graph.has_node(int32_t(id));
+        bool in_phase_chains = chainer.has_phase_chain(name);
+
+        int8_t partition;
+
+        // Nodes may have been deleted during unzipping, so check the chainer and the contact_graph for their phase
+        if (in_contact_graph and not in_phase_chains){
+            partition = contact_graph.get_partition(int32_t(id));
+        }
+        else if (in_phase_chains and not in_contact_graph){
+            partition = chainer.get_partition(name);
+        }
+        else if (not in_contact_graph and not in_phase_chains){
+            partition = 0;
+        }
+        else{
+            throw runtime_error("ERROR: node in both phase chains and contact graph: " + name);
+        }
+
+        if (partition == -1){
+            phase_0_fasta << '>' << name << '\n';
+            phase_0_fasta << graph.get_sequence(h) << '\n';
+        }
+        else if (partition == 1){
+            phase_1_fasta << '>' << name << '\n';
+            phase_1_fasta << graph.get_sequence(h) << '\n';
+        }
+        else{
+            unphased_fasta << '>' << name << '\n';
+            unphased_fasta << graph.get_sequence(h) << '\n';
+        }
+    });
+}
+
+
 void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, size_t n_threads){
     Timer t;
 
@@ -290,7 +357,13 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, s
 
     unzip(graph, id_map, false, false);
 
+    cerr << t << "Writing GFA... " << '\n';
+
     write_gfa_to_file(graph, id_map, unzipped_gfa_path);
+
+    cerr << t << "Writing FASTA... " << '\n';
+
+    write_nodes_to_fasta(graph, id_map, contact_graph, chainer, output_dir);
 
     cerr << t << "Done" << '\n';
 }

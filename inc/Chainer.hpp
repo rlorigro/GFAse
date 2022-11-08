@@ -55,7 +55,7 @@ using chain_t = deque <set <nid_t> >;
 
 
 class Chainer {
-    vector <array <path_handle_t,2> > phased_paths;
+    unordered_map<string,int8_t> path_phases;
     unordered_map<nid_t,nid_t> node_pairs;
     unordered_set<nid_t> diploid_nodes;
     unordered_set<nid_t> diploid_tip_nodes;
@@ -97,6 +97,9 @@ public:
 
     // IO
     void write_chainable_nodes_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
+
+    bool has_phase_chain(const string& name) const;
+    int8_t get_partition(const string& name) const;
 };
 
 }

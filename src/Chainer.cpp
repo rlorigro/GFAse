@@ -192,6 +192,9 @@ void Chainer::new_paths(int64_t& chain_index, MutablePathDeletableHandleGraph& g
     paths[0] = graph.create_path_handle(name_0);
     paths[1] = graph.create_path_handle(name_1);
 
+    path_phases[name_0] = -1;
+    path_phases[name_1] = 1;
+
     chain_index++;
 }
 
@@ -239,77 +242,6 @@ void Chainer::process_haploid_chain_element(
 
     graph.append_step(paths[0], graph.get_handle(n));
     graph.append_step(paths[1], graph.get_handle(n));
-}
-
-
-void Chainer::generate_chain_paths(
-        MutablePathDeletableHandleGraph& graph,
-        const IncrementalIdMap<string>& id_map,
-        const MultiContactGraph& contact_graph
-        ){
-
-    find_chainable_nodes(graph, id_map);
-
-    int64_t c = 0;
-    for_each_chain(graph, [&](chain_t& chain){
-        // Singletons don't need to be unzipped
-        if (chain.size() == 1){
-            return;
-        }
-
-        array<path_handle_t,2> paths;
-        new_paths(c, graph, paths, false);
-
-        for (auto& item: chain){
-            cerr << c << ' ';
-            for (auto n: item){
-                cerr << id_map.get_name(n) << ' ';
-            }
-            cerr << '\n';
-
-            if (item.size() == 2){
-                bool phasable = process_diploid_chain_element(item, paths, graph, contact_graph);
-
-                // If unphasable, don't append unannotated nodes to the path, don't try to assign phase,
-                // start new path.
-                if (not phasable) {
-                    cerr << "Warning: breaking chain at unphasable item" << '\n';
-                    new_paths(c, graph, paths, true);
-                }
-            }
-            else if (item.size() == 1){
-                process_haploid_chain_element(item, paths, graph);
-            }
-            else{
-                for (auto& id: item){
-                    cerr << id_map.get_name(id) << '\n';
-                }
-                throw runtime_error("ERROR: unchainable items in chain, see above for details");
-            }
-        }
-    });
-
-    vector <path_handle_t> to_be_destroyed;
-
-    graph.for_each_path_handle([&](const path_handle_t& p){
-        auto length = get_path_length(graph,p);
-
-        if (length < 2){
-            to_be_destroyed.emplace_back(p);
-        }
-
-        cerr << graph.get_path_name(p) << ' ';
-        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
-            auto id = graph.get_id(graph.get_handle_of_step(s));
-            auto name = id_map.get_name(id);
-            cerr << name << ' ';
-        });
-        cerr << '\n';
-    });
-
-    for (auto& p: to_be_destroyed){
-        graph.destroy_path(p);
-    }
 }
 
 
@@ -397,6 +329,89 @@ void Chainer::find_chainable_nodes(const HandleGraph& graph, const IncrementalId
 //        cerr << "is_tip: " << is_tip << '\n';
 //        cerr << "is_haploid: " << is_haploid << '\n' << '\n';
     });
+}
+
+
+void Chainer::generate_chain_paths(
+        MutablePathDeletableHandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        const MultiContactGraph& contact_graph
+        ){
+
+    find_chainable_nodes(graph, id_map);
+
+    int64_t c = 0;
+    for_each_chain(graph, [&](chain_t& chain){
+        // Singletons don't need to be unzipped
+        if (chain.size() == 1){
+            return;
+        }
+
+        array<path_handle_t,2> paths;
+        new_paths(c, graph, paths, false);
+
+        for (auto& item: chain){
+            cerr << c << ' ';
+            for (auto n: item){
+                cerr << id_map.get_name(n) << ' ';
+            }
+            cerr << '\n';
+
+            if (item.size() == 2){
+                bool phasable = process_diploid_chain_element(item, paths, graph, contact_graph);
+
+                // If unphasable, don't append unannotated nodes to the path, don't try to assign phase,
+                // start new path.
+                if (not phasable) {
+                    cerr << "Warning: breaking chain at unphasable item" << '\n';
+                    new_paths(c, graph, paths, true);
+                }
+            }
+            else if (item.size() == 1){
+                process_haploid_chain_element(item, paths, graph);
+            }
+            else{
+                for (auto& id: item){
+                    cerr << id_map.get_name(id) << '\n';
+                }
+                throw runtime_error("ERROR: unchainable items in chain, see above for details");
+            }
+        }
+    });
+
+    vector <path_handle_t> to_be_destroyed;
+
+    graph.for_each_path_handle([&](const path_handle_t& p){
+        auto length = get_path_length(graph,p);
+
+        if (length < 2){
+            to_be_destroyed.emplace_back(p);
+            auto name = graph.get_path_name(p);
+            path_phases.erase(name);
+        }
+
+        cerr << graph.get_path_name(p) << ' ';
+        graph.for_each_step_in_path(p, [&](const step_handle_t& s){
+            auto id = graph.get_id(graph.get_handle_of_step(s));
+            auto name = id_map.get_name(id);
+            cerr << name << ' ';
+        });
+        cerr << '\n';
+    });
+
+    for (auto& p: to_be_destroyed){
+        graph.destroy_path(p);
+    }
+}
+
+
+bool Chainer::has_phase_chain(const string& name) const{
+    return path_phases.find(name) != path_phases.end();
+}
+
+
+int8_t Chainer::get_partition(const string& name) const{
+    return path_phases.at(name);
 }
 
 
