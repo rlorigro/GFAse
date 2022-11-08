@@ -150,6 +150,8 @@ void rephase(
 
     contact_graph.write_bandage_csv(phases_output_path, id_map);
     contact_graph.write_contact_map(contacts_output_path, id_map);
+
+
 }
 
 

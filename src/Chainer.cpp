@@ -171,7 +171,7 @@ size_t Chainer::get_path_length(const PathHandleGraph& graph, const path_handle_
 }
 
 
-void Chainer::new_paths(size_t chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty){
+void Chainer::new_paths(int64_t& chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty){
     if (check_empty) {
         size_t total_steps = 0;
         for (auto& p: paths) {
@@ -191,6 +191,8 @@ void Chainer::new_paths(size_t chain_index, MutablePathDeletableHandleGraph& gra
 
     paths[0] = graph.create_path_handle(name_0);
     paths[1] = graph.create_path_handle(name_1);
+
+    chain_index++;
 }
 
 
@@ -248,7 +250,7 @@ void Chainer::generate_chain_paths(
 
     find_chainable_nodes(graph, id_map);
 
-    size_t c = 0;
+    int64_t c = 0;
     for_each_chain(graph, [&](chain_t& chain){
         // Singletons don't need to be unzipped
         if (chain.size() == 1){
@@ -273,7 +275,6 @@ void Chainer::generate_chain_paths(
                 if (not phasable) {
                     cerr << "Warning: breaking chain at unphasable item" << '\n';
                     new_paths(c, graph, paths, true);
-                    c++;
                 }
             }
             else if (item.size() == 1){
@@ -286,8 +287,6 @@ void Chainer::generate_chain_paths(
                 throw runtime_error("ERROR: unchainable items in chain, see above for details");
             }
         }
-
-        c++;
     });
 
     vector <path_handle_t> to_be_destroyed;

@@ -775,6 +775,7 @@ set(EXECUTABLES
         locate_kmer_matches
         phase_haplotype_paths
         phase_contacts
+        phase_contacts_with_monte_carlo
         rephase_tripartition
         rephase_tripartition_with_monte_carlo
         phase_contacts_as_tripartition

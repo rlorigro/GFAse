@@ -171,6 +171,8 @@ public:
         const alt_component_t& component_b,
         alt_component_t& merged_component) const;
 
+    void get_alts_from_shasta_names(const IncrementalIdMap<string>& id_map);
+
 };
 
 

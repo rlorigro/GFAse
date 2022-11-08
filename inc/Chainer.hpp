@@ -66,7 +66,7 @@ public:
     Chainer()=default;
 
     // Misc
-    void new_paths(size_t chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty);
+    void new_paths(int64_t& chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty);
     size_t get_path_length(const PathHandleGraph& graph, const path_handle_t& p) const;
 
     // Chaining

@@ -1026,6 +1026,62 @@ void MultiContactGraph::get_alt_component_representatives(vector<int32_t>& repre
 }
 
 
+void MultiContactGraph::get_alts_from_shasta_names(const IncrementalIdMap<string>& id_map){
+    unordered_set <int32_t> visited;
+
+    for (auto&[name, id]: id_map.ids) {
+        if (visited.count(int32_t(id)) > 0) {
+            continue;
+        }
+
+        // Skip any "UR" prefixed nodes
+        if (name.empty()){
+            continue;
+        }
+        else if (name[0] == 'U'){
+            continue;
+        }
+
+        // Split to find last field, which should be 0/1 for shasta PR segments
+        auto i = name.find_last_of('.');
+
+        if (i < 2 or i > name.size()) {
+            continue;
+        }
+
+        auto prefix = name.substr(0, i);
+        int64_t side = stoi(name.substr(i + 1));
+
+        // Cheap test to check for proper syntax
+        if (side > 1 or side < 0) {
+            throw std::runtime_error("ERROR: shasta bubble side not 0/1: " + name);
+        }
+
+        // Find complement
+        string other_name = prefix + '.' + to_string(1 - side);
+
+        // Look for the other name in the id_map
+        if (id_map.exists(other_name)){
+            auto other_id = id_map.get_id(other_name);
+            visited.emplace(other_id);
+
+            if (has_node(int32_t(id)) and has_node(int32_t(other_id))){
+                add_alt(int32_t(id), int32_t(other_id));
+            }
+            else{
+                cerr << "Warning: shasta bubble has node with no contacts: " << name << "," << other_name << '\n';
+            }
+        }
+        else{
+            cerr << "Warning: shasta bubble has no alt in id_map: " << name << "," << other_name << '\n';
+        }
+
+        visited.emplace(id);
+    }
+
+}
+
+
 void MultiContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) const{
     partitions.clear();
     partitions.reserve(nodes.size());

@@ -52,8 +52,8 @@ public:
     int64_t get_id(const T& name) const;
 
     // Check if key/value has been added already, returns true if it exists
-    bool exists(const T& name);
-    bool exists(int64_t id);
+    bool exists(const T& name) const;
+    bool exists(int64_t id) const;
 
     void write_to_csv(path output_path) const;
     size_t size();
@@ -175,12 +175,12 @@ template <class T> int64_t IncrementalIdMap<T>::do_insert(const T& s) {
 
 
 
-template<class T> bool IncrementalIdMap<T>::exists(const T& name){
+template<class T> bool IncrementalIdMap<T>::exists(const T& name) const{
     return (ids.find(name) != ids.end());
 }
 
 
-template<class T> bool IncrementalIdMap<T>::exists(int64_t id){
+template<class T> bool IncrementalIdMap<T>::exists(int64_t id) const{
     return (id >= 0 and id <= names.size() - zero_based);
 }
 

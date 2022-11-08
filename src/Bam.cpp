@@ -110,5 +110,81 @@ bool Bam::is_supplementary(uint16_t flag){
 }
 
 
+void update_contact_map(
+        vector<SamElement>& alignments,
+        MultiContactGraph& contact_graph,
+        IncrementalIdMap<string>& id_map){
+
+    // Iterate one triangle of the all-by-all matrix, adding up mapqs for reads on both end of the pair
+    for (size_t i=0; i<alignments.size(); i++){
+        auto& a = alignments[i];
+        auto ref_id_a = int32_t(id_map.try_insert(a.ref_name));
+        contact_graph.try_insert_node(ref_id_a, 0);
+
+        contact_graph.increment_coverage(ref_id_a, 1);
+
+        for (size_t j=i+1; j<alignments.size(); j++) {
+            auto& b = alignments[j];
+            auto ref_id_b = int32_t(id_map.try_insert(b.ref_name));
+            contact_graph.try_insert_node(ref_id_b, 0);
+            contact_graph.try_insert_edge(ref_id_a, ref_id_b);
+            contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 1);
+        }
+    }
+}
+
+
+void parse_unpaired_bam_file(
+        path bam_path,
+        MultiContactGraph& contact_graph,
+        IncrementalIdMap<string>& id_map,
+        string required_prefix,
+        int8_t min_mapq){
+
+    Bam reader(bam_path);
+
+    size_t l = 0;
+    string prev_query_name = "";
+    vector<SamElement> alignments;
+
+    reader.for_alignment_in_bam(false, [&](const SamElement& a){
+        if (l == 0){
+            prev_query_name = a.query_name;
+        }
+
+        if (prev_query_name != a.query_name){
+            update_contact_map(alignments, contact_graph, id_map);
+            alignments.clear();
+        }
+
+        // No information about reference contig, this alignment is unusable
+        if (a.ref_name.empty()){
+            return;
+        }
+
+        // Optionally filter by the contig names. E.g. "PR" in shasta
+        bool valid_prefix = true;
+        if (not required_prefix.empty()){
+            for (size_t i=0; i<required_prefix.size(); i++){
+                if (a.ref_name[i] != required_prefix[i]){
+                    valid_prefix = false;
+                    break;
+                }
+            }
+        }
+
+        if (valid_prefix) {
+            // Only allow reads with mapq > min_mapq and not secondary
+            if (a.mapq >= min_mapq and a.is_primary()) {
+                alignments.emplace_back(a);
+            }
+        }
+
+        l++;
+        prev_query_name = a.query_name;
+    });
+}
+
+
 
 }
