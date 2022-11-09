@@ -129,6 +129,108 @@ void Chainer::get_chain(
 }
 
 
+void Chainer::get_undirected_chain_subgraph(
+        const HandleGraph& graph,
+        const nid_t& start_node,
+        PackedSubgraphOverlay& subgraph
+        ){
+
+    queue <nid_t> q;
+
+    // Initialize start node as an item in the chain
+    // Only chainable nodes should be considered
+    {
+        bool is_diploid = diploid_nodes.count(start_node);
+        bool is_haploid = haploid_nodes.count(start_node);
+
+        // Check that this has NOT been visited before queuing it
+        if (is_diploid or is_haploid) {
+            q.push(start_node);
+        }
+    }
+
+    // Search left and right
+    while (not q.empty()) {
+        nid_t n = q.front();
+        q.pop();
+
+        auto h = graph.get_handle(n);
+
+        subgraph.add_node(h);
+
+        graph.follow_edges(h, true, [&](const handle_t& other_handle) {
+            auto next_node = graph.get_id(other_handle);
+
+            // Attempt to add this to the set of visited nodes
+            auto unvisited = not subgraph.has_node(next_node);
+
+            // Only chainable nodes should be considered
+            bool is_diploid = diploid_nodes.count(next_node);
+            bool is_haploid = haploid_nodes.count(next_node);
+
+            // Check that this has NOT been visited before queuing it
+            if (unvisited and (is_diploid or is_haploid)) {
+                q.emplace(next_node);
+            }
+        });
+        graph.follow_edges(h, false, [&](const handle_t& other_handle) {
+            auto next_node = graph.get_id(other_handle);
+
+            // Attempt to add this to the set of visited nodes
+            auto unvisited = not subgraph.has_node(next_node);
+
+            // Only chainable nodes should be considered
+            bool is_diploid = diploid_nodes.count(next_node);
+            bool is_haploid = haploid_nodes.count(next_node);
+
+            // Check that this has NOT been visited before queuing it
+            if (unvisited and (is_diploid or is_haploid)) {
+                q.emplace(next_node);
+            }
+        });
+    }
+}
+
+
+void Chainer::get_oriented_subgraph(
+        const HandleGraph& graph,
+        const nid_t& start_node,
+        array <PackedSubgraphOverlay, 2>& oriented_subgraphs
+        ){
+
+    queue <handle_t> q;
+    unordered_set <handle_t> visited;
+
+    auto start_handle = graph.get_handle(start_node);
+
+    q.emplace(start_handle);
+    visited.emplace(start_handle);
+
+    // Search left and right
+    while (not q.empty()) {
+        auto h = q.front();
+        q.pop();
+
+        oriented_subgraphs[graph.get_is_reverse(h)].add_node(h);
+
+        graph.follow_edges(h, true, [&](const handle_t& other_handle) {
+            // Check that this has NOT been visited before queuing it
+            if (visited.count(other_handle) == 0) {
+                q.emplace(other_handle);
+                visited.emplace(other_handle);
+            }
+        });
+        graph.follow_edges(h, false, [&](const handle_t& other_handle) {
+            // Check that this has NOT been visited before queuing it
+            if (visited.count(other_handle) == 0) {
+                q.emplace(other_handle);
+                visited.emplace(other_handle);
+            }
+        });
+    }
+}
+
+
 void Chainer::for_each_chain(
         HandleGraph& graph,
         const function<void(chain_t& chain)>& f
@@ -156,6 +258,36 @@ void Chainer::for_each_chain(
 
         if (not chain.empty()) {
             f(chain);
+        }
+    });
+}
+
+
+void Chainer::for_each_chain_subgraph(
+        HandleGraph& graph,
+        const function<void(PackedSubgraphOverlay& chain)>& f
+        ){
+
+    unordered_set<nid_t> visited;
+
+    graph.for_each_handle([&](const handle_t& h){
+        auto id = graph.get_id(h);
+
+        if (visited.count(id)){
+            return;
+        }
+
+        PackedSubgraphOverlay subgraph(&graph);
+
+        get_undirected_chain_subgraph(graph, id, subgraph);
+
+        // Mark all the nodes in the subgraph as visited
+        subgraph.for_each_handle([&](const handle_t& h){
+            visited.emplace(subgraph.get_id(h));
+        });
+
+        if (subgraph.get_node_count() > 0) {
+            f(subgraph);
         }
     });
 }
@@ -401,6 +533,40 @@ void Chainer::generate_chain_paths(
 
     for (auto& p: to_be_destroyed){
         graph.destroy_path(p);
+    }
+}
+
+
+void Chainer::harmonize_chain_orientations(MutableHandleGraph& graph){
+    // Strictly for strict bubble chains, reorient nodes so they all face the same direction
+    for_each_chain_subgraph(graph, [&](PackedSubgraphOverlay& subgraph){
+        cerr << '\n';
+        array <PackedSubgraphOverlay, 2> orientations = {PackedSubgraphOverlay(&graph), PackedSubgraphOverlay(&graph)};
+
+        // Get chain subgraphs split into F and R nodes relative to start node
+        get_oriented_subgraph(subgraph, subgraph.min_node_id(), orientations);
+
+        cerr << orientations[0].get_node_count() << ' ' << orientations[1].get_node_count() << '\n';
+
+        if ((orientations[0].get_node_count() > 0) and (orientations[1].get_node_count() > 0)){
+            bool smaller_index = orientations[0].get_node_count() > orientations[1].get_node_count();
+
+            vector<handle_t> to_be_flipped;
+            orientations[smaller_index].for_each_handle([&](const handle_t& h){
+                to_be_flipped.emplace_back(h);
+            });
+
+            // Flip the smaller population of nodes
+            for (auto& h: to_be_flipped) {
+                graph.apply_orientation(graph.flip(h));
+            }
+        }
+    });
+}
+
+void Chainer::for_each_diploid_pair(const function<void(nid_t a, nid_t b)>& f) const{
+    for (const auto& [a,b]: node_pairs){
+        f(a,b);
     }
 }
 

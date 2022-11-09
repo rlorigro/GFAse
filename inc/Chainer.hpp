@@ -7,14 +7,17 @@
 #include "Filesystem.hpp"
 
 #include "hash_graph.hpp"
+#include "bdsg/overlays/packed_subgraph_overlay.hpp"
 
 using bdsg::MutablePathDeletableHandleGraph;
+using bdsg::MutableHandleGraph;
+using bdsg::PackedSubgraphOverlay;
 using bdsg::PathHandleGraph;
 using bdsg::HashGraph;
-using bdsg::path_handle_t;
-using bdsg::step_handle_t;
-using bdsg::handle_t;
-using bdsg::nid_t;
+using handlegraph::path_handle_t;
+using handlegraph::step_handle_t;
+using handlegraph::handle_t;
+using handlegraph::nid_t;
 
 using ghc::filesystem::path;
 
@@ -65,7 +68,7 @@ public:
     // Constructor
     Chainer()=default;
 
-    // Misc
+    // Helpers
     void new_paths(int64_t& chain_index, MutablePathDeletableHandleGraph& graph, array<path_handle_t,2>& paths, bool check_empty);
     size_t get_path_length(const PathHandleGraph& graph, const path_handle_t& p) const;
 
@@ -82,13 +85,28 @@ public:
             MutablePathDeletableHandleGraph& graph,
             const MultiContactGraph& contact_graph);
 
-    void get_chain(const HandleGraph& graph,
-                   const nid_t& start_node,
-                   deque <set <nid_t> >& chain);
+    void get_chain(
+            const HandleGraph& graph,
+            const nid_t& start_node,
+            deque <set <nid_t> >& chain);
+
+    void get_undirected_chain_subgraph(
+            const HandleGraph& graph,
+            const nid_t& start_node,
+            PackedSubgraphOverlay& subgraph);
+
+    void get_oriented_subgraph(
+            const HandleGraph& graph,
+            const nid_t& start_node,
+            array <PackedSubgraphOverlay, 2>& colored_subgraphs);
 
     void for_each_chain(
             HandleGraph& graph,
             const function<void(chain_t& chain)>& f);
+
+    void for_each_chain_subgraph(
+            HandleGraph& graph,
+            const function<void(PackedSubgraphOverlay& chain)>& f);
 
     void generate_chain_paths(
             MutablePathDeletableHandleGraph& graph,
@@ -98,8 +116,13 @@ public:
     // IO
     void write_chainable_nodes_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
 
+    // Accessing
     bool has_phase_chain(const string& name) const;
     int8_t get_partition(const string& name) const;
+    void for_each_diploid_pair(const function<void(nid_t a, nid_t b)>& f) const;
+
+    // Preprocessing
+    void harmonize_chain_orientations(MutableHandleGraph& graph);
 };
 
 }

@@ -213,3 +213,32 @@ L	diploid_e0	+	triploid_e2	+	0M
 L	diploid_e1	+	triploid_e0	+	0M
 L	diploid_e1	+	triploid_e1	+	0M
 L	diploid_e1	+	triploid_e2	+	0M
+S	a4	ATGGTTT
+S	b4	T
+S	c4	A
+S	e4	T
+S	f4	A
+S	g4	CAGTACT
+S	h4	T
+S	i4	A
+S	j4	CGTATGA
+S	k4	T
+S	l4	A
+S	m4	AATGCTG
+L	a4	+	b4	+	0M
+L	a4	+	c4	+	0M
+L	b4	+	f4	+	0M
+L	c4	+	e4	-	0M
+L	b4	+	e4	-	0M
+L	c4	+	f4	+	0M
+L	e4	-	g4	+	0M
+L	f4	+	g4	+	0M
+L	g4	+	h4	+	0M
+L	g4	+	i4	-	0M
+L	h4	+	j4	-	0M
+L	i4	-	j4	-	0M
+L	j4	-	k4	+	0M
+L	j4	-	l4	+	0M
+L	k4	+	m4	+	0M
+L	l4	+	m4	+	0M
+L	m4	+	m4	+	0M
