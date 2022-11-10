@@ -17,6 +17,7 @@ using std::queue;
 using std::cerr;
 using std::min;
 using std::max;
+using std::ref;
 
 namespace gfase{
 
@@ -41,247 +42,14 @@ void OrientationDistribution::update(const MultiContactGraph& contact_graph){
 }
 
 
+void OrientationDistribution::update(const VectorMultiContactGraph& contact_graph){
+    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        auto [a,b] = edge;
 
-//void random_component_scale_phase_search(
-//        MultiContactGraph& contact_graph,
-//        const vector<int32_t>& ids,
-//        vector <pair <int32_t,int8_t> >& best_partitions,
-//        atomic<double>& best_score,
-//        atomic<size_t>& job_index,
-//        mutex& phase_mutex,
-//        size_t m_iterations
-//){
-//
-//    size_t m = job_index.fetch_add(1);
-//
-//    // True random number
-//    std::random_device rd;
-//
-//    // Pseudorandom generator with true random seed
-//    std::mt19937 rng(rd());
-//    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
-//
-//    contact_graph.set_partitions(best_partitions);
-//
-//    alt_component_t component;
-//
-//    double total_score;
-//
-//    while (m < m_iterations) {
-//        // Randomly perturb
-//        for (size_t i=0; i<((ids.size()/30) + 1); i++) {
-//            auto r = ids.at(uniform_distribution(rng));
-//
-//            int8_t p;
-//            if (contact_graph.has_alt(r)){
-//                // Only allow {1,-1}
-//                p = int8_t((uniform_distribution(rng) % 2));
-//
-//                if (p == 0){
-//                    p = -1;
-//                }
-//            }
-//            else{
-//                // Allow {1,0,-1}
-//                p = int8_t((uniform_distribution(rng) % 3) - 1);
-//            }
-//
-//            contact_graph.set_partition(r, p);
-//        }
-//
-//        for (size_t i=0; i<ids.size(); i++) {
-//            auto n = ids.at(uniform_distribution(rng));
-//
-//            int64_t max_score = std::numeric_limits<int64_t>::min();
-//            int8_t p_max = 0;
-//
-//            contact_graph.get_alt_component(n, false, component);
-//            bool has_alt = not component.first.empty() and not component.second.empty();
-//
-//            for (int8_t p=-1; p<=1; p++) {
-//                // If the node has an "alt" it can't be made neutral
-//                if (has_alt and p==0){
-//                    continue;
-//                }
-//
-//                contact_graph.set_partition(component, p);
-//
-//                auto score = contact_graph.compute_consistency_score(component);
-//
-//                if (score > max_score) {
-//                    max_score = score;
-//                    p_max = p;
-//                }
-//
-////                cerr << n << ' ' << int(has_alt) << ' ' << int(p) << ' ' << score << ' ' << max_score << '\n';
-//            }
-//
-//            contact_graph.set_partition(n, p_max);
-//        }
-//
-//        total_score = contact_graph.compute_total_consistency_score();
-//
-//        phase_mutex.lock();
-//        if (total_score > best_score) {
-//            best_score = total_score;
-//            contact_graph.get_partitions(best_partitions);
-//        }
-//        else {
-//            contact_graph.set_partitions(best_partitions);
-//        }
-//
-////        cerr << m << ' ' << best_score << ' ' << total_score << ' ' << std::flush;
-////        for (auto& [n,p]: best_partitions){
-////            cerr << '(' << n << ',' << int(p) << ") ";
-////        }
-////        cerr << '\n';
-//
-//        phase_mutex.unlock();
-//
-//        m = job_index.fetch_add(1);
-//    }
-//
-//    contact_graph.set_partitions(best_partitions);
-//}
+        bool orientation = contact_graph.get_partition(a) == contact_graph.get_partition(b);
 
-
-void random_node_scale_phase_search(
-        VectorMultiContactGraph contact_graph,
-        const vector<int32_t>& ids,
-        vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<double>& best_score,
-        atomic<size_t>& job_index,
-        mutex& phase_mutex,
-        size_t m_iterations
-){
-    size_t m = job_index.fetch_add(1);
-
-    // True random number
-    std::random_device rd;
-
-    // Pseudorandom generator with true random seed
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
-
-    contact_graph.set_partitions(best_partitions);
-
-    double total_score;
-
-    while (job_index < m_iterations) {
-        // Randomly perturb
-        for (size_t i=0; i<((ids.size()/30) + 1); i++) {
-            auto r = ids.at(uniform_distribution(rng));
-
-            int8_t p;
-            if (contact_graph.has_alt(r)){
-                // Only allow {1,-1}
-                p = int8_t((uniform_distribution(rng) % 2));
-
-                if (p == 0){
-                    p = -1;
-                }
-            }
-            else{
-                // Allow {1,0,-1}
-                p = int8_t((uniform_distribution(rng) % 3) - 1);
-            }
-
-            contact_graph.set_partition(r, p);
-        }
-
-        for (size_t i=0; i<ids.size(); i++) {
-            auto n = ids.at(uniform_distribution(rng));
-
-            if (contact_graph.edge_count(n) == 0){
-                continue;
-            }
-//            cerr << "---- " << n << " ----" << '\n';
-            bool has_alt = contact_graph.has_alt(n);
-            auto prev_score = contact_graph.compute_consistency_score(n);
-            auto prev_partition = contact_graph.get_partition(n);
-
-            double max_score = prev_score;
-            int8_t p_max = prev_partition;
-
-            // TODO: don't actually "set" partition, pass values to be used
-            // TODO: find convergence issue
-            // TODO: cache components?
-
-//            cerr << "max_score: " << ' ' << max_score << '\n';
-//            cerr << "p_max: " << ' ' << int(p_max) << '\n';
-//            cerr << "prev_score: " << ' ' << prev_score << '\n';
-//            cerr << "prev_partition: " << ' ' << int(prev_partition) << '\n';
-
-            if (prev_partition == -1 or prev_partition == 0) {
-//                cerr << "TEST P = 1" << '\n';
-
-                auto score = contact_graph.compute_consistency_score(n, 1);
-
-                if (score > max_score) {
-                    max_score = score;
-                    p_max = 1;
-                }
-
-//                cerr << "max_score: " << ' ' << max_score << '\n';
-//                cerr << "score: " << ' ' << score << '\n';
-//                cerr << "p_max: " << ' ' << int(p_max) << '\n';
-
-            }
-
-            if (prev_partition == 1 or prev_partition == 0) {
-//                cerr << "TEST P = -1" << '\n';
-
-                auto score = contact_graph.compute_consistency_score(n, -1);
-
-                if (score > max_score) {
-                    max_score = score;
-                    p_max = -1;
-                }
-
-//                cerr << "max_score: " << ' ' << max_score << '\n';
-//                cerr << "score: " << ' ' << score << '\n';
-//                cerr << "p_max: " << ' ' << int(p_max) << '\n';
-
-            }
-
-            // If the node has no "alt" it can be made neutral
-            if ((not has_alt) and prev_partition != 0){
-                auto score = contact_graph.compute_consistency_score(n, 0);
-
-                if (score > max_score) {
-                    max_score = score;
-                    p_max = 0;
-                }
-            }
-
-            contact_graph.set_partition(n, p_max);
-        }
-
-        total_score = contact_graph.compute_total_consistency_score();
-
-        phase_mutex.lock();
-        if (total_score > best_score) {
-            best_score = total_score;
-            contact_graph.get_partitions(best_partitions);
-        }
-        else {
-            contact_graph.set_partitions(best_partitions);
-        }
-
-//        cerr << m << ' ' << best_score << ' ' << total_score << ' ';
-//        size_t x = 0;
-//        for (auto& [n,p]: best_partitions){
-//            if (++x > 10){
-//                break;
-//            }
-//            cerr << '(' << n << ',' << int(p) << ") ";
-//        }
-//        cerr << '\n';
-
-        phase_mutex.unlock();
-
-        m = job_index.fetch_add(1);
-    }
+        edge_weights[edge][orientation]++;
+    });
 }
 
 
@@ -326,6 +94,119 @@ void OrientationDistribution::write_contact_map(path output_path, const Incremen
 }
 
 
+void random_phase_search(VectorMultiContactGraph& contact_graph, size_t m_iterations){
+    vector <pair <int32_t,int8_t> > best_partitions;
+    double best_score = std::numeric_limits<double>::min();
+
+    vector<int32_t> ids = {};
+    contact_graph.get_node_ids(ids);
+
+    contact_graph.randomize_partitions();
+    contact_graph.get_partitions(best_partitions);
+
+    // True random number
+    std::random_device rd;
+
+    // Pseudorandom generator with true random seed
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uniform_distribution(0,int(ids.size()-1));
+
+    double total_score;
+
+    for (size_t m=0; m<m_iterations; m++) {
+        // Randomly perturb
+        for (size_t i=0; i<((ids.size()/30) + 1); i++) {
+            auto r = ids.at(uniform_distribution(rng));
+
+            int8_t p;
+            if (contact_graph.has_alt(r)){
+                // Only allow {1,-1}
+                p = int8_t((uniform_distribution(rng) % 2));
+
+                if (p == 0){
+                    p = -1;
+                }
+            }
+            else{
+                // Allow {1,0,-1}
+                p = int8_t((uniform_distribution(rng) % 3) - 1);
+            }
+
+            contact_graph.set_partition(r, p);
+        }
+
+        for (size_t i=0; i<ids.size(); i++) {
+            auto n = ids.at(uniform_distribution(rng));
+
+            if (contact_graph.edge_count(n) == 0){
+                continue;
+            }
+            bool has_alt = contact_graph.has_alt(n);
+            auto prev_score = contact_graph.compute_consistency_score(n);
+            auto prev_partition = contact_graph.get_partition(n);
+
+            double max_score = prev_score;
+            int8_t p_max = prev_partition;
+
+            if (prev_partition == -1 or prev_partition == 0) {
+//                cerr << "TEST P = 1" << '\n';
+
+                auto score = contact_graph.compute_consistency_score(n, 1);
+
+                if (score > max_score) {
+                    max_score = score;
+                    p_max = 1;
+                }
+            }
+
+            if (prev_partition == 1 or prev_partition == 0) {
+//                cerr << "TEST P = -1" << '\n';
+
+                auto score = contact_graph.compute_consistency_score(n, -1);
+
+                if (score > max_score) {
+                    max_score = score;
+                    p_max = -1;
+                }
+            }
+
+            // If the node has no "alt" it can be made neutral
+            if ((not has_alt) and prev_partition != 0){
+                auto score = contact_graph.compute_consistency_score(n, 0);
+
+                if (score > max_score) {
+                    max_score = score;
+                    p_max = 0;
+                }
+            }
+
+            contact_graph.set_partition(n, p_max);
+        }
+
+        total_score = contact_graph.compute_total_consistency_score();
+
+        if (total_score > best_score) {
+            best_score = total_score;
+            contact_graph.get_partitions(best_partitions);
+        }
+        else {
+            contact_graph.set_partitions(best_partitions);
+        }
+
+//        cerr << m << ' ' << best_score << ' ' << total_score << ' ';
+//        size_t x = 0;
+//        for (auto& [n,p]: best_partitions){
+//            if (++x > 10){
+//                break;
+//            }
+//            cerr << '(' << n << ',' << int(p) << ") ";
+//        }
+//        cerr << '\n';
+
+    }
+}
+
+
 void flip_component(alt_component_t& c){
     auto temp = c.second;
     c.second = c.first;
@@ -333,48 +214,43 @@ void flip_component(alt_component_t& c){
 }
 
 
-void phase_contacts(
+void sample_with_threads(vector<VectorMultiContactGraph>& contact_graphs_per_thread,
+                         size_t m_iterations,
+                         atomic<size_t>& job_index){
+    auto i = job_index.fetch_add(1);
+
+    while (i < contact_graphs_per_thread.size()){
+        random_phase_search(contact_graphs_per_thread[i], m_iterations);
+        i = job_index.fetch_add(1);
+    }
+}
+
+
+void sample_orientation_distribution(
+        OrientationDistribution& orientation_distribution,
         MultiContactGraph& contact_graph,
+        size_t sample_size,
         size_t n_threads,
         size_t m_iterations
-){
+        ){
 
     vector<thread> threads;
-    vector <pair <int32_t,int8_t> > best_partitions;
     vector<int32_t> ids = {};
-    atomic<double> best_score = std::numeric_limits<double>::min();
-    atomic<size_t> job_index = 0;
-    mutex phase_mutex;
 
     contact_graph.randomize_partitions();
-    contact_graph.get_partitions(best_partitions);
+    contact_graph.get_node_ids(ids);
 
-//    cerr << "start score: " << contact_graph.compute_total_consistency_score() << '\n';
-
-    auto f = random_node_scale_phase_search;
-
-//    if (component_scale){
-//        f = random_component_scale_phase_search;
-//        contact_graph.get_alt_component_representatives(ids);
-//    }
-//    else{
-        contact_graph.get_node_ids(ids);
-//    }
-
-    VectorMultiContactGraph vector_contact_graph(contact_graph);
+    vector<VectorMultiContactGraph> contact_graphs_per_thread(sample_size,contact_graph);
+    atomic<size_t> job_index = 0;
 
     // Launch threads
     for (uint64_t i=0; i<n_threads; i++){
         try {
             threads.emplace_back(thread(
-                    f,
-                    vector_contact_graph,
-                    cref(ids),
-                    ref(best_partitions),
-                    ref(best_score),
-                    ref(job_index),
-                    ref(phase_mutex),
-                    m_iterations
+                    sample_with_threads,
+                    ref(contact_graphs_per_thread),
+                    m_iterations,
+                    ref(job_index)
             ));
         } catch (const exception &e) {
             cerr << e.what() << "\n";
@@ -387,6 +263,22 @@ void phase_contacts(
         t.join();
     }
 
+    double best_score = numeric_limits<double>::min();
+    vector <pair <int32_t,int8_t> > best_partitions;
+
+    cerr << "sampling results: " << '\n';
+    for (const auto& result: contact_graphs_per_thread){
+        auto score = result.compute_total_consistency_score();
+
+        if (score > best_score){
+            best_score = score;
+            result.get_partitions(best_partitions);
+        }
+
+        cerr << score << '\n';
+        orientation_distribution.update(result);
+    }
+
     contact_graph.set_partitions(best_partitions);
 }
 
@@ -397,31 +289,25 @@ void monte_carlo_phase_contacts(
         path output_dir,
         size_t n_threads
 ){
-    auto unmerged_contact_graph = contact_graph;
+    MultiContactGraph unmerged_contact_graph = contact_graph;
 
     size_t m_iterations = 200;
     size_t sample_size = 30;
     size_t n_rounds = 2;
 
     unordered_set<orientation_edge_t> visited_edges;
-
     vector <pair <int32_t,int8_t> > phase_state;
 
     for (size_t i=0; i<n_rounds; i++){
         OrientationDistribution orientation_distribution(contact_graph);
 
         cerr << "---- " << i << " ----" << '\n';
-        for (size_t j=0; j<sample_size; j++){
-            phase_contacts(contact_graph, n_threads, m_iterations);
-            auto j_score = contact_graph.compute_total_consistency_score();
-
-            contact_graph.get_partitions(phase_state);
-            unmerged_contact_graph.set_partitions(phase_state);
-            auto j_score_unmerged = unmerged_contact_graph.compute_total_consistency_score();
-
-            cerr << j << ' ' << j_score << ' ' << j_score_unmerged << '\n';
-            orientation_distribution.update(contact_graph);
-        }
+        sample_orientation_distribution(
+                orientation_distribution,
+                contact_graph,
+                sample_size,
+                n_threads,
+                m_iterations);
 
         VectorMultiContactGraph vector_contact_graph(contact_graph);
 
@@ -442,7 +328,7 @@ void monte_carlo_phase_contacts(
         sort(ordered_edges.begin(), ordered_edges.end(), [&](
                 const pair<orientation_edge_t,orientation_weight_t>& a,
                 const pair<orientation_edge_t,orientation_weight_t>& b
-        ){
+                ){
 
             auto a_ordinal = max(a.second[0], a.second[1]);
             auto b_ordinal = max(b.second[0], b.second[1]);
@@ -471,8 +357,6 @@ void monte_carlo_phase_contacts(
         alt_component_t component_b;
 
         unordered_set<int32_t> visited_nodes;
-
-        // TODO: Test stability
 
 //        cerr << "Starting with max_weight: " << max_weight << '\n';
         size_t e = 0;
@@ -542,27 +426,25 @@ void monte_carlo_phase_contacts(
         }
     }
 
+    OrientationDistribution orientation_distribution(contact_graph);
+
     cerr << "Final phase:" << '\n';
-    auto best_score = numeric_limits<double>::min();
-    auto best_phase_state = phase_state;
+    sample_orientation_distribution(
+            orientation_distribution,
+            contact_graph,
+            sample_size,
+            n_threads,
+            3*m_iterations);
 
-    for (size_t i=0; i<sample_size; i++){
-        phase_contacts(contact_graph, n_threads, m_iterations*3);
-        contact_graph.get_partitions(phase_state);
-        unmerged_contact_graph.set_partitions(phase_state);
+    vector <pair <int32_t,int8_t> > best_partitions;
+    contact_graph.get_partitions(best_partitions);
+    unmerged_contact_graph.set_partitions(best_partitions);
 
-        auto score_unmerged = unmerged_contact_graph.compute_total_consistency_score();
-        cerr << i << ' ' << score_unmerged << '\n';
+    auto final_unmerged_score = unmerged_contact_graph.compute_total_consistency_score();
+    cerr << "final_unmerged_score: " << final_unmerged_score << '\n';
 
-        if (score_unmerged > best_score){
-            best_score = score_unmerged;
-            best_phase_state = phase_state;
-        }
-    }
-
-    contact_graph.get_partitions(best_phase_state);
-
-    cerr << "Final score:" << ' ' << best_score << '\n';
+    path output_path = output_dir / ("orientations_final.csv");
+    orientation_distribution.write_contact_map(output_path, id_map);
 }
 
 

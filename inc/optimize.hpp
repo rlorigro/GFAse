@@ -11,6 +11,7 @@ namespace gfase{
 using orientation_edge_t = pair <int32_t,int32_t>;
 using orientation_weight_t = array<int32_t, 2>;
 
+
 class OrientationDistribution{
 public:
     unordered_map <orientation_edge_t, orientation_weight_t> edge_weights;
@@ -18,24 +19,26 @@ public:
 
     OrientationDistribution(const MultiContactGraph& contact_graph);
     void write_contact_map(path output_path, const IncrementalIdMap<string>& id_map) const;
+    void update(const VectorMultiContactGraph& contact_graph);
     void update(const MultiContactGraph& contact_graph);
 };
 
 
-void random_multicontact_phase_search(
-        VectorMultiContactGraph contact_graph,
-        const vector<int32_t>& ids,
-        vector <pair <int32_t,int8_t> >& best_partitions,
-        atomic<double>& best_score,
-        atomic<size_t>& job_index,
-        mutex& phase_mutex,
-        size_t m_iterations);
+void random_phase_search(VectorMultiContactGraph& contact_graph, size_t m_iterations);
 
 
-void phase_contacts(
+void sample_with_threads(
+        vector<VectorMultiContactGraph>& contact_graphs_per_thread,
+        size_t m_iterations,
+        atomic<size_t>& job_index);
+
+
+void sample_orientation_distribution(
+        OrientationDistribution& orientationDistribution,
         MultiContactGraph& contact_graph,
+        size_t sample_size,
         size_t n_threads,
-        size_t m_iterations = 10000
+        size_t m_iterations
 );
 
 

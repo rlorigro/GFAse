@@ -22,7 +22,7 @@ using gfase::gfa_to_handle_graph;
 using gfase::for_element_in_sam_file;
 
 
-using gfase::random_multicontact_phase_search;
+using gfase::random_phase_search;
 using gfase::construct_alignment_graph;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;

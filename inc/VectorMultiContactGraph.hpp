@@ -83,8 +83,10 @@ public:
     void set_partitions(const vector <pair <int32_t,int8_t> >& partitions);
 
     // Iterating and accessing
+    void for_each_edge(const function<void(const pair<int32_t,int32_t>, int32_t weight)>& f) const;
     void get_alt_component(int32_t id, bool validate, alt_component_t& component) const;
     void get_partitions(vector <pair <int32_t,int8_t> >& partitions) const;
+    void get_node_ids(vector<int32_t>& ids) const;
     int8_t get_partition(int32_t id) const;
     size_t edge_count(int32_t id) const;
     bool has_alt(int32_t id) const;
@@ -96,6 +98,7 @@ public:
     double compute_consistency_score(int32_t id, int8_t p) const;
     double compute_total_consistency_score() const;
     double compare_total_consistency_score(const MultiContactGraph& other_graph) const;
+    void randomize_partitions();
 };
 
 

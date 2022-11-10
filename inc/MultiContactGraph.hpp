@@ -2,7 +2,6 @@
 #define GFASE_MULTICONTACTGRAPH_HPP
 
 #include "IncrementalIdMap.hpp"
-#include "BubbleGraph.hpp"          // TODO: Only need `contact_map_t` definition, consider breaking it out
 
 #include "handlegraph/handle_graph.hpp"
 #include "bdsg/hash_graph.hpp"
@@ -43,6 +42,7 @@ namespace gfase{
 
 
 using alt_component_t = pair <set<int32_t>, set<int32_t> >;
+using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
 
 
 class NonBipartiteEdgeException : public std::runtime_error{

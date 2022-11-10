@@ -2,7 +2,6 @@
 #include "gfa_to_handle.hpp"
 #include "graph_utility.hpp"
 #include "MultiContactGraph.hpp"
-#include "ContactGraph.hpp"
 #include "optimize.hpp"
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
@@ -21,7 +20,7 @@ using gfase::gfa_to_handle_graph;
 using gfase::for_element_in_sam_file;
 
 
-using gfase::random_multicontact_phase_search;
+using gfase::random_phase_search;
 using gfase::construct_alignment_graph;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;
@@ -309,61 +308,61 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         contact_graph.remove_edge(id,id);
     });
 
-    phase_contacts(contact_graph, n_threads, 10);
-
-    cerr << t << "Writing phasing results to file... " << '\n';
-
-    path phases_output_path = output_dir / "phases.csv";
-    contact_graph.write_bandage_csv(phases_output_path, id_map);
-
-    cerr << t << "Writing phased fasta files... " << '\n';
-
-    // In lieu of actual chaining, dump some fasta files with the original GFA segments
-    path phase_0_fasta_path = output_dir / "phase_0.fasta";
-    ofstream phase_0_fasta(phase_0_fasta_path);
-
-    path phase_1_fasta_path = output_dir / "phase_1.fasta";
-    ofstream phase_1_fasta(phase_1_fasta_path);
-
-    path unphased_fasta_path = output_dir / "unphased.fasta";
-    ofstream unphased_fasta(unphased_fasta_path);
-
-    if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
-    }
-
-    if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
-    }
-
-    if (not (unphased_fasta.is_open() and unphased_fasta.good())){
-        throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
-    }
-
-    // Iterate 1-based IDs and dump into fasta
-    for (int64_t id=1; id<id_map.size()+1; id++){
-        const auto& name = id_map.get_name(id);
-
-        int8_t partition = 0;
-        if (contact_graph.has_node(int32_t(id))){
-            partition = contact_graph.get_partition(int32_t(id));
-        }
-
-        if (partition == 0){
-            unphased_fasta << '>' << name << '\n';
-            unphased_fasta << sequences.at(id).sequence << '\n';
-        }
-        else if (partition == -1){
-            phase_0_fasta << '>' << name << '\n';
-            phase_0_fasta << sequences.at(id).sequence << '\n';
-        }
-        else if (partition == 1){
-            phase_1_fasta << '>' << name << '\n';
-            phase_1_fasta << sequences.at(id).sequence << '\n';
-        }
-    }
-
-    cerr << t << "Done" << '\n';
+//    phase_contacts(contact_graph, 10);
+//
+//    cerr << t << "Writing phasing results to file... " << '\n';
+//
+//    path phases_output_path = output_dir / "phases.csv";
+//    contact_graph.write_bandage_csv(phases_output_path, id_map);
+//
+//    cerr << t << "Writing phased fasta files... " << '\n';
+//
+//    // In lieu of actual chaining, dump some fasta files with the original GFA segments
+//    path phase_0_fasta_path = output_dir / "phase_0.fasta";
+//    ofstream phase_0_fasta(phase_0_fasta_path);
+//
+//    path phase_1_fasta_path = output_dir / "phase_1.fasta";
+//    ofstream phase_1_fasta(phase_1_fasta_path);
+//
+//    path unphased_fasta_path = output_dir / "unphased.fasta";
+//    ofstream unphased_fasta(unphased_fasta_path);
+//
+//    if (not (phase_0_fasta.is_open() and phase_0_fasta.good())){
+//        throw runtime_error("ERROR: file could not be written: " + phase_0_fasta_path.string());
+//    }
+//
+//    if (not (phase_1_fasta.is_open() and phase_1_fasta.good())){
+//        throw runtime_error("ERROR: file could not be written: " + phase_1_fasta_path.string());
+//    }
+//
+//    if (not (unphased_fasta.is_open() and unphased_fasta.good())){
+//        throw runtime_error("ERROR: file could not be written: " + unphased_fasta_path.string());
+//    }
+//
+//    // Iterate 1-based IDs and dump into fasta
+//    for (int64_t id=1; id<id_map.size()+1; id++){
+//        const auto& name = id_map.get_name(id);
+//
+//        int8_t partition = 0;
+//        if (contact_graph.has_node(int32_t(id))){
+//            partition = contact_graph.get_partition(int32_t(id));
+//        }
+//
+//        if (partition == 0){
+//            unphased_fasta << '>' << name << '\n';
+//            unphased_fasta << sequences.at(id).sequence << '\n';
+//        }
+//        else if (partition == -1){
+//            phase_0_fasta << '>' << name << '\n';
+//            phase_0_fasta << sequences.at(id).sequence << '\n';
+//        }
+//        else if (partition == 1){
+//            phase_1_fasta << '>' << name << '\n';
+//            phase_1_fasta << sequences.at(id).sequence << '\n';
+//        }
+//    }
+//
+//    cerr << t << "Done" << '\n';
 }
 
 

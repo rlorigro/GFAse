@@ -319,7 +319,7 @@ void Chainer::new_paths(int64_t& chain_index, MutablePathDeletableHandleGraph& g
     string name_0 = "gfase_hap_" + to_string(chain_index) +"_0";
     string name_1 = "gfase_hap_" + to_string(chain_index) +"_1";
 
-    cerr << name_0 << ' ' << name_1 << '\n';
+//    cerr << name_0 << ' ' << name_1 << '\n';
 
     paths[0] = graph.create_path_handle(name_0);
     paths[1] = graph.create_path_handle(name_1);
@@ -483,11 +483,11 @@ void Chainer::generate_chain_paths(
         new_paths(c, graph, paths, false);
 
         for (auto& item: chain){
-            cerr << c << ' ';
-            for (auto n: item){
-                cerr << id_map.get_name(n) << ' ';
-            }
-            cerr << '\n';
+//            cerr << c << ' ';
+//            for (auto n: item){
+//                cerr << id_map.get_name(n) << ' ';
+//            }
+//            cerr << '\n';
 
             if (item.size() == 2){
                 bool phasable = process_diploid_chain_element(item, paths, graph, contact_graph);
@@ -522,13 +522,13 @@ void Chainer::generate_chain_paths(
             path_phases.erase(name);
         }
 
-        cerr << graph.get_path_name(p) << ' ';
+//        cerr << graph.get_path_name(p) << ' ';
         graph.for_each_step_in_path(p, [&](const step_handle_t& s){
             auto id = graph.get_id(graph.get_handle_of_step(s));
             auto name = id_map.get_name(id);
-            cerr << name << ' ';
+//            cerr << name << ' ';
         });
-        cerr << '\n';
+//        cerr << '\n';
     });
 
     for (auto& p: to_be_destroyed){

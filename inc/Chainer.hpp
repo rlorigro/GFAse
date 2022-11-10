@@ -10,9 +10,10 @@
 #include "bdsg/overlays/packed_subgraph_overlay.hpp"
 
 using bdsg::MutablePathDeletableHandleGraph;
-using bdsg::MutableHandleGraph;
 using bdsg::PackedSubgraphOverlay;
+using bdsg::MutableHandleGraph;
 using bdsg::PathHandleGraph;
+using bdsg::HandleGraph;
 using bdsg::HashGraph;
 using handlegraph::path_handle_t;
 using handlegraph::step_handle_t;

@@ -2,8 +2,6 @@
 #define GFASE_CONTACTGRAPH_HPP
 
 #include "IncrementalIdMap.hpp"
-#include "BubbleGraph.hpp"          // TODO: Only need `contact_map_t` definition, consider breaking it out
-
 #include "handlegraph/handle_graph.hpp"
 #include "bdsg/hash_graph.hpp"
 #include "sparsepp/spp.h"
@@ -38,6 +36,8 @@ using std::set;
 
 
 namespace gfase{
+
+using contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, int32_t> >;
 
 
 class Node {

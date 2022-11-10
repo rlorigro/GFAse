@@ -1,10 +1,8 @@
+#include "VectorMultiContactGraph.hpp"
+#include "MultiContactGraph.hpp"
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
-#include "graph_utility.hpp"
-#include "MultiContactGraph.hpp"
-#include "ContactGraph.hpp"
 #include "optimize.hpp"
-#include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
 #include "Sequence.hpp"
@@ -12,7 +10,6 @@
 #include "Timer.hpp"
 #include "align.hpp"
 #include "CLI11.hpp"
-#include "Sam.hpp"
 #include "Bam.hpp"
 #include "minimap.h"
 
@@ -22,13 +19,13 @@ using gfase::gfa_to_handle_graph;
 using gfase::for_element_in_sam_file;
 
 
-using gfase::random_multicontact_phase_search;
+using gfase::random_phase_search;
 using gfase::construct_alignment_graph;
 using gfase::unpaired_mappings_t;
 using gfase::paired_mappings_t;
 using gfase::contact_map_t;
+using gfase::VectorMultiContactGraph;
 using gfase::MultiContactGraph;
-using gfase::ContactGraph;
 using gfase::NonBipartiteEdgeException;
 
 using gfase::AlignmentBlock;
@@ -147,8 +144,10 @@ void rephase(
     auto best_score = numeric_limits<double>::min();
     vector <pair <int32_t,int8_t> > best_phase_state;
 
+    VectorMultiContactGraph vector_contact_graph(contact_graph);
+
     for (size_t i=0; i<sample_size; i++){
-        phase_contacts(contact_graph, n_threads, m_iterations);
+        random_phase_search(vector_contact_graph, m_iterations);
         contact_graph.get_partitions(phase_state);
 
         auto score = contact_graph.compute_total_consistency_score();

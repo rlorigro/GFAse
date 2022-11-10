@@ -346,6 +346,72 @@ double VectorMultiContactGraph::compare_total_consistency_score(const MultiConta
 }
 
 
+void VectorMultiContactGraph::randomize_partitions(){
+    // True random number
+    std::random_device rd;
+
+    // Pseudorandom generator with true random seed
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uniform_distribution(0,2);
+
+    for (int32_t id=0; id<nodes.size(); id++){
+        const auto& node = nodes[id];
+
+        if (node.is_null){
+            continue;
+        }
+
+        int8_t p;
+        if (node.has_alt()){
+            // Only allow {1,-1} for known bubbles
+            p = int8_t((uniform_distribution(rng) % 2));
+
+            if (p == 0){
+                p = -1;
+            }
+
+            set_partition(id,p);
+        }
+        else{
+            // Allow {1,0,-1}
+            p = int8_t((uniform_distribution(rng) % 3) - 1);
+
+            set_partition(id,p);
+        }
+    }
+}
+
+
+void VectorMultiContactGraph::for_each_edge(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const{
+    for (int32_t id_a=0; id_a<nodes.size(); id_a++){
+        auto& a = nodes[id_a];
+
+        if (a.is_null){
+            continue;
+        }
+
+        for (auto& [id_b, weight]: edge_weights[id_a]){
+            f({id_a,id_b}, weight);
+        }
+    }
+}
+
+
+void VectorMultiContactGraph::get_node_ids(vector<int32_t>& ids) const{
+    ids.clear();
+
+    for (int32_t id=0; id<nodes.size(); id++){
+        const auto& node = nodes[id];
+
+        if (node.is_null){
+            continue;
+        }
+
+        ids.emplace_back(id);
+    }
+}
+
+
 void VectorMultiContactGraph::get_partitions(vector <pair <int32_t,int8_t> >& partitions) const{
     partitions.clear();
 

@@ -13,8 +13,6 @@
 #include "Bam.hpp"
 
 using gfase::for_element_in_sam_file;
-using gfase::unpaired_mappings_t;
-using gfase::paired_mappings_t;
 using gfase::contact_map_t;
 using gfase::unzip;
 
@@ -76,19 +74,6 @@ using std::set;
 
 
 using weighted_contact_map_t = sparse_hash_map <int32_t, sparse_hash_map<int32_t, map <uint8_t, int32_t> > >;
-
-
-void print_mappings(const unpaired_mappings_t& mappings){
-    for (const auto& [name,elements]: mappings){
-        cerr << '\n';
-        cerr << name << '\n';
-
-        cerr << "Alignments:" << '\n';
-        for (auto& e: elements){
-            cerr << '\t' << e.ref_name << '\t' << bitset<sizeof(e.flag)*8>(e.flag) << '\t' << "MQ" << int(e.mapq) << ' ' << 'P' << !e.is_not_primary() << ' ' << 'S' << e.is_supplementary() << '\n';
-        }
-    }
-}
 
 
 void update_contact_map(
