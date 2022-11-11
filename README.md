@@ -26,36 +26,97 @@ make -j [n_threads]
 - libcurl4-openssl-dev
 
 
-## Example usage
+## Usage
 
-### Phase with Hi-C
-A BAM file containing alignments of Hi-C data to the assembly contigs is required as input. The BAM must be sorted by read name, and does not need to be indexed. As an example, here is a command you could use align with bwa, and sort with the `-n` argument:
+### Phase with proximity linkage reads (HiC or PoreC)
 
 ```
-bwa index /home/ubuntu/data/human/hg002/assembly/paolo_ul_guppy6_run14/Assembly-Phased.fasta \
+App description
+Usage: ./phase_contacts_with_monte_carlo [OPTIONS]
+
+Options:
+  -h,--help                   Print this help message and exit
+  -i,--input TEXT REQUIRED    Path to BAM containing proximity linked reads. MUST be grouped by read name. Does not need index or regional sorting.
+  -g,--gfa TEXT               Path to GFA containing assembly graph to be phased
+  -o,--output_dir TEXT REQUIRED
+                              Path to (nonexistent) directory where output will be stored
+  -m,--min_mapq INT           (Default = 1)     Minimum required mapq value for mapping to be counted.
+  -c,--core_iterations UINT   (Default = 200)   Number of iterations to use for each shallow convergence in the sampling process. The final phasing round uses 3*core_iterations.
+  -s,--sample_size UINT       (Default = 30)    How many shallowly converged phase states to sample from. This is also the maximum usable concurrency (n_threads) for this stage of the pipeline.
+  -r,--n_rounds UINT          (Default = 2)     How many rounds to sample and merge.
+  -t,--threads UINT           (Default = 1)     Maximum number of threads to use.
+  --use_homology              (Default = 0)     Use sequence homology to find alts. For whenever the GFA does not have Shasta node labels.
+  --skip_unzip                (Default = 0)     After phasing nodes in the graph, DON'T unzip/concatenate haplotypes before writing to fasta. Unzipping should be skipped when using overlapped GFAs because no stitching is performed.
+```
+
+## Examples
+
+### Prepare alignments (HiC)
+
+```
+bwa index Assembly-Phased.fasta \
 && \
 bwa mem -t 46 -5 -S -P \
-/home/ubuntu/data/human/hg002/assembly/paolo_ul_guppy6_run14/Assembly-Phased.fasta \
-/extra/data/human/hg002/hic/HG002.HiC_1_S1_R1_001.fastq \
-/extra/data/human/hg002/hic/HG002.HiC_1_S1_R2_001.fastq \
-| samtools sort -n -@ 24 - -o hg002_hic_s1_to_shasta_guppy6_run14.bam \
+Assembly-Phased.fasta \
+HG002.HiC_1_S1_R1_001.fastq \
+HG002.HiC_1_S1_R2_001.fastq \
+| samtools sort -n -@ 24 - -o hic_to_assembly.sorted_by_read.bam \
 ```
-Once you have the BAM, pass it as an argument to GFAse, along with the gfa.
+Once you have the BAM, pass it as an argument to GFAse, along with the GFA. Note that samtools and BWA are competing for threads.
+
+![image](https://user-images.githubusercontent.com/28764332/201423346-b2077b90-7f96-42fc-be8a-5b655315ff3c.png)
+
+x = Time (min)
+
+### Prepare alignments (PoreC)
 
 ```
-/home/ubuntu/software/GFAse/build/phase_contacts \
--i /extra/data/human/hg002/align/hg002_hic_s1-2_to_shasta_guppy6_run14.q1.bam \
--g /home/ubuntu/data/human/hg002/assembly/Assembly-Phased.gfa \
--o /home/ubuntu/data/human/hg002/assembly/hic_phase_run2/ \
--m 2 \
--p PR \
--t 46
+minimap2 \
+-a \
+-x map-ont \
+-k 17 \
+-t 56 \
+-K 10g \
+-I 8g \
+Assembly-Phased.fasta \
+porec_reads.fastq.gz \
+| samtools view -bh -@ 8 -q 1 - \
+> /extra2/data/human/hg002/porec/PAM_10290_and_10354_r10_porec_vs_shasta_r10_slow.q1.bam
 ```
-In this case, only mappings above mapq=1 and with a target contig name with a "PR" will be used in phasing.
+PoreC does not used paired files. It is strongly recommended that you filter the mapq with a pipe to avoid massive output BAMs. No sorting is needed under the assumption that minimap2 groups output by read name. Once you have the BAM, pass it as an argument to GFAse, along with the GFA.
+
+![image](https://user-images.githubusercontent.com/28764332/201423543-274923c9-6a2d-4f3c-93cd-dcd1e350e6e7.png)
+
+x = Time (min)
 
 
-![image](https://user-images.githubusercontent.com/28764332/169711948-651feac3-2f53-4a71-9608-913a09b215b4.png)
-Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>2) will save loading time. 
+## Phase Shasta
+
+```
+/home/ubuntu/software/GFAse/build/phase_contacts_with_monte_carlo \
+-i hic_to_assembly.sorted_by_read.bam \
+-g Assembly-Phased.gfa \
+-o /path/to/output/directory/ \
+-m 1 \
+-t 62
+```
+
+Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>0) will save loading time. 
+
+## Phase Verkko (or any unnanotated, overlapped GFA)
+
+```
+/home/ubuntu/software/GFAse/build/phase_contacts_with_monte_carlo \
+-i hic_to_assembly.sorted_by_read.bam \
+-g Assembly-Phased.gfa \
+-o /path/to/output/directory/ \
+--use_homology \
+--skip_unzip \
+-m 1 \
+-t 62
+```
+
+As with Shasta, run time depends mostly on the size of the BAM to be loaded, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA. ~128GB and 48 threads should be sufficient.
 
 
 ### Phase with parental k-mers
@@ -74,11 +135,7 @@ A list of unique parental (separated into maternal/paternal fastas) kmers is req
 
 ### Hi-C phasing
 The plot below shows phase assignment of bubbles w.r.t. a diploid reference alignment. 
-
-- Blue/Green = 01/10 (trans)
-- Red/Orange = 00/11 (cis)
-
-![image](https://user-images.githubusercontent.com/28764332/169707905-7d6e688f-e07a-4cdc-a9e7-e19893132d80.png)
+![image](https://user-images.githubusercontent.com/28764332/201426111-2941f038-9015-4abe-b649-b7cd59580051.png)
 
 ### K-mer based phasing
 
