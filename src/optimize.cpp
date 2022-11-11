@@ -135,7 +135,7 @@ void random_phase_search(VectorMultiContactGraph& contact_graph, size_t m_iterat
             contact_graph.set_partition(r, p);
         }
 
-        for (size_t i=0; i<ids.size(); i++) {
+        for (size_t i=0; i<ids.size()*3; i++) {
             auto n = ids.at(uniform_distribution(rng));
 
             if (contact_graph.edge_count(n) == 0){
@@ -215,12 +215,12 @@ void flip_component(alt_component_t& c){
 
 
 void sample_with_threads(vector<VectorMultiContactGraph>& contact_graphs_per_thread,
-                         size_t m_iterations,
+                         size_t core_iterations,
                          atomic<size_t>& job_index){
     auto i = job_index.fetch_add(1);
 
     while (i < contact_graphs_per_thread.size()){
-        random_phase_search(contact_graphs_per_thread[i], m_iterations);
+        random_phase_search(contact_graphs_per_thread[i], core_iterations);
         i = job_index.fetch_add(1);
     }
 }
@@ -231,7 +231,7 @@ void sample_orientation_distribution(
         MultiContactGraph& contact_graph,
         size_t sample_size,
         size_t n_threads,
-        size_t m_iterations
+        size_t core_iterations
         ){
 
     vector<thread> threads;
@@ -249,7 +249,7 @@ void sample_orientation_distribution(
             threads.emplace_back(thread(
                     sample_with_threads,
                     ref(contact_graphs_per_thread),
-                    m_iterations,
+                    core_iterations,
                     ref(job_index)
             ));
         } catch (const exception &e) {
@@ -286,7 +286,7 @@ void sample_orientation_distribution(
 void monte_carlo_phase_contacts(
         MultiContactGraph& contact_graph,
         const IncrementalIdMap<string>& id_map,
-        size_t m_iterations,
+        size_t core_iterations,
         size_t sample_size,
         size_t n_rounds,
         size_t n_threads,
@@ -307,7 +307,7 @@ void monte_carlo_phase_contacts(
                 contact_graph,
                 sample_size,
                 n_threads,
-                m_iterations);
+                core_iterations);
 
         VectorMultiContactGraph vector_contact_graph(contact_graph);
 
@@ -411,7 +411,7 @@ void monte_carlo_phase_contacts(
             contact_graph,
             sample_size,
             n_threads,
-            3*m_iterations);
+            3*core_iterations);
 
     vector <pair <int32_t,int8_t> > best_partitions;
     contact_graph.get_partitions(best_partitions);

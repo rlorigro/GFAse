@@ -29,7 +29,7 @@ void random_phase_search(VectorMultiContactGraph& contact_graph, size_t m_iterat
 
 void sample_with_threads(
         vector<VectorMultiContactGraph>& contact_graphs_per_thread,
-        size_t m_iterations,
+        size_t core_iterations,
         atomic<size_t>& job_index);
 
 
@@ -38,14 +38,14 @@ void sample_orientation_distribution(
         MultiContactGraph& contact_graph,
         size_t sample_size,
         size_t n_threads,
-        size_t m_iterations
+        size_t core_iterations
 );
 
 
 void monte_carlo_phase_contacts(
         MultiContactGraph& contact_graph,
         const IncrementalIdMap<string>& id_map,
-        size_t m_iterations,
+        size_t core_iterations,
         size_t sample_size,
         size_t n_rounds,
         size_t n_threads,

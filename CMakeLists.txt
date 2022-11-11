@@ -762,7 +762,6 @@ set(EXECUTABLES
         assign_phases_via_diploid_alignment
         count_kmers
         create_bandage_path_color_table
-        compute_minhash
         compute_minhash2
         extract_haplotype_kmers
         evaluate_phasing
@@ -776,9 +775,7 @@ set(EXECUTABLES
         phase_haplotype_paths
         phase_contacts
         phase_contacts_with_monte_carlo
-        rephase_tripartition
         rephase_tripartition_with_monte_carlo
-        phase_contacts_as_tripartition
         remove_empty_nodes
         split_connected_components
         unzip

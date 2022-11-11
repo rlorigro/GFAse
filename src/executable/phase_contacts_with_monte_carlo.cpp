@@ -169,7 +169,7 @@ void write_config(
         path gfa_path,
         path sam_path,
         int8_t min_mapq,
-        size_t m_iterations,
+        size_t core_iterations,
         size_t sample_size,
         size_t n_rounds,
         size_t n_threads){
@@ -184,7 +184,7 @@ void write_config(
     file << "gfa_path" << ',' << gfa_path << '\n';
     file << "sam_path" << ',' << sam_path << '\n';
     file << "min_mapq" << ',' << int(min_mapq) << '\n';
-    file << "m_iterations" << ',' << int(min_mapq) << '\n';
+    file << "core_iterations" << ',' << int(min_mapq) << '\n';
     file << "sample_size" << ',' << int(min_mapq) << '\n';
     file << "n_rounds" << ',' << int(min_mapq) << '\n';
     file << "n_threads" << ',' << n_threads << '\n';
@@ -342,7 +342,6 @@ void find_unlabeled_alts(
 
     remove_adjacencies_from_candidates(graph, id_map, to_be_aligned);
 
-    // TODO: convert edges to alts instead of using two parallel graphs... ?
     MultiContactGraph alignment_graph;
     MultiContactGraph symmetrical_alignment_graph;
 
@@ -399,10 +398,18 @@ void find_unlabeled_alts(
 }
 
 
-void phase(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, bool use_homology, size_t n_threads){
-    size_t m_iterations = 200;
-    size_t sample_size = 30;
-    size_t n_rounds = 2;
+void phase(
+        path output_dir,
+        path sam_path,
+        path gfa_path,
+        int8_t min_mapq,
+        size_t core_iterations,
+        size_t sample_size,
+        size_t n_rounds,
+        bool use_homology,
+        bool skip_unzip,
+        size_t n_threads
+        ){
 
     Timer t;
 
@@ -420,7 +427,7 @@ void phase(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, bool 
     path chained_gfa_path = output_dir / "chained.gfa";
     path unzipped_gfa_path = output_dir / "unzipped.gfa";
 
-    write_config(output_dir, gfa_path, sam_path, min_mapq, m_iterations, sample_size, n_rounds, n_threads);
+    write_config(output_dir, gfa_path, sam_path, min_mapq, core_iterations, sample_size, n_rounds, n_threads);
 
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
@@ -489,7 +496,7 @@ void phase(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, bool 
     monte_carlo_phase_contacts(
             contact_graph,
             id_map,
-            m_iterations,
+            core_iterations,
             sample_size,
             n_rounds,
             n_threads,
@@ -503,13 +510,16 @@ void phase(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, bool 
     chainer.generate_chain_paths(graph, id_map, contact_graph);
     chainer.write_chainable_nodes_to_bandage_csv(output_dir, id_map);
 
-    write_gfa_to_file(graph, id_map, chained_gfa_path);
-
-    unzip(graph, id_map, false, false);
-
     cerr << t << "Writing GFA... " << '\n';
 
-    write_gfa_to_file(graph, id_map, unzipped_gfa_path);
+    write_gfa_to_file(graph, id_map, chained_gfa_path);
+
+    if (not skip_unzip) {
+        cerr << t << "Unzipping chains... " << '\n';
+
+        unzip(graph, id_map, false, false);
+        write_gfa_to_file(graph, id_map, unzipped_gfa_path);
+    }
 
     cerr << t << "Writing FASTA... " << '\n';
 
@@ -525,7 +535,11 @@ int main (int argc, char* argv[]){
     path output_dir;
     int8_t min_mapq = 0;
     size_t n_threads = 1;
+    size_t core_iterations = 200;
+    size_t sample_size = 30;
+    size_t n_rounds = 2;
     bool use_homology = false;
+    bool skip_unzip = false;
 
     CLI::App app{"App description"};
 
@@ -552,6 +566,21 @@ int main (int argc, char* argv[]){
             "Minimum required mapq value for mapping to be counted");
 
     app.add_option(
+            "-c,--core_iterations",
+            core_iterations,
+            "Number of iterations to use for each shallow convergence in the sampling process. The final phasing round uses 3*core_iterations.");
+
+    app.add_option(
+            "-s,--sample_size",
+            sample_size,
+            "How many shallowly converged phase states to sample from. This is also the maximum concurrency (n_threads) usable for this stage of the pipeline. More can be specified but won't be used here.");
+
+    app.add_option(
+            "-r,--n_rounds",
+            n_rounds,
+            "How many rounds to sample and merge");
+
+    app.add_option(
             "-t,--threads",
             n_threads,
             "Maximum number of threads to use");
@@ -561,9 +590,26 @@ int main (int argc, char* argv[]){
             use_homology,
             "Use sequence homology to find alts. For whenever the GFA does not have Shasta node labels");
 
+    app.add_flag(
+            "--skip_unzip",
+            skip_unzip,
+            "After phasing nodes in the graph, DON'T unzip/concatenate haplotypes before writing to fasta. "
+            "Unzipping should be skipped when using overlapped GFAs because no stitching is performed. ");
+
     CLI11_PARSE(app, argc, argv);
 
-    phase(output_dir, sam_path, gfa_path, min_mapq, use_homology, n_threads);
+    phase(
+            output_dir,
+            sam_path,
+            gfa_path,
+            min_mapq,
+            core_iterations,
+            sample_size,
+            n_rounds,
+            use_homology,
+            skip_unzip,
+            n_threads
+    );
 
     return 0;
 }
