@@ -90,7 +90,7 @@ PoreC does not used paired files. It is strongly recommended that you filter the
 x = Time (min)
 
 
-## Phase Shasta with proximity data
+### Phase Shasta with proximity data
 
 ```
 /home/ubuntu/software/GFAse/build/phase_contacts_with_monte_carlo \
@@ -103,7 +103,7 @@ x = Time (min)
 
 Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>0) will save loading time. 
 
-## Phase Verkko (or any unnanotated, overlapped GFA) with proximity data
+### Phase Verkko (or any unnanotated, overlapped GFA) with proximity data
 
 ```
 /home/ubuntu/software/GFAse/build/phase_contacts_with_monte_carlo \
@@ -119,7 +119,7 @@ Run time depends almost entirely on the size of the BAM to be loaded. Filtering 
 As with Shasta, run time depends mostly on the size of the BAM to be loaded, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA. ~128GB and 48 threads should be sufficient.
 
 
-## Phase Shasta with parental k-mers
+### Phase Shasta with parental k-mers
 A list of unique parental (separated into maternal/paternal fastas) kmers is required as input.
 ```
 /home/ubuntu/software/GFAse/build/phase_haplotype_paths \
