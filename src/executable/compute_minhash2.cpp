@@ -1,26 +1,26 @@
 #include "Hasher2.hpp"
+#include "gfa_to_handle.hpp"
 #include "GfaReader.hpp"
 #include "Filesystem.hpp"
 #include "Sequence.hpp"
 #include "CLI11.hpp"
 
 
-using gfase::Hasher2;
+using gfase::gfa_to_handle_graph;
 using gfase::Sequence;
+using gfase::Hasher2;
 
 
 int compute_minhash(path gfa_path, path output_directory, double sample_rate, size_t k, size_t n_iterations, size_t n_threads){
     create_directories(output_directory);
 
-    GfaReader reader(gfa_path);
+    HashGraph graph;
+    IncrementalIdMap<string> id_map;
+    gfa_to_handle_graph(graph, id_map, gfa_path);
+
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
 
-    vector<Sequence> sequences;
-    reader.for_each_sequence([&](string& name, string& sequence){
-        sequences.emplace_back(name, sequence);
-    });
-
-    hasher.hash(sequences);
+    hasher.hash(graph, id_map);
     hasher.write_results(output_directory);
 
     map<string,string> overlaps;

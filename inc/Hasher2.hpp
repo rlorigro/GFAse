@@ -87,7 +87,7 @@ private:
 
     // Can't use a vector for mutexes, and it's probably more efficient to have fewer anyway. So the bin index
     // is downsampled (%) to match the number of mutexes.
-    array<mutex,512> bin_mutexes;
+    array<mutex,1024> bin_mutexes;
 
     // The result of counting co-occurring sequences in the hash bins
     overlaps_t overlaps;
