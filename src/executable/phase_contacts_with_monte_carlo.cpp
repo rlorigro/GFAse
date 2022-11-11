@@ -546,7 +546,7 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-i,--input",
             sam_path,
-            "Path to SAM or BAM containing filtered, paired HiC reads")
+            "Path to BAM containing proximity linked reads. MUST be grouped by read name. Does not need index or regional sorting.")
             ->required();
 
     app.add_option(
