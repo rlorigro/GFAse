@@ -103,8 +103,10 @@ void Hasher2::hash_sequence(const Sequence& sequence, const size_t hash_index) {
 
             if (h < n_bins){
                 auto& m = bin_mutexes.at(h % bin_mutexes.size());
+                auto bin_index = h % bins.size();
+
                 m.lock();
-                bins.at(h % bins.size()).emplace(sequence.name);
+                bins[bin_index].emplace(sequence.name);
                 m.unlock();
             }
         }
@@ -126,8 +128,10 @@ void Hasher2::hash_sequence(const Sequence& sequence, const size_t hash_index) {
 
             if (h < n_bins){
                 auto& m = bin_mutexes.at(h % bin_mutexes.size());
+                auto bin_index = h % bins.size();
+
                 m.lock();
-                bins.at(h % bins.size()).emplace(sequence.name);
+                bins[bin_index].emplace(sequence.name);
                 m.unlock();
             }
         }
@@ -177,6 +181,10 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 
         bins.clear();
         bins.resize(max_kmers_in_sequence * bins_scaling_factor);
+
+        for (auto& b: bins){
+            bins.reserve(max_bin_size);
+        }
 
         // Thread-related variables
         atomic<size_t> job_index = 0;
@@ -236,7 +244,7 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 
 void Hasher2::hash(const HandleGraph& graph, const IncrementalIdMap<string>& id_map){
     vector<Sequence> sequences;
-//    sequences.reserve(graph.get_node_count());
+    sequences.reserve(graph.get_node_count());
 
     graph.for_each_handle([&](const handle_t& h){
         auto n = graph.get_id(h);
