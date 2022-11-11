@@ -150,7 +150,7 @@ void Hasher2::write_hash_frequency_distribution() const{
 
 void Hasher2::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index){
     size_t i = job_index.fetch_add(1);
-    while (job_index < sequences.size()){
+    while (i < sequences.size()){
         hash_sequence(sequences[i], hash_index);
         i = job_index.fetch_add(1);
     }
