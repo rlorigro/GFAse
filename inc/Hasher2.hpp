@@ -87,7 +87,7 @@ private:
 
     // Can't use a vector for mutexes, and it's probably more efficient to have fewer anyway. So the bin index
     // is downsampled (%) to match the number of mutexes.
-    array<mutex,1024> bin_mutexes;
+    array<mutex,65536> bin_mutexes;
 
     // The result of counting co-occurring sequences in the hash bins
     overlaps_t overlaps;
@@ -109,7 +109,7 @@ private:
     const size_t min_hashes = 40;
 
     // How many more bins than the total length of the observed sequence do we want to have, to prevent collisions?
-    const size_t bins_scaling_factor = 5;
+    const size_t bins_scaling_factor = 10;
 
     static const vector<uint64_t> seeds;
 
