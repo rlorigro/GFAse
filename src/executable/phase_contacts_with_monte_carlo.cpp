@@ -563,38 +563,38 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-m,--min_mapq",
             min_mapq,
-            "Minimum required mapq value for mapping to be counted");
+            "(Default = " + to_string(min_mapq) + ")\tMinimum required mapq value for mapping to be counted.");
 
     app.add_option(
             "-c,--core_iterations",
             core_iterations,
-            "Number of iterations to use for each shallow convergence in the sampling process. The final phasing round uses 3*core_iterations.");
+            "(Default = "+ to_string(core_iterations) + ")\tNumber of iterations to use for each shallow convergence in the sampling process. The final phasing round uses 3*core_iterations.");
 
     app.add_option(
             "-s,--sample_size",
             sample_size,
-            "How many shallowly converged phase states to sample from. This is also the maximum concurrency (n_threads) usable for this stage of the pipeline. More can be specified but won't be used here.");
+            "(Default = "+ to_string(sample_size) + ")\tHow many shallowly converged phase states to sample from. This is also the maximum usable concurrency (n_threads) for this stage of the pipeline.");
 
     app.add_option(
             "-r,--n_rounds",
             n_rounds,
-            "How many rounds to sample and merge");
+            "(Default = " + to_string(n_rounds) + ")\tHow many rounds to sample and merge.");
 
     app.add_option(
             "-t,--threads",
             n_threads,
-            "Maximum number of threads to use");
+            "(Default = " + to_string(n_threads) + ")\tMaximum number of threads to use.");
 
     app.add_flag(
             "--use_homology",
             use_homology,
-            "Use sequence homology to find alts. For whenever the GFA does not have Shasta node labels");
+            "(Default = " + to_string(use_homology) + ")\tUse sequence homology to find alts. For whenever the GFA does not have Shasta node labels.");
 
     app.add_flag(
             "--skip_unzip",
             skip_unzip,
-            "After phasing nodes in the graph, DON'T unzip/concatenate haplotypes before writing to fasta. "
-            "Unzipping should be skipped when using overlapped GFAs because no stitching is performed. ");
+            "(Default = " + to_string(skip_unzip) + ")\tAfter phasing nodes in the graph, DON'T unzip/concatenate haplotypes before writing to fasta. "
+            "Unzipping should be skipped when using overlapped GFAs because no stitching is performed.");
 
     CLI11_PARSE(app, argc, argv);
 
