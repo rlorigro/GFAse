@@ -1,6 +1,7 @@
 #ifndef GFASE_Hasher22_HPP
 #define GFASE_Hasher22_HPP
 
+#include "handlegraph/handle_graph.hpp"
 #include "BinarySequence.hpp"
 #include "ContactGraph.hpp"
 #include "GfaReader.hpp"
@@ -15,6 +16,7 @@ using ghc::filesystem::exists;
 using ghc::filesystem::create_directories;
 using spp::sparse_hash_set;
 using spp::sparse_hash_map;
+using handlegraph::HandleGraph;
 
 #include <unordered_set>
 #include <map>
@@ -121,6 +123,7 @@ public:
     uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index) const;
     void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index);
     void hash(const vector<Sequence>& sequences);
+    void hash(const HandleGraph& graph, const IncrementalIdMap<string>& id_map);
 
     // Output/results
     void get_best_matches(map<string, string>& matches, double certainty_threshold) const;

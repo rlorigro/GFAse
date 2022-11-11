@@ -286,14 +286,14 @@ void sample_orientation_distribution(
 void monte_carlo_phase_contacts(
         MultiContactGraph& contact_graph,
         const IncrementalIdMap<string>& id_map,
-        path output_dir,
-        size_t n_threads
-){
-    MultiContactGraph unmerged_contact_graph = contact_graph;
+        size_t m_iterations,
+        size_t sample_size,
+        size_t n_rounds,
+        size_t n_threads,
+        path output_dir
+        ){
 
-    size_t m_iterations = 200;
-    size_t sample_size = 30;
-    size_t n_rounds = 2;
+    MultiContactGraph unmerged_contact_graph = contact_graph;
 
     unordered_set<orientation_edge_t> visited_edges;
     vector <pair <int32_t,int8_t> > phase_state;
@@ -311,8 +311,11 @@ void monte_carlo_phase_contacts(
 
         VectorMultiContactGraph vector_contact_graph(contact_graph);
 
-        path output_path = output_dir / ("orientations_" + to_string(i) + ".csv");
-        orientation_distribution.write_contact_map(output_path, id_map);
+        path components_path = output_dir / ("components_" + to_string(i) + ".csv");
+        vector_contact_graph.write_alt_components(components_path, id_map);
+
+        path orientations_path = output_dir / ("orientations_" + to_string(i) + ".csv");
+        orientation_distribution.write_contact_map(orientations_path, id_map);
 
         vector <pair <orientation_edge_t, orientation_weight_t> > ordered_edges;
         ordered_edges.reserve(contact_graph.edge_count());
@@ -358,7 +361,6 @@ void monte_carlo_phase_contacts(
 
         unordered_set<int32_t> visited_nodes;
 
-//        cerr << "Starting with max_weight: " << max_weight << '\n';
         size_t e = 0;
         for (auto& [edge, weights]: ordered_edges){
             if (double(e)/double(ordered_edges.size()) > 0.2){
@@ -378,8 +380,6 @@ void monte_carlo_phase_contacts(
                 continue;
             }
 
-            cerr << id_map.get_name(edge.first) << ' ' << id_map.get_name(edge.second) << ' ' << weights[0] << ' ' << weights[1] << ' ' << current_weight << '\n';
-
             vector_contact_graph.get_alt_component(edge.first, false, component_a);
             vector_contact_graph.get_alt_component(edge.second, false, component_b);
 
@@ -387,34 +387,11 @@ void monte_carlo_phase_contacts(
                 flip_component(component_b);
             }
 
-            cerr << "merging:" << '\n';
-            cerr << "\ta" << '\n';
-            for (auto& id: component_a.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_a.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
-            cerr << "\tb" << '\n';
-            for (auto& id: component_b.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_b.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
-
             contact_graph.add_alt(component_a, component_b, true);
             contact_graph.set_partition(edge.first, partition);
 
             alt_component_t component_merged;
             contact_graph.get_alt_component(edge.first, false, component_merged);
-            cerr << "MERGED:" << '\n';
-            for (auto& id: component_merged.first){
-                cerr << "\t0 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
-            for (auto& id: component_merged.second){
-                cerr << "\t1 " << id_map.get_name(id) << ' ' << int(vector_contact_graph.get_partition(id)) << '\n';
-            }
 
             for (auto& id: component_merged.first) {
                 visited_nodes.emplace(id);
@@ -441,10 +418,15 @@ void monte_carlo_phase_contacts(
     unmerged_contact_graph.set_partitions(best_partitions);
 
     auto final_unmerged_score = unmerged_contact_graph.compute_total_consistency_score();
-    cerr << "final_unmerged_score: " << final_unmerged_score << '\n';
+    cerr << "Final unmerged score: " << final_unmerged_score << '\n';
 
-    path output_path = output_dir / ("orientations_final.csv");
-    orientation_distribution.write_contact_map(output_path, id_map);
+    VectorMultiContactGraph g(contact_graph);
+
+    path components_path = output_dir / ("components_final.csv");
+    g.write_alt_components(components_path, id_map);
+
+    path orientations_path = output_dir / ("orientations_final.csv");
+    orientation_distribution.write_contact_map(orientations_path, id_map);
 }
 
 

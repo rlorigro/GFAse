@@ -99,6 +99,9 @@ public:
     double compute_total_consistency_score() const;
     double compare_total_consistency_score(const MultiContactGraph& other_graph) const;
     void randomize_partitions();
+
+    // IO
+    void write_alt_components(path output_path, const IncrementalIdMap<string>& id_map) const;
 };
 
 

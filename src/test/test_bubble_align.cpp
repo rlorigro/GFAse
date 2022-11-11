@@ -1,14 +1,16 @@
-#include "align.hpp"
-#include "Timer.hpp"
-#include "Hasher2.hpp"
+#include "MultiContactGraph.hpp"
+#include "gfa_to_handle.hpp"
 #include "Sequence.hpp"
-#include "ContactGraph.hpp"
+#include "Hasher2.hpp"
+#include "Timer.hpp"
+#include "align.hpp"
 
-using gfase::Timer;
-using gfase::Sequence;
-using gfase::ContactGraph;
-using gfase::HashResult;
 using gfase::construct_alignment_graph;
+using gfase::gfa_to_handle_graph;
+using gfase::MultiContactGraph;
+using gfase::HashResult;
+using gfase::Sequence;
+using gfase::Timer;
 
 
 void infer_bubbles_from_alignment(
@@ -32,16 +34,8 @@ void infer_bubbles_from_alignment(
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
 
-    GfaReader reader(gfa_path);
-
-    // TODO: move this into domain of bdsg graph instead of GFA reader
-    string dummy_name = "";
-    string dummy_seq = "";
-    vector<Sequence> sequences = {Sequence(dummy_name,dummy_seq)};
-    reader.for_each_sequence([&](string& name, string& sequence){
-        id_map.insert(name);
-        sequences.emplace_back(name, sequence);
-    });
+    HashGraph graph;
+    gfa_to_handle_graph(graph, id_map, gfa_path);
 
     // Hashing params
     double sample_rate = 0.04;
@@ -59,7 +53,7 @@ void infer_bubbles_from_alignment(
     vector <HashResult> to_be_aligned;
 
     get_alignment_candidates(
-            sequences,
+            graph,
             id_map,
             to_be_aligned,
             output_dir,
@@ -72,8 +66,8 @@ void infer_bubbles_from_alignment(
             min_ab_over_b
     );
 
-    ContactGraph alignment_graph;
-    ContactGraph symmetrical_alignment_graph;
+    MultiContactGraph alignment_graph;
+    MultiContactGraph symmetrical_alignment_graph;
 
     // Thread-related variables
     atomic<size_t> job_index = 0;
@@ -86,7 +80,7 @@ void infer_bubbles_from_alignment(
             threads.emplace_back(thread(
                     construct_alignment_graph,
                     ref(to_be_aligned),
-                    ref(sequences),
+                    ref(graph),
                     ref(id_map),
                     ref(alignment_graph),
                     min_ab_over_a,

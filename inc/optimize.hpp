@@ -45,8 +45,11 @@ void sample_orientation_distribution(
 void monte_carlo_phase_contacts(
         MultiContactGraph& contact_graph,
         const IncrementalIdMap<string>& id_map,
-        path output_dir,
-        size_t n_threads
+        size_t m_iterations,
+        size_t sample_size,
+        size_t n_rounds,
+        size_t n_threads,
+        path output_dir
 );
 
 

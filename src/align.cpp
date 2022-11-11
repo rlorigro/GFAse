@@ -128,9 +128,9 @@ void map_sequence_pair(
 
 void construct_alignment_graph(
         const vector <HashResult>& to_be_aligned,
-        const vector<Sequence>& sequences,
+        const HandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
-        ContactGraph& alignment_graph,
+        MultiContactGraph& alignment_graph,
         double min_similarity,
         mutex& output_mutex,
         atomic<size_t>& global_index
@@ -150,8 +150,8 @@ void construct_alignment_graph(
         cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
         output_mutex.unlock();
 
-        auto& seq_a = sequences[id_map.get_id(target_name)].sequence;
-        auto& seq_b = sequences[id_map.get_id(query_name)].sequence;
+        auto seq_a = graph.get_sequence(graph.get_handle(id_map.get_id(target_name)));
+        auto seq_b = graph.get_sequence(graph.get_handle(id_map.get_id(query_name)));
 
         // Longer length is first
         auto length_a = seq_a.size();
@@ -226,7 +226,7 @@ void construct_alignment_graph(
 
 
 void get_alignment_candidates(
-        const vector<Sequence>& sequences,
+        const HandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         vector <HashResult>& to_be_aligned,
         path output_dir,
@@ -242,7 +242,7 @@ void get_alignment_candidates(
     to_be_aligned.clear();
 
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
-    hasher.hash(sequences);
+    hasher.hash(graph, id_map);
     hasher.write_results(output_dir);
 
     unordered_map <pair <string,string>, HashResult> ordered_pairs;
@@ -253,8 +253,8 @@ void get_alignment_candidates(
             return;
         }
 
-        auto& seq_a = sequences[id_map.get_id(a)].sequence;
-        auto& seq_b = sequences[id_map.get_id(b)].sequence;
+        auto seq_a = graph.get_sequence(graph.get_handle(id_map.get_id(a)));
+        auto seq_b = graph.get_sequence(graph.get_handle(id_map.get_id(b)));
 
         pair<string,string> ordered_pair;
         if (seq_a.size() > seq_b.size()){
@@ -281,18 +281,18 @@ void get_alignment_candidates(
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
     sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const HashResult& a, const HashResult& b){
-        auto length_a_0 = sequences[id_map.get_id(a.a)].sequence.size();
-        auto length_a_1 = sequences[id_map.get_id(a.b)].sequence.size();
-        auto length_b_0 = sequences[id_map.get_id(b.a)].sequence.size();
-        auto length_b_1 = sequences[id_map.get_id(b.b)].sequence.size();
+        auto length_a_0 = graph.get_length(graph.get_handle(id_map.get_id(a.a)));
+        auto length_a_1 = graph.get_length(graph.get_handle(id_map.get_id(a.b)));
+        auto length_b_0 = graph.get_length(graph.get_handle(id_map.get_id(b.a)));
+        auto length_b_1 = graph.get_length(graph.get_handle(id_map.get_id(b.b)));
         auto a_avg = (length_a_0 + length_a_1) / 2;
         auto b_avg = (length_b_0 + length_b_1) / 2;
         return a_avg > b_avg;
     });
 
     for (const auto& item: to_be_aligned) {
-        auto length_a = sequences[id_map.get_id(item.a)].sequence.size();
-        auto length_b = sequences[id_map.get_id(item.b)].sequence.size();
+        auto length_a = graph.get_length(graph.get_handle(id_map.get_id(item.a)));
+        auto length_b = graph.get_length(graph.get_handle(id_map.get_id(item.b)));
 
         cerr << item.a << ',' << item.b << ',' << length_a << ',' << length_b << '\n';
     }
@@ -305,8 +305,8 @@ void get_alignment_candidates(
 void get_best_overlaps(
         double min_similarity,
         const IncrementalIdMap<string>& id_map,
-        ContactGraph& alignment_graph,
-        ContactGraph& symmetrical_alignment_graph
+        MultiContactGraph& alignment_graph,
+        MultiContactGraph& symmetrical_alignment_graph
         ){
 
     // TODO: properly parameterize this
@@ -365,7 +365,7 @@ void get_best_overlaps(
             int32_t b_best_value = -1;
 
             cerr << '\t' << "-- a --" <<'\n';
-            alignment_graph.for_each_node_neighbor(a, [&](int32_t other, const Node& n){
+            alignment_graph.for_each_node_neighbor(a, [&](int32_t other, const MultiNode& n){
                 bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(a, other);
@@ -381,7 +381,7 @@ void get_best_overlaps(
             });
 
             cerr << '\t' << "-- b --" <<'\n';
-            alignment_graph.for_each_node_neighbor(b, [&](int32_t other, const Node& n){
+            alignment_graph.for_each_node_neighbor(b, [&](int32_t other, const MultiNode& n){
                 bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(b, other);
@@ -449,8 +449,8 @@ void get_best_overlaps(
 
 void write_alignment_results_to_file(
         const IncrementalIdMap<string>& id_map,
-        const ContactGraph& alignment_graph,
-        const ContactGraph& symmetrical_alignment_graph,
+        const MultiContactGraph& alignment_graph,
+        const MultiContactGraph& symmetrical_alignment_graph,
         path output_dir
         ){
 

@@ -149,10 +149,10 @@ void Hasher2::write_hash_frequency_distribution() const{
 
 
 void Hasher2::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index){
-    size_t i;
+    size_t i = job_index.fetch_add(1);
     while (job_index < sequences.size()){
-        i = job_index.fetch_add(1);
         hash_sequence(sequences[i], hash_index);
+        i = job_index.fetch_add(1);
     }
 }
 
@@ -231,6 +231,21 @@ void Hasher2::hash(const vector<Sequence>& sequences){
             }
         }
     }
+}
+
+
+void Hasher2::hash(const HandleGraph& graph, const IncrementalIdMap<string>& id_map){
+    vector<Sequence> sequences;
+    sequences.reserve(graph.get_node_count());
+
+    graph.for_each_handle([&](const handle_t& h){
+        auto n = graph.get_id(h);
+        auto name = id_map.get_name(n);
+        auto sequence = graph.get_sequence(h);
+        sequences.emplace_back(name, sequence);
+    });
+
+    hash(sequences);
 }
 
 

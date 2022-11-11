@@ -661,6 +661,25 @@ void MultiContactGraph::for_each_edge(const function<void(const pair<int32_t,int
 }
 
 
+void MultiContactGraph::for_each_edge_in_order_of_weight(const function<void(const pair<int32_t,int32_t> edge, int32_t weight)>& f) const{
+    vector <pair <pair<int32_t,int32_t>, int32_t> > sorted_edges(edge_weights.size());
+
+    size_t i = 0;
+    for (const auto& item: edge_weights){
+        sorted_edges[i] = item;
+        i++;
+    }
+
+    std::sort(sorted_edges.begin(), sorted_edges.end(), [&](pair <pair<int32_t,int32_t>, int32_t>& a, pair <pair<int32_t,int32_t>, int32_t>& b){
+        return a.second > b.second;
+    });
+
+    for (const auto& [e, weight]: sorted_edges){
+        f(e, weight);
+    }
+}
+
+
 void MultiContactGraph::insert_node(int32_t id, int8_t partition){
     if (partition < -1 or partition > 1){
         throw runtime_error("ERROR: can't assign partition index outside of {-1,0,1}");

@@ -483,19 +483,12 @@ void Chainer::generate_chain_paths(
         new_paths(c, graph, paths, false);
 
         for (auto& item: chain){
-//            cerr << c << ' ';
-//            for (auto n: item){
-//                cerr << id_map.get_name(n) << ' ';
-//            }
-//            cerr << '\n';
-
             if (item.size() == 2){
                 bool phasable = process_diploid_chain_element(item, paths, graph, contact_graph);
 
                 // If unphasable, don't append unannotated nodes to the path, don't try to assign phase,
                 // start new path.
                 if (not phasable) {
-                    cerr << "Warning: breaking chain at unphasable item" << '\n';
                     new_paths(c, graph, paths, true);
                 }
             }
@@ -522,13 +515,10 @@ void Chainer::generate_chain_paths(
             path_phases.erase(name);
         }
 
-//        cerr << graph.get_path_name(p) << ' ';
         graph.for_each_step_in_path(p, [&](const step_handle_t& s){
             auto id = graph.get_id(graph.get_handle_of_step(s));
             auto name = id_map.get_name(id);
-//            cerr << name << ' ';
         });
-//        cerr << '\n';
     });
 
     for (auto& p: to_be_destroyed){

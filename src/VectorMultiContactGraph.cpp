@@ -446,4 +446,49 @@ int8_t VectorMultiContactGraph::get_partition(int32_t id) const{
 }
 
 
+void VectorMultiContactGraph::write_alt_components(path output_path, const IncrementalIdMap<string>& id_map) const{
+    ofstream file(output_path);
+
+    if (not file.is_open() or not file.good()) {
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    file << "component" << ',' << "side" << ',' << "nodes" << '\n';
+
+    unordered_set<int32_t> visited;
+    alt_component_t component;
+    size_t c = 0;
+
+    for (int32_t n=0; n<nodes.size(); n++) {
+        auto& node = nodes[n];
+
+        if (node.is_null){
+            continue;
+        }
+
+        if (visited.count(n)){
+            continue;
+        }
+
+        get_alt_component(n, false, component);
+        file << c << ',' << 0 << ',';
+        for (auto& id: component.first) {
+            file << id_map.get_name(id) << ' ';
+            visited.emplace(id);
+        }
+        file << '\n';
+
+        file << c << ',' << 1 << ',';
+        for (auto& id: component.second) {
+            file << id_map.get_name(id) << ' ';
+            visited.emplace(id);
+        }
+        file << '\n';
+
+        c++;
+    }
+}
+
+
+
 }

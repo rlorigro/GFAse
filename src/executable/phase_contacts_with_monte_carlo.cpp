@@ -1,14 +1,17 @@
 #include "MultiContactGraph.hpp"
 #include "IncrementalIdMap.hpp"
+#include "Sequence.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
 #include "graph_utility.hpp"
+#include "Hasher2.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
 #include "optimize.hpp"
 #include "Chainer.hpp"
 #include "Timer.hpp"
 #include "CLI11.hpp"
+#include "align.hpp"
 #include "Sam.hpp"
 #include "Bam.hpp"
 
@@ -16,11 +19,16 @@ using gfase::for_element_in_sam_file;
 using gfase::contact_map_t;
 using gfase::unzip;
 
+using gfase::NonBipartiteEdgeException;
+using gfase::construct_alignment_graph;
 using gfase::gfa_to_handle_graph;
 using gfase::handle_graph_to_gfa;
 using gfase::MultiContactGraph;
 using gfase::IncrementalIdMap;
 using gfase::SamElement;
+using gfase::Sequence;
+using gfase::HashResult;
+using gfase::Hasher2;
 using gfase::Chainer;
 using gfase::Timer;
 using gfase::Bam;
@@ -158,8 +166,12 @@ void write_contact_map(
 
 void write_config(
         path output_dir,
+        path gfa_path,
         path sam_path,
         int8_t min_mapq,
+        size_t m_iterations,
+        size_t sample_size,
+        size_t n_rounds,
         size_t n_threads){
 
     path output_path = output_dir / "config.csv";
@@ -169,8 +181,12 @@ void write_config(
         throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
     }
 
+    file << "gfa_path" << ',' << gfa_path << '\n';
     file << "sam_path" << ',' << sam_path << '\n';
     file << "min_mapq" << ',' << int(min_mapq) << '\n';
+    file << "m_iterations" << ',' << int(min_mapq) << '\n';
+    file << "sample_size" << ',' << int(min_mapq) << '\n';
+    file << "n_rounds" << ',' << int(min_mapq) << '\n';
     file << "n_threads" << ',' << n_threads << '\n';
 }
 
@@ -254,7 +270,140 @@ void write_nodes_to_fasta(
 }
 
 
-void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, size_t n_threads){
+void remove_adjacencies_from_candidates(
+        HandleGraph& graph,
+        const IncrementalIdMap<string>& id_map,
+        vector<HashResult>& to_be_aligned
+        ){
+
+    vector <HashResult> valid_edges;
+
+    unordered_set <pair <string,string> > invalid_edges;
+    graph.for_each_edge([&](const edge_t& e){
+        auto a = id_map.get_name(graph.get_id(e.first));
+        auto b = id_map.get_name(graph.get_id(e.second));
+        invalid_edges.emplace(a, b);
+        invalid_edges.emplace(b, a);
+    });
+
+    for (const auto& item: to_be_aligned){
+        pair <string,string> e = {item.a, item.b};
+
+        if (invalid_edges.count(e) == 0){
+            valid_edges.emplace_back(item);
+        }
+    }
+
+    to_be_aligned = valid_edges;
+}
+
+
+void find_unlabeled_alts(
+        HandleGraph& graph,
+        MultiContactGraph& contact_graph,
+        const IncrementalIdMap<string>& id_map,
+        Timer& t,
+        path output_dir,
+        size_t n_threads){
+
+    // Hashing params
+    double sample_rate = 0.04;
+    size_t n_iterations = 6;
+    size_t k = 22;
+
+    // Only align the top n hits
+    size_t max_hits = 5;
+
+    // Sequence lengths must be at least this ratio.
+    // Resulting alignment coverage must be at least this amount on larger node.
+    double min_similarity = 0.05;
+
+    // Hash results must have at least this percent similarity (A & B)/A, where A is larger.
+    double min_ab_over_a = 0;
+
+    // Hash results must have at least this percent similarity (A & B)/B, where A is larger.
+    double min_ab_over_b = 0.7;
+
+    vector <HashResult> to_be_aligned;
+
+    get_alignment_candidates(
+            graph,
+            id_map,
+            to_be_aligned,
+            output_dir,
+            n_threads,
+            sample_rate,
+            k,
+            n_iterations,
+            max_hits,
+            min_ab_over_a,
+            min_ab_over_b
+    );
+
+    remove_adjacencies_from_candidates(graph, id_map, to_be_aligned);
+
+    // TODO: convert edges to alts instead of using two parallel graphs... ?
+    MultiContactGraph alignment_graph;
+    MultiContactGraph symmetrical_alignment_graph;
+
+    // Thread-related variables
+    atomic<size_t> job_index = 0;
+    vector<thread> threads;
+    mutex output_mutex;
+
+    // Launch threads
+    for (uint64_t n=0; n<n_threads; n++){
+        try {
+            threads.emplace_back(thread(
+                    construct_alignment_graph,
+                    ref(to_be_aligned),
+                    ref(graph),
+                    ref(id_map),
+                    ref(alignment_graph),
+                    min_similarity,
+                    ref(output_mutex),
+                    ref(job_index)
+            ));
+        } catch (const exception &e) {
+            cerr << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    // Wait for threads to finish
+    for (auto& n: threads){
+        n.join();
+    }
+
+    get_best_overlaps(min_similarity, id_map, alignment_graph, symmetrical_alignment_graph);
+    write_alignment_results_to_file(id_map, alignment_graph, symmetrical_alignment_graph, output_dir);
+
+    cerr << t << "Done" << '\n';
+
+    vector <vector <int32_t> > adjacency;
+
+    // Add alts to graph
+    symmetrical_alignment_graph.for_each_edge([&](const pair<int32_t,int32_t> edge, int32_t weight){
+        auto [a,b] = edge;
+
+        try {
+            if (contact_graph.has_node(a) and contact_graph.has_node(b)) {
+                contact_graph.add_alt(a, b);
+            }
+        }
+        catch (NonBipartiteEdgeException& e){
+            cerr << e.what() << '\n';
+            cerr << "WARNING: Skipping non-bipartite edge: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
+        }
+    });
+}
+
+
+void phase(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, bool use_homology, size_t n_threads){
+    size_t m_iterations = 200;
+    size_t sample_size = 30;
+    size_t n_rounds = 2;
+
     Timer t;
 
     if (exists(output_dir)){
@@ -271,7 +420,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, s
     path chained_gfa_path = output_dir / "chained.gfa";
     path unzipped_gfa_path = output_dir / "unzipped.gfa";
 
-    write_config(output_dir, sam_path, min_mapq, n_threads);
+    write_config(output_dir, gfa_path, sam_path, min_mapq, m_iterations, sample_size, n_rounds, n_threads);
 
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
@@ -303,9 +452,16 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, s
         throw runtime_error("ERROR: unrecognized extension for BAM input file: " + sam_path.extension().string());
     }
 
-    cerr << t << "Processing contacts..." << '\n';
+    if (use_homology){
+        cerr << t << "Finding alts with sequence homology..." << '\n';
 
-    contact_graph.get_alts_from_shasta_names(id_map);
+        find_unlabeled_alts(graph, contact_graph, id_map, t, output_dir, n_threads);
+    }
+    else{
+        contact_graph.get_alts_from_shasta_names(id_map);
+    }
+
+    cerr << t << "Removing self edges..." << '\n';
 
     // Remove nodes that don't have any involvement in bubbles
     vector<int32_t> to_be_deleted;
@@ -319,7 +475,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, s
         contact_graph.remove_node(id);
     }
 
-    cerr << t << "Optimizing phases..." << '\n';
+    cerr << t << "Writing contacts to file..." << '\n';
 
     contact_graph.write_contact_map(contacts_output_path, id_map);
 
@@ -328,7 +484,16 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, int8_t min_mapq, s
         contact_graph.remove_edge(id,id);
     });
 
-    monte_carlo_phase_contacts(contact_graph, id_map, output_dir, n_threads);
+    cerr << t << "Optimizing phases..." << '\n';
+
+    monte_carlo_phase_contacts(
+            contact_graph,
+            id_map,
+            m_iterations,
+            sample_size,
+            n_rounds,
+            n_threads,
+            output_dir);
 
     cerr << t << "Writing phasing results to file... " << '\n';
 
@@ -360,6 +525,7 @@ int main (int argc, char* argv[]){
     path output_dir;
     int8_t min_mapq = 0;
     size_t n_threads = 1;
+    bool use_homology = false;
 
     CLI::App app{"App description"};
 
@@ -390,9 +556,14 @@ int main (int argc, char* argv[]){
             n_threads,
             "Maximum number of threads to use");
 
+    app.add_flag(
+            "--use_homology",
+            use_homology,
+            "Use sequence homology to find alts. For whenever the GFA does not have Shasta node labels");
+
     CLI11_PARSE(app, argc, argv);
 
-    phase_hic(output_dir, sam_path, gfa_path, min_mapq, n_threads);
+    phase(output_dir, sam_path, gfa_path, min_mapq, use_homology, n_threads);
 
     return 0;
 }

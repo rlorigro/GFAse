@@ -4,7 +4,7 @@
 #include "IncrementalIdMap.hpp"
 #include "gfa_to_handle.hpp"
 #include "graph_utility.hpp"
-#include "ContactGraph.hpp"
+#include "MultiContactGraph.hpp"
 #include "Bipartition.hpp"
 #include "hash_graph.hpp"
 #include "Filesystem.hpp"
@@ -45,16 +45,16 @@ void map_sequence_pair(
 
 void construct_alignment_graph(
         const vector<HashResult>& to_be_aligned,
-        const vector<Sequence>& sequences,
+        const HandleGraph& sequences,
         const IncrementalIdMap<string>& id_map,
-        ContactGraph& alignment_graph,
+        MultiContactGraph& alignment_graph,
         double min_similarity,
         mutex& output_mutex,
         atomic<size_t>& global_index);
 
 
 void get_alignment_candidates(
-        const vector<Sequence>& sequences,
+        const HandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         vector <HashResult>& to_be_aligned,
         path output_dir,
@@ -71,15 +71,15 @@ void get_alignment_candidates(
 void get_best_overlaps(
         double min_similarity,
         const IncrementalIdMap<string>& id_map,
-        ContactGraph& alignment_graph,
-        ContactGraph& symmetrical_alignment_graph
+        MultiContactGraph& alignment_graph,
+        MultiContactGraph& symmetrical_alignment_graph
         );
 
 
 void write_alignment_results_to_file(
         const IncrementalIdMap<string>& id_map,
-        const ContactGraph& alignment_graph,
-        const ContactGraph& symmetrical_alignment_graph,
+        const MultiContactGraph& alignment_graph,
+        const MultiContactGraph& symmetrical_alignment_graph,
         path output_dir);
 
 

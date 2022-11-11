@@ -143,7 +143,18 @@ void rephase(
         contact_graph.remove_edge(id,id);
     });
 
-    monte_carlo_phase_contacts(contact_graph, id_map, output_dir, n_threads);
+    size_t m_iterations = 200;
+    size_t sample_size = 30;
+    size_t n_rounds = 2;
+
+    monte_carlo_phase_contacts(
+            contact_graph,
+            id_map,
+            m_iterations,
+            sample_size,
+            n_rounds,
+            n_threads,
+            output_dir);
 
     path contacts_output_path = output_dir / "contacts.csv";
     path phases_output_path = output_dir / "phases.csv";
