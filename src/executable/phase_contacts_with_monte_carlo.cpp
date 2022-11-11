@@ -533,7 +533,7 @@ int main (int argc, char* argv[]){
     path sam_path;
     path gfa_path;
     path output_dir;
-    int8_t min_mapq = 0;
+    int8_t min_mapq = 1;
     size_t n_threads = 1;
     size_t core_iterations = 200;
     size_t sample_size = 30;
