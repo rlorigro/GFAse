@@ -1,6 +1,10 @@
 # GFAse
 
-Tool for phasing genomic graph data using parental or proximity ligation data. Currently specialized for Shasta assembly graphs.
+Tool for phasing genomic graph data using parental or proximity ligation data. 
+
+**Recent Updates:**
+  - Proximity linkage phasing working consistently on Shasta and Verkko graphs with low and high bubble N50s
+  - PoreC tested and working
 
 ## Installation
 
@@ -103,6 +107,8 @@ x = Time (min)
 
 Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>0) will save loading time. 
 
+[Resource usage plots to be added]
+
 ### Phase Verkko (or any unnanotated, overlapped GFA) with proximity data
 
 ```
@@ -116,7 +122,11 @@ Run time depends almost entirely on the size of the BAM to be loaded. Filtering 
 -t 62
 ```
 
-As with Shasta, run time depends mostly on the size of the BAM to be loaded, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA. ~128GB and 48 threads should be sufficient.
+Run time depends mostly on the size of the BAM to be loaded, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA (with flag `--use_homology`). ~128GB and 48 threads should be sufficient. 
+
+Note: Verkko should be homopolymer decompressed before running alignments and GFAse. Verkko produces overlapped GFAs which are not stitchable by GFAse, so `--skip_unzip` should be used.
+
+[Resource usage plots to be added]
 
 
 ### Phase Shasta with parental k-mers
