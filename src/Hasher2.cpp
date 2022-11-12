@@ -1,5 +1,8 @@
 #include "Hasher2.hpp"
 
+#include <algorithm>
+#include <random>
+
 
 namespace gfase{
 
@@ -160,6 +163,10 @@ void Hasher2::write_hash_frequency_distribution() const{
 
 void Hasher2::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index){
     size_t i = job_index.fetch_add(1);
+
+    // Prevent lockstep iteration of diploid sequences which could result in mutex deadlocks
+    std::this_thread::sleep_for(std::chrono::milliseconds(i*10));
+
     while (i < sequences.size()){
         hash_sequence(sequences[i], hash_index);
         i = job_index.fetch_add(1);
@@ -258,6 +265,9 @@ void Hasher2::hash(const HandleGraph& graph, const IncrementalIdMap<string>& id_
         auto sequence = graph.get_sequence(h);
         sequences.emplace_back(name, sequence);
     });
+
+    auto rng = std::default_random_engine(seeds[0]);
+    std::shuffle(std::begin(sequences), std::end(sequences), rng);
 
     hash(sequences);
 }
