@@ -106,7 +106,7 @@ void Hasher2::hash_sequence(const Sequence& sequence, const size_t hash_index) {
                 auto bin_index = h % bins.size();
                 auto& bin = bins[bin_index];
 
-                if (bin.size() < max_bin_size){
+                if (bin.size() < max_bin_size + 2){
                     m.lock();
                     bin.emplace(sequence.name);
                     m.unlock();
@@ -134,7 +134,7 @@ void Hasher2::hash_sequence(const Sequence& sequence, const size_t hash_index) {
                 auto bin_index = h % bins.size();
                 auto& bin = bins[bin_index];
 
-                if (bin.size() < max_bin_size){
+                if (bin.size() < max_bin_size + 2){
                     m.lock();
                     bin.emplace(sequence.name);
                     m.unlock();
