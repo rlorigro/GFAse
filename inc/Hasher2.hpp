@@ -74,10 +74,10 @@ public:
 
 
 // Where to store the names of reads which share hashed-k-mers
-using hash_bins_t = vector <unordered_set <string> >;
+using hash_bins_t = vector <unordered_set <int64_t> >;
 
 // Ultimately where the results of LSH are stored
-using overlaps_t = sparse_hash_map <string, unordered_map <string, int64_t> >;
+using overlaps_t = sparse_hash_map <int64_t, unordered_map <int64_t, int64_t> >;
 
 
 class Hasher2{
@@ -91,6 +91,9 @@ private:
 
     // The result of counting co-occurring sequences in the hash bins
     overlaps_t overlaps;
+
+    // Use IDs instead of strings in the bins
+    IncrementalIdMap<string> id_map;
 
     const size_t k;
 
@@ -109,12 +112,12 @@ private:
     const size_t min_hashes = 40;
 
     // How many more bins than the total length of the observed sequence do we want to have, to prevent collisions?
-    const size_t bins_scaling_factor = 10;
+    const size_t bins_scaling_factor = 5;
 
     static const vector<uint64_t> seeds;
 
     /// Methods ///
-    void hash_sequence(const Sequence& sequence, size_t hash_index);
+    void hash_sequence(const Sequence& sequence, int64_t id, size_t hash_index);
 
 public:
     Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads);
