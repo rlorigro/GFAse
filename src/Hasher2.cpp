@@ -260,7 +260,6 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 
 void Hasher2::hash(const HandleGraph& graph, const IncrementalIdMap<string>& graph_id_map){
     vector<Sequence> sequences;
-    sequences.reserve(graph.get_node_count());
 
     graph.for_each_handle([&](const handle_t& h){
         auto n = graph.get_id(h);
