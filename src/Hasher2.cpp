@@ -199,7 +199,7 @@ void Hasher2::hash(const vector<Sequence>& sequences){
         bins.resize(max_kmers_in_sequence * bins_scaling_factor);
 
         for (auto& b: bins){
-            bins.reserve(max_bin_size);
+            bins.reserve(max_bin_size+2);
         }
 
         // Thread-related variables

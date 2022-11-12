@@ -124,7 +124,7 @@ public:
 
     // Main algorithm
     uint64_t hash(const BinarySequence<uint64_t>& kmer, size_t seed_index) const;
-    void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, const size_t hash_index);
+    void hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& job_index, size_t hash_index);
     void hash(const vector<Sequence>& sequences);
     void hash(const HandleGraph& graph, const IncrementalIdMap<string>& id_map);
 
