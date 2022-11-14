@@ -11,6 +11,7 @@
 using ghc::filesystem::create_directories;
 using std::setprecision;
 using std::min;
+using std::max;
 using std::map;
 using std::cin;
 
@@ -611,11 +612,21 @@ void evaluate_phasing(
             split_intersections);
 
     for (const auto& [name,intersection]: split_intersections){
+        auto length_00 = get_total_length_of_phase_set(query_lengths, intersection[0][0]);
+        auto length_01 = get_total_length_of_phase_set(query_lengths, intersection[0][1]);
+        auto length_10 = get_total_length_of_phase_set(query_lengths, intersection[1][0]);
+        auto length_11 = get_total_length_of_phase_set(query_lengths, intersection[1][1]);
+
+        auto trans_weight = length_01 + length_10;
+        auto cis_weight = length_00 + length_11;
+        double hamming_estimate = double(min(trans_weight, cis_weight)) / double(max(trans_weight, cis_weight));
+
         cerr << name << '\n';
-        cerr << '\t' << "00" << ' ' << intersection[0][0].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[0][0]) << '\n';
-        cerr << '\t' << "11" << ' ' << intersection[1][1].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[1][1]) << '\n';
-        cerr << '\t' << "01" << ' ' << intersection[0][1].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[0][1]) << '\n';
-        cerr << '\t' << "10" << ' ' << intersection[1][0].size() << ' ' << get_total_length_of_phase_set(query_lengths, intersection[1][0]) << '\n';
+        cerr << '\t' << "H" << ' ' << hamming_estimate << '\n';
+        cerr << '\t' << "00" << ' ' << intersection[0][0].size() << ' ' << length_00 << '\n';
+        cerr << '\t' << "11" << ' ' << intersection[1][1].size() << ' ' << length_11 << '\n';
+        cerr << '\t' << "01" << ' ' << intersection[0][1].size() << ' ' << length_01 << '\n';
+        cerr << '\t' << "10" << ' ' << intersection[1][0].size() << ' ' << length_10 << '\n';
     }
 
     write_bandage_csv(intersection_00, intersection_11, intersection_01, intersection_10, phased_cigar_summaries, output_dir / "phase_intersections.csv");
