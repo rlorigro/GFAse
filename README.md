@@ -118,7 +118,7 @@ Run time depends almost entirely on the size of the BAM to be loaded. Filtering 
 -o /path/to/output/directory/ \
 --use_homology \
 --skip_unzip \
--m 1 \
+-m 3 \
 -t 62
 ```
 
@@ -128,6 +128,23 @@ Note: Verkko should be homopolymer decompressed before running alignments and GF
 
 ![image](https://user-images.githubusercontent.com/28764332/201499328-75395981-d8fd-42d3-883e-b7c35be81e56.png)
 
+
+#### NOTE: Choosing a min_mapq value for your assembly
+
+In general, this depends on your coverage, the assembly quality, and your sequencing type. A rough guide is available below:
+
+```
+                      Pore-C  Hi-C
+
+Verkko assembly:      3       3
+
+Shasta R9 assembly:   3       1
+
+Shasta R10 assembly:  3       1
+
+```
+
+You may consider lowering your cutoff if you have low coverage in your mappings. This can be checked in the `contacts.csv` output file. There is also an executable in GFAse to measure the total distribution of mapQ for any BAM or SAM.
 
 ### Phase Shasta with parental k-mers
 A list of unique parental (separated into maternal/paternal fastas) kmers is required as input.
