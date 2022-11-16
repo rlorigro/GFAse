@@ -42,7 +42,7 @@ def write_sequence_to_fasta(name, sequence, file):
     file.write('\n')
 
 
-def main(path, output_directory):
+def main(path, output_directory, separate_unphased=False):
 
     if not len(output_directory) == 0:
         if not os.path.exists(output_directory):
@@ -50,12 +50,16 @@ def main(path, output_directory):
 
     output_path_0 = os.path.join(output_directory,"hap_0.fasta")
     output_path_1 = os.path.join(output_directory,"hap_1.fasta")
+    output_path_unphased = os.path.join(output_directory,"unphased.fasta")
 
     iterator = iterate_fasta(path)
     if path.endswith(".gfa"):
         iterator = iterate_gfa(path)
 
     with open(output_path_0, 'w') as hap_0, open(output_path_1, 'w') as hap_1:
+        if separate_unphased:
+            unphased = open(output_path_unphased, 'w')
+
         for name,sequence in iterator:
             is_phased = (not name.startswith("UR") and name.count('.') > 0)
 
@@ -69,8 +73,11 @@ def main(path, output_directory):
                 else:
                     exit("Error: sequence name with phased format has invalid suffix: " + name)
             else:
-                write_sequence_to_fasta(name,sequence,hap_0)
-                write_sequence_to_fasta(name,sequence,hap_1)
+                if separate_unphased:
+                    write_sequence_to_fasta(name,sequence,unphased)
+                else:
+                    write_sequence_to_fasta(name,sequence,hap_0)
+                    write_sequence_to_fasta(name,sequence,hap_1)
 
 
 if __name__ == "__main__":
@@ -90,6 +97,12 @@ if __name__ == "__main__":
         help="Output directory"
     )
 
+    parser.add_argument(
+        "-s",
+        action="store_true",
+        help="Separate unphased region"
+    )
+
     args = parser.parse_args()
 
-    main(path=args.i, output_directory=args.o)
+    main(path=args.i, output_directory=args.o, separate_unphased=args.s)
