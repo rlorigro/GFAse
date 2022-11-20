@@ -72,6 +72,8 @@ Once you have the BAM, pass it as an argument to GFAse, along with the GFA. Note
 
 x = Time (min)
 
+This plot shows the alignment of 3 pairs of HiC sequencing libraries.
+
 ### Prepare alignments (PoreC)
 
 ```
@@ -93,6 +95,7 @@ PoreC does not used paired files. It is strongly recommended that you filter the
 
 x = Time (min)
 
+This plot shows the alignment of 2 flowcells of PoreC.
 
 ### Phase Shasta with proximity data
 
