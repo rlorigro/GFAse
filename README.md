@@ -85,7 +85,7 @@ minimap2 \
 Assembly-Phased.fasta \
 porec_reads.fastq.gz \
 | samtools view -bh -@ 8 -q 1 - \
-> /extra2/data/human/hg002/porec/PAM_10290_and_10354_r10_porec_vs_shasta_r10_slow.q1.bam
+> porec_vs_shasta_q1.bam
 ```
 PoreC does not used paired files. It is strongly recommended that you filter the mapq with a pipe to avoid massive output BAMs. No sorting is needed under the assumption that minimap2 groups output by read name. Once you have the BAM, pass it as an argument to GFAse, along with the GFA.
 
