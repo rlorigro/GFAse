@@ -93,7 +93,7 @@ private:
     overlaps_t overlaps;
 
     // Use IDs instead of strings in the bins
-    IncrementalIdMap<string> id_map;
+    IncrementalIdMap<string> sequence_id_map;
 
     const size_t k;
 
