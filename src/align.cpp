@@ -46,7 +46,7 @@ void map_sequence_pair(
     mm_idxopt_t index_options;
     mm_mapopt_t map_options;
 
-    mm_verbose = 3; // disable message output to stderr
+    mm_verbose = 0; // disable message output to stderr
     mm_set_opt(0, &index_options, &map_options);
     mm_set_opt("asm10", &index_options, &map_options);
 
@@ -146,9 +146,9 @@ void construct_alignment_graph(
         auto& target_name = item.a;
         auto& query_name = item.b;
 
-        output_mutex.lock();
-        cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
-        output_mutex.unlock();
+//        output_mutex.lock();
+//        cerr << global_index << ' ' << thread_index << ' ' << target_name << ' ' << query_name << '\n';
+//        output_mutex.unlock();
 
         auto seq_a = graph.get_sequence(graph.get_handle(id_map.get_id(target_name)));
         auto seq_b = graph.get_sequence(graph.get_handle(id_map.get_id(query_name)));
@@ -170,15 +170,15 @@ void construct_alignment_graph(
         result.sort_chains(true);
 
         if (not result.empty()) {
-            output_mutex.lock();
-
-            cerr << target_name << ' ' << query_name << '\n';
-            for (auto& item: result.chain) {
-                cerr << item.get_reversal_char() << '\t' << '(' << item.ref_start << ',' << item.ref_stop << ")\t("
-                     << item.query_start << ',' << item.query_stop << ')' << '\t' << item.get_identity() << '\n';
-            }
-            cerr << '\n';
-            output_mutex.unlock();
+//            output_mutex.lock();
+//
+//            cerr << target_name << ' ' << query_name << '\n';
+//            for (auto& item: result.chain) {
+//                cerr << item.get_reversal_char() << '\t' << '(' << item.ref_start << ',' << item.ref_stop << ")\t("
+//                     << item.query_start << ',' << item.query_stop << ')' << '\t' << item.get_identity() << '\n';
+//            }
+//            cerr << '\n';
+//            output_mutex.unlock();
 
             // Make sure to retain the ordering by size
             auto id_a = int32_t(id_map.get_id(target_name));
@@ -189,16 +189,16 @@ void construct_alignment_graph(
 
             auto alignment_coverage = double(total_matches) / double(length_a);
 
-            output_mutex.lock();
-            cerr << "total_matches: " << total_matches << '\n';
-            cerr << "alignment_coverage: " << alignment_coverage << '\n';
-            cerr << "length_a: " << length_a << '\n';
-            cerr << "length_b: " << length_b << '\n';
-            output_mutex.unlock();
+//            output_mutex.lock();
+//            cerr << "total_matches: " << total_matches << '\n';
+//            cerr << "alignment_coverage: " << alignment_coverage << '\n';
+//            cerr << "length_a: " << length_a << '\n';
+//            cerr << "length_b: " << length_b << '\n';
+//            output_mutex.unlock();
 
             if (alignment_coverage < min_similarity){
                 // Skip alignments which don't have at least min_similarity matches relative to larger node
-                cerr << "Skipping alignment with insufficient matches: " << target_name << ',' << query_name << '\n';
+//                cerr << "Skipping alignment with insufficient matches: " << target_name << ',' << query_name << '\n';
                 continue;
             }
 
@@ -216,8 +216,8 @@ void construct_alignment_graph(
             alignment_graph.set_node_length(id_a, length_a);
             alignment_graph.set_node_length(id_b, length_b);
 
-            cerr << "adding alignment: " << target_name << ',' << query_name << ',' << length_a << ',' << length_b << ',' << total_matches << '\n';
-            cerr << "from graph: " << alignment_graph.get_node_length(id_a) << ',' << alignment_graph.get_node_length(id_b) << '\n';
+//            cerr << "adding alignment: " << target_name << ',' << query_name << ',' << length_a << ',' << length_b << ',' << total_matches << '\n';
+//            cerr << "from graph: " << alignment_graph.get_node_length(id_a) << ',' << alignment_graph.get_node_length(id_b) << '\n';
 
             output_mutex.unlock();
         }
@@ -276,7 +276,7 @@ void get_alignment_candidates(
         if (result.ab_over_a >= min_ab_over_a and result.ab_over_b >= min_ab_over_b) {
             to_be_aligned.emplace_back(edge.first, edge.second, result.ab_over_a, result.ab_over_b);
         }
-        cerr << edge.first << ',' << edge.second << ',' << result.ab_over_a << ',' << min_ab_over_a << ',' << result.ab_over_b << ',' << min_ab_over_b << '\n';
+//        cerr << edge.first << ',' << edge.second << ',' << result.ab_over_a << ',' << min_ab_over_a << ',' << result.ab_over_b << ',' << min_ab_over_b << '\n';
     }
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
@@ -290,12 +290,11 @@ void get_alignment_candidates(
         return a_avg > b_avg;
     });
 
-    for (const auto& item: to_be_aligned) {
-        auto length_a = graph.get_length(graph.get_handle(id_map.get_id(item.a)));
-        auto length_b = graph.get_length(graph.get_handle(id_map.get_id(item.b)));
-
-        cerr << item.a << ',' << item.b << ',' << length_a << ',' << length_b << '\n';
-    }
+//    for (const auto& item: to_be_aligned) {
+//        auto length_a = graph.get_length(graph.get_handle(id_map.get_id(item.a)));
+//        auto length_b = graph.get_length(graph.get_handle(id_map.get_id(item.b)));
+//        cerr << item.a << ',' << item.b << ',' << length_a << ',' << length_b << '\n';
+//    }
 
     cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
     cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';
@@ -349,13 +348,13 @@ void get_best_overlaps(
             string a_name = id_map.get_name(a);
             string b_name = id_map.get_name(b);
 
-            cerr << "Testing: " << a_name << ',' << b_name << '\n';
+//            cerr << "Testing: " << a_name << ',' << b_name << '\n';
 
             bool a_covered = double(a_coverage) >= double(a_length);
             bool b_covered = double(b_coverage) >= double(b_length);
 
             if (a_covered or b_covered){
-                cerr << "skipping covered node: " << a_covered << ',' << b_covered << '\n';
+//                cerr << "skipping covered node: " << a_covered << ',' << b_covered << '\n';
                 return;
             }
 
@@ -364,33 +363,33 @@ void get_best_overlaps(
             int32_t b_best_neighbor = -1;
             int32_t b_best_value = -1;
 
-            cerr << '\t' << "-- a --" <<'\n';
+//            cerr << '\t' << "-- a --" <<'\n';
             alignment_graph.for_each_node_neighbor(a, [&](int32_t other, const MultiNode& n){
                 bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(a, other);
 
                 string other_name = id_map.get_name(other);
-                cerr << '\t' << a_name << ',' << other_name << ',' << w << '\n';
+//                cerr << '\t' << a_name << ',' << other_name << ',' << w << '\n';
 
                 if (w > a_best_value and not other_covered){
-                    cerr << "\tbest!" << '\n';
+//                    cerr << "\tbest!" << '\n';
                     a_best_value = w;
                     a_best_neighbor = other;
                 }
             });
 
-            cerr << '\t' << "-- b --" <<'\n';
+//            cerr << '\t' << "-- b --" <<'\n';
             alignment_graph.for_each_node_neighbor(b, [&](int32_t other, const MultiNode& n){
                 bool other_covered = alignment_graph.get_node_coverage(other) >= alignment_graph.get_node_length(other);
 
                 auto w = alignment_graph.get_edge_weight(b, other);
 
                 string other_name = id_map.get_name(other);
-                cerr << '\t' << b_name << ',' << other_name << ',' << w << '\n';
+//                cerr << '\t' << b_name << ',' << other_name << ',' << w << '\n';
 
                 if (w > b_best_value and not other_covered){
-                    cerr << "\tbest!" << '\n';
+//                    cerr << "\tbest!" << '\n';
                     b_best_value = w;
                     b_best_neighbor = other;
                 }
@@ -413,9 +412,9 @@ void get_best_overlaps(
                 bool a_min = double(weight) > double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
                 bool b_min = double(weight) > double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty);
 
-                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << "), weight needed = " << double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
-                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << "), weight needed = " << double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
-                cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(not a_covered) << ',' << int(not b_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
+//                cerr << "current coverage on node a: " << a_coverage << " (length = " << a_length << ", weight = " << weight << "), weight needed = " << double(a_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
+//                cerr << "current coverage on node b: " << b_coverage << " (length = " << b_length << ", weight = " << weight << "), weight needed = " << double(b_length)*(min_similarity + int(a_coverage == 0)*first_node_penalty) << '\n';
+//                cerr << int(a_sane) << ',' << int(b_sane) << ',' << int(not a_covered) << ',' << int(not b_covered) << ',' << int(a_max) << ',' << int(b_max) << ',' << int(a_min) << ',' << int(b_min) << '\n';
 
                 if (a_sane and b_sane and a_max and b_max and a_min and b_min){
                     symmetrical_alignment_graph.try_insert_node(a);
@@ -429,7 +428,7 @@ void get_best_overlaps(
                     alignment_graph.increment_coverage(a,weight);
                     alignment_graph.increment_coverage(b,weight);
 
-                    cerr << "good edge: " << a_name << ',' << b_name << '\n';
+//                    cerr << "good edge: " << a_name << ',' << b_name << '\n';
                     symmetrical_edges.emplace(a,b);
                 }
             }
@@ -439,7 +438,7 @@ void get_best_overlaps(
         for (auto& [a,b]: symmetrical_edges){
             alignment_graph.remove_edge(a,b);
             symmetrical_edges_found = true;
-            cerr << "removing: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
+//            cerr << "removing: " << id_map.get_name(a) << ',' << id_map.get_name(b) << '\n';
         }
 
         symmetrical_edges.clear();

@@ -165,7 +165,7 @@ void Hasher2::hash_sequences(const vector<Sequence>& sequences, atomic<size_t>& 
     size_t i = job_index.fetch_add(1);
 
     while (i < sequences.size()){
-        auto id = id_map.get_id(sequences[i].name);
+        auto id = sequence_id_map.get_id(sequences[i].name);
         hash_sequence(sequences[i], id, hash_index);
         i = job_index.fetch_add(1);
     }
@@ -188,7 +188,7 @@ void Hasher2::hash(const vector<Sequence>& sequences){
 
     // Build ID map for sequence names
     for(auto& sequence: sequences){
-        id_map.try_insert(sequence.name);
+        sequence_id_map.try_insert(sequence.name);
     }
 
     // Aggregate results
@@ -303,8 +303,8 @@ void Hasher2::get_best_matches(map<string, string>& matches, double certainty_th
 
         // Just take any top hit with greater than % threshold match, later will be used during symmetry filtering
         if (max_hashes/double(total_hashes) > certainty_threshold){
-            auto name = id_map.get_name(id);
-            auto max_name = id_map.get_name(max_id);
+            auto name = sequence_id_map.get_name(id);
+            auto max_name = sequence_id_map.get_name(max_id);
             matches[name] = max_name;
         }
     }
@@ -327,7 +327,7 @@ void Hasher2::convert_to_contact_graph(
         }
 
         // For each node try adding it to the graph, and give it a "coverage" that corresponds to its number of hashes
-        auto id_a = graph_id_map.get_id(id_map.get_name(id));
+        auto id_a = graph_id_map.get_id(sequence_id_map.get_name(id));
         contact_graph.try_insert_node(int32_t(id_a));
         contact_graph.set_node_coverage(int32_t(id_a), int64_t(total_hashes));
 
@@ -357,7 +357,7 @@ void Hasher2::convert_to_contact_graph(
                 continue;
             }
 
-            auto id_b = graph_id_map.get_id(id_map.get_name(other_id));
+            auto id_b = graph_id_map.get_id(sequence_id_map.get_name(other_id));
             contact_graph.try_insert_node(int32_t(id_b));
             contact_graph.try_insert_edge(int32_t(id_a), int32_t(id_b), int32_t(score));
 
@@ -393,11 +393,11 @@ void Hasher2::get_symmetrical_matches(map<string, string>& symmetrical_matches, 
 int64_t Hasher2::get_intersection_size(const string& a, const string& b) const{
     int64_t intersection = 0;
 
-    auto id_a = id_map.get_id(a);
+    auto id_a = sequence_id_map.get_id(a);
     auto result_a = overlaps.find(id_a);
 
     if (result_a != overlaps.end()){
-        auto id_b = id_map.get_id(b);
+        auto id_b = sequence_id_map.get_id(b);
         auto result_b = result_a->second.find(id_b);
 
         intersection = result_b->second;
@@ -420,7 +420,7 @@ void Hasher2::for_each_overlap(
             continue;
         }
 
-        map <size_t, int64_t> sorted_scores;
+        map <int64_t, int64_t> sorted_scores;
 
         for (auto& [other_id, score]: results){
             // Skip self-hits
@@ -444,8 +444,8 @@ void Hasher2::for_each_overlap(
             float similarity = float(score)/(float(total_hashes) + 1e-12f);
 
             if (similarity > min_similarity) {
-                auto name = id_map.get_name(id);
-                auto other_name = id_map.get_name(other_id);
+                auto name = sequence_id_map.get_name(id);
+                auto other_name = sequence_id_map.get_name(other_id);
                 f(name, other_name, int64_t(score), int64_t(total_hashes));
             }
 
@@ -475,9 +475,9 @@ void Hasher2::write_results(path output_directory) const{
     overlaps_file << "name" << ',' << "other_name" << ',' << "score" << ',' << "total_hashes" << ',' << "similarity" << '\n';
 
     for (auto& [id, results]: overlaps){
-        size_t total_hashes = results.at(id);
+        int64_t total_hashes = results.at(id);
 
-        map <size_t, int64_t> sorted_scores;
+        map <int64_t, int64_t> sorted_scores;
 
         for (auto& [other_id, score]: results){
             // Skip self-hits
@@ -488,7 +488,7 @@ void Hasher2::write_results(path output_directory) const{
             sorted_scores.emplace(score,other_id);
         }
 
-        size_t i = 0;
+        int64_t i = 0;
 
         // Report the top hits by % Jaccard similarity for each
         for (auto iter = sorted_scores.rbegin(); iter != sorted_scores.rend(); ++iter){
@@ -497,7 +497,7 @@ void Hasher2::write_results(path output_directory) const{
 
             double similarity = double(score)/double(total_hashes);
 
-            overlaps_file << id_map.get_name(id) << ',' << id_map.get_name(other_id) << ',' << score << ',' << total_hashes << ',' << similarity << '\n';
+            overlaps_file << sequence_id_map.get_name(id) << ',' << sequence_id_map.get_name(other_id) << ',' << score << ',' << total_hashes << ',' << similarity << '\n';
             i++;
 
             if (i == 10){

@@ -7,8 +7,9 @@
 
 
 using gfase::gfa_to_handle_graph;
-using gfase::Sequence;
+using gfase::HashResult;
 using gfase::Hasher2;
+using gfase::Sequence;
 
 
 int compute_minhash(path gfa_path, path output_directory, double sample_rate, size_t k, size_t n_iterations, size_t n_threads){
@@ -25,7 +26,51 @@ int compute_minhash(path gfa_path, path output_directory, double sample_rate, si
 
     map<string,string> overlaps;
 
-    hasher.get_symmetrical_matches(overlaps, 0.5);
+    unordered_map <pair <string,string>, HashResult> ordered_pairs;
+
+    // Only align the top n hits
+    size_t max_hits = 5;
+
+    // Sequence lengths must be at least this ratio.
+    // Resulting alignment coverage must be at least this amount on larger node.
+    double min_similarity = 0.05;
+
+    // Hash results must have at least this percent similarity (A & B)/A, where A is larger.
+    double min_ab_over_a = 0;
+
+    // Hash results must have at least this percent similarity (A & B)/B, where A is larger.
+    double min_ab_over_b = 0.7;
+
+    hasher.for_each_overlap(max_hits, min_ab_over_a,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
+        // Skip self hits
+        if (a == b){
+            return;
+        }
+
+        auto seq_a = graph.get_sequence(graph.get_handle(id_map.get_id(a)));
+        auto seq_b = graph.get_sequence(graph.get_handle(id_map.get_id(b)));
+
+        pair<string,string> ordered_pair;
+        if (seq_a.size() > seq_b.size()){
+            ordered_pair = {a,b};
+
+            auto& result = ordered_pairs[ordered_pair];
+            result.ab_over_a = double(n_hashes)/double(total_hashes);
+        }
+        else{
+            ordered_pair = {b,a};
+
+            auto& result = ordered_pairs[ordered_pair];
+            result.ab_over_b = double(n_hashes)/double(total_hashes);
+        }
+    });
+
+    // Filter once both directional hash similarities are established
+    for (const auto& [edge,result]: ordered_pairs){
+        if (result.ab_over_a >= min_ab_over_a and result.ab_over_b >= min_ab_over_b) {
+            cerr << edge.first << ',' << edge.second << ',' << result.ab_over_a << ',' << min_ab_over_a << ',' << result.ab_over_b << ',' << min_ab_over_b << '\n';
+        }
+    }
 
     path output_path = output_directory / "pairs.csv";
     ofstream file(output_path);
