@@ -245,6 +245,8 @@ void get_alignment_candidates(
     hasher.hash(graph, id_map);
     hasher.write_results(output_dir);
 
+    cerr << "Aggregating overlap info..." << '\n' << std::flush;
+
     unordered_map <pair <string,string>, HashResult> ordered_pairs;
 
     hasher.for_each_overlap(max_hits, min_ab_over_a,[&](const string& a, const string& b, int64_t n_hashes, int64_t total_hashes){
@@ -271,6 +273,8 @@ void get_alignment_candidates(
         }
     });
 
+    cerr << "Filtering overlaps..." << '\n' << std::flush;
+
     // Filter once both directional hash similarities are established
     for (const auto& [edge,result]: ordered_pairs){
         if (result.ab_over_a >= min_ab_over_a and result.ab_over_b >= min_ab_over_b) {
@@ -278,6 +282,8 @@ void get_alignment_candidates(
         }
 //        cerr << edge.first << ',' << edge.second << ',' << result.ab_over_a << ',' << min_ab_over_a << ',' << result.ab_over_b << ',' << min_ab_over_b << '\n';
     }
+
+    cerr << "Sorting..." << '\n' << std::flush;
 
     // Sort by descending avg length so that v long alignments aren't last by chance, to avoid wasting CPU cycles
     sort(to_be_aligned.begin(), to_be_aligned.end(), [&](const HashResult& a, const HashResult& b){
@@ -296,8 +302,8 @@ void get_alignment_candidates(
 //        cerr << item.a << ',' << item.b << ',' << length_a << ',' << length_b << '\n';
 //    }
 
-    cerr << "Found " << ordered_pairs.size() << " pairs" << '\n';
-    cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n';
+    cerr << "Found " << ordered_pairs.size() << " pairs" << '\n' << std::flush;
+    cerr << "Aligning " << to_be_aligned.size() << " pairs" << '\n' << std::flush;
 }
 
 
