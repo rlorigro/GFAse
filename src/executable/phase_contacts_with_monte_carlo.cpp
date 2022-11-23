@@ -143,6 +143,11 @@ void parse_unpaired_bam_file(
         l++;
         prev_query_name = a.query_name;
     });
+
+    // Collect final read's contacts
+    if (not alignments.empty()){
+        update_contact_map(alignments, contact_graph, id_map);
+    }
 }
 
 
