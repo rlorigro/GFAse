@@ -132,7 +132,6 @@ public:
     void get_best_matches(map<string, string>& matches, double certainty_threshold) const;
     void get_symmetrical_matches(map<string, string>& symmetrical_matches, double certainty_threshold) const;
     int64_t get_intersection_size(const string& a, const string& b) const;
-    void for_each_overlap(const function<void(const pair<string,string>, int64_t weight)>& f) const;
     void for_each_overlap(
             size_t max_hits,
             double min_similarity,

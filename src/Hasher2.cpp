@@ -24,6 +24,7 @@ HashResult::HashResult():
 
 
 Hasher2::Hasher2(size_t k, double sample_rate, size_t n_iterations, size_t n_threads):
+        sequence_id_map(true),
         k(k),
         n_possible_bins(numeric_limits<uint64_t>::max()),
         n_iterations(n_iterations),
@@ -414,6 +415,12 @@ void Hasher2::for_each_overlap(
 
     for (auto& [id, results]: overlaps){
         // Self-hit is the total number of hashes the parent sequence had
+        auto self_hit = results.find(id);
+
+        if (self_hit == results.end()){
+            continue;
+        }
+
         auto total_hashes = double(results.at(id));
 
         if (total_hashes < double(min_hashes)){
