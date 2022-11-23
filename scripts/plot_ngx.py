@@ -259,8 +259,9 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
 
     sys.stderr.write("Indexing fastas...\n")
 
+    fasta_paths = [p for p in input_paths if p in VALID_FILE_TYPES]
     with Pool(n_threads) as pool:
-        pool.map(index_fasta, input_paths)
+        pool.map(index_fasta, fasta_paths)
 
     pool.join()
 
