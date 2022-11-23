@@ -223,7 +223,9 @@ def index_fasta(path):
         result = subprocess.run(command, check=True, stderr=sys.stderr, universal_newlines=True)
         print(result.stderr)
     else:
-        sys.stderr.write("Found existing fai: " + index_path)
+        sys.stderr.write("Found existing fai: " + index_path + "\n")
+
+    return True
 
 
 def get_lengths_from_fasta(path):
@@ -273,8 +275,7 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
     fasta_paths = [p for p in input_paths if p in VALID_FILE_TYPES]
     with Pool(n_threads) as pool:
         pool.map(index_fasta, fasta_paths)
-
-    pool.join()
+        pool.join()
 
     sys.stderr.write("plotting...\n")
 
