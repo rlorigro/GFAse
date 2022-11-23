@@ -151,6 +151,9 @@ def plot_ngx(fig, axes, name, color, lengths, genome_size, output_dir):
     ng50 = 0.0
     n50 = 0.0
 
+    x = list()
+    y = list()
+
     x_prev = 0.0
     s_prev = 0.0
     for i,s in enumerate(sorted(lengths, reverse=True)):
@@ -167,16 +170,22 @@ def plot_ngx(fig, axes, name, color, lengths, genome_size, output_dir):
             n50 = s*unit
             print("n50\t%.0f" % n50)
 
-        pyplot.plot([x0,x1],[s,s], color=color)
-
         if i > 0:
-            pyplot.plot([x0,x0],[s_prev,s], color=color)
+            # pyplot.plot([x0,x0],[s_prev,s], color=color)
+            x.extend([x0,x0])
+            y.extend([s_prev,s])
+
+        x.extend([x0,x1])
+        y.extend([s,s])
 
         x_prev = x1
         s_prev = s
 
     # Bring down to 0 for easier comparison
-    pyplot.plot([x_prev,x_prev],[s_prev,0],color=color)
+    x.extend([x_prev,x_prev])
+    y.extend([s_prev,0])
+
+    pyplot.plot(x,y,color=color)
 
     axes.axvline(genome_size/2/unit, linestyle='--', linewidth=0.6, color='gray')
     axes.ticklabel_format(style='plain')
@@ -268,6 +277,8 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
     sys.stderr.write("plotting...\n")
 
     for p,path in enumerate(input_paths):
+        print(path)
+
         lengths = list()
 
         _, file_type = os.path.splitext(path)
@@ -288,9 +299,12 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
         if color_indexes is not None:
             color_index = color_indexes[p]
 
+        color = colors[color_index]
+        label_colors.append(color)
+
         plot_ngx(
             name=name,
-            color=colors[color_index],
+            color=color,
             fig=fig,
             axes=axes,
             lengths=lengths,
@@ -298,12 +312,10 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
             output_dir=output_dir
         )
 
-        label_colors.append(colors[color_index])
-
     # Generate custom legend/key lines
     custom_lines = list()
-    for i in range(len(label_colors)):
-        custom_lines.append(Line2D([0], [0], color=label_colors[i], lw=4))
+    for c in label_colors:
+        custom_lines.append(Line2D([0], [0], color=c, lw=4))
 
     pyplot.legend(custom_lines, names)
 
