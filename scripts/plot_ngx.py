@@ -222,6 +222,8 @@ def index_fasta(path):
 
         result = subprocess.run(command, check=True, stderr=sys.stderr, universal_newlines=True)
         print(result.stderr)
+    else:
+        sys.stderr.write("Found existing fai: " + index_path)
 
 
 def get_lengths_from_fasta(path):
