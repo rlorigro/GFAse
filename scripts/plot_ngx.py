@@ -221,9 +221,9 @@ def index_fasta(path):
         print("Running: " + ' '.join(command))
 
         result = subprocess.run(command, check=True, stderr=sys.stderr, universal_newlines=True)
-        print(result.stderr)
     else:
         sys.stderr.write("Found existing fai: " + index_path + "\n")
+        sys.stderr.flush()
 
     return True
 
@@ -272,12 +272,14 @@ def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
 
     sys.stderr.write("Indexing fastas...\n")
 
-    fasta_paths = [p for p in input_paths if p in VALID_FILE_TYPES]
-    with Pool(n_threads) as pool:
-        pool.map(index_fasta, fasta_paths)
-        pool.join()
+    fasta_paths = [p for p in input_paths if os.path.splitext(p)[-1] in VALID_FILE_TYPES]
 
-    sys.stderr.write("plotting...\n")
+    pool = Pool(n_threads)
+    success = pool.imap(index_fasta, fasta_paths, 1)
+    pool.close()
+    pool.join()
+
+    sys.stderr.write("Plotting...\n")
 
     for p,path in enumerate(input_paths):
         print(path)
