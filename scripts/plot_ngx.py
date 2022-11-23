@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+from multiprocessing import Pool
 from matplotlib.lines import Line2D
 from matplotlib import pyplot
 import matplotlib
+import subprocess
 import argparse
 import numpy
 import sys
@@ -201,7 +203,35 @@ def plot_ngx(fig, axes, name, color, lengths, genome_size, output_dir):
         file.write("%s,%.0f\n" % (name,n50))
 
 
-def main(input_paths, output_dir, genome_size, color_indexes):
+def index_fasta(path):
+    index_path = path + ".fai"
+
+    if not os.path.exists(index_path):
+        command = ["samtools", "faidx", path]
+
+        print("Running: " + ' '.join(command))
+
+        result = subprocess.run(command, check=True, stderr=sys.stderr, universal_newlines=True)
+        print(result.stderr)
+
+
+def get_lengths_from_fasta(path):
+    index_path = path + ".fai"
+
+    lengths = list()
+
+    # This won't do anything if the files are indexed already
+    index_fasta(path)
+
+    with open(index_path, 'r') as file:
+        for l,line in enumerate(file):
+            data = line.strip().split()
+            lengths.append(int(data[1]))
+
+    return lengths
+
+
+def main(input_paths, output_dir, genome_size, color_indexes, n_threads):
     if os.path.exists(output_dir):
         exit("ERROR: output directory already exists")
     else:
@@ -227,6 +257,15 @@ def main(input_paths, output_dir, genome_size, color_indexes):
     names = list()
     label_colors = list()
 
+    sys.stderr.write("Indexing fastas...\n")
+
+    with Pool(n_threads) as pool:
+        pool.map(index_fasta, input_paths)
+
+    pool.join()
+
+    sys.stderr.write("plotting...\n")
+
     for p,path in enumerate(input_paths):
         lengths = list()
 
@@ -239,15 +278,7 @@ def main(input_paths, output_dir, genome_size, color_indexes):
                 lengths = PRESET_LENGTHS[path]
 
         else:
-            with open(path, 'r') as file:
-                for l,line in enumerate(file):
-                    if l == 0 and line[0] != '>':
-                        exit()
-                    if line[0] == '>':
-                        lengths.append(0)
-                    else:
-                        # Increment most recent length by size of line (without newline char)
-                        lengths[-1] += len(line) - 1
+            lengths = get_lengths_from_fasta(path)
 
         name = os.path.basename(path).split('.fa')[0]
         names.append(name)
@@ -338,6 +369,14 @@ if __name__ == "__main__":
         help="Size of genome"
     )
 
+    parser.add_argument(
+        "-t",
+        required=False,
+        default=1,
+        type=int,
+        help="Maximum number of threads to use"
+    )
+
     args = parser.parse_args()
 
     args.i = parse_comma_separated_string(args.i)
@@ -352,4 +391,4 @@ if __name__ == "__main__":
             if 0 > c > 10:
                 exit("ERROR: color argument must be between 0 and 10 (inclusive), see help for details")
 
-    main(input_paths=args.i, output_dir=args.o, genome_size=args.g, color_indexes=args.colors)
+    main(input_paths=args.i, output_dir=args.o, genome_size=args.g, color_indexes=args.colors, n_threads=args.t)
