@@ -108,7 +108,7 @@ This plot shows the alignment of 2 flowcells of PoreC.
 -t 62
 ```
 
-Run time depends almost entirely on the size of the BAM to be loaded. Filtering by map quality first (q>0) will save loading time. 
+Run time depends on the size of the BAM and the number of nodes in the graph. Filtering by map quality first (q>0) will save loading time. 
 
 [Resource usage plots to be added]
 
@@ -125,11 +125,14 @@ Run time depends almost entirely on the size of the BAM to be loaded. Filtering 
 -t 62
 ```
 
-Run time depends mostly on the size of the BAM to be loaded, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA (with flag `--use_homology`). ~128GB and 48 threads should be sufficient. 
+Run time depends on the size of the BAM and the number of nodes in the graph, however, additional run time and memory usage is incurred as a result of needing to rediscover alts/homologs in the GFA (with flag `--use_homology`). ~128GB and 48 threads should be sufficient. 
 
 Note: Verkko should be homopolymer decompressed before running alignments and GFAse. Verkko produces overlapped GFAs which are not stitchable by GFAse, so `--skip_unzip` should be used.
 
 ![image](https://user-images.githubusercontent.com/28764332/204057339-bf28be1e-0cbc-452d-a0a4-5f941592e320.png)
+
+x = Time (min)
+
 
 #### NOTE: Choosing a min_mapq value for your assembly
 
