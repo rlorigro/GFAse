@@ -129,8 +129,7 @@ Run time depends mostly on the size of the BAM to be loaded, however, additional
 
 Note: Verkko should be homopolymer decompressed before running alignments and GFAse. Verkko produces overlapped GFAs which are not stitchable by GFAse, so `--skip_unzip` should be used.
 
-![image](https://user-images.githubusercontent.com/28764332/201499328-75395981-d8fd-42d3-883e-b7c35be81e56.png)
-
+![image](https://user-images.githubusercontent.com/28764332/204057339-bf28be1e-0cbc-452d-a0a4-5f941592e320.png)
 
 #### NOTE: Choosing a min_mapq value for your assembly
 
