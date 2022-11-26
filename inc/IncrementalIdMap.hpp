@@ -56,7 +56,7 @@ public:
     bool exists(int64_t id) const;
 
     void write_to_csv(path output_path) const;
-    size_t size();
+    size_t size() const;
 };
 
 
@@ -127,7 +127,7 @@ template<class T> IncrementalIdMap<T>::IncrementalIdMap(path csv_path){
 }
 
 
-template<class T> size_t IncrementalIdMap<T>::size(){
+template<class T> size_t IncrementalIdMap<T>::size() const{
     return names.size();
 }
 

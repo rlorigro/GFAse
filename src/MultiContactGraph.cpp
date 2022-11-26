@@ -1048,6 +1048,8 @@ void MultiContactGraph::get_alt_component_representatives(vector<int32_t>& repre
 void MultiContactGraph::get_alts_from_shasta_names(const IncrementalIdMap<string>& id_map){
     unordered_set <int32_t> visited;
 
+    int64_t alts_found = 0;
+
     for (auto&[name, id]: id_map.ids) {
         if (visited.count(int32_t(id)) > 0) {
             continue;
@@ -1086,6 +1088,7 @@ void MultiContactGraph::get_alts_from_shasta_names(const IncrementalIdMap<string
 
             if (has_node(int32_t(id)) and has_node(int32_t(other_id))){
                 add_alt(int32_t(id), int32_t(other_id));
+                alts_found++;
             }
             else{
                 cerr << "Warning: shasta bubble has node with no contacts: " << name << "," << other_name << '\n';
@@ -1096,6 +1099,16 @@ void MultiContactGraph::get_alts_from_shasta_names(const IncrementalIdMap<string
         }
 
         visited.emplace(id);
+    }
+
+    double alt_proportion = double(alts_found)/double(id_map.size());
+
+    if (alts_found == 0){
+        throw runtime_error("ERROR: no alts found by Shasta node name convention, try using homology instead?");
+    }
+
+    if (alt_proportion < 0.05){
+        cerr << "WARNING: proportion of nodes with alts is less than 5%. Wrong parameters?";
     }
 
 }
