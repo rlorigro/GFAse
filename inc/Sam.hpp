@@ -76,6 +76,30 @@ public:
 };
 
 
+class FullAlignmentBlock {
+public:
+    vector<uint32_t> cigars;
+    string ref_name;
+    string query_name;
+    int32_t ref_start;
+    int32_t ref_stop;
+    int32_t query_length;
+    int32_t query_start;
+    int32_t query_stop;
+    uint32_t n_matches;
+    uint32_t n_mismatches;
+    uint32_t n_inserts;
+    uint32_t n_deletes;
+    uint32_t n_n;
+    uint16_t flag;
+    uint8_t mapq;
+    bool is_reverse;
+
+    FullAlignmentBlock()=default;
+
+};
+
+
 class AlignmentChain{
 public:
     vector<AlignmentBlock> chain;
@@ -88,32 +112,27 @@ public:
 };
 
 
+class FullAlignmentChain{
+public:
+    vector<FullAlignmentBlock> chain;
+
+    FullAlignmentChain()=default;
+    void sort_chains(bool by_ref);
+    bool empty();
+};
+
+
 void for_element_in_sam_file(path sam_path, const function<void(SamElement& e)>& f);
 
 
 }
 
-//bool operator<(const gfase::SamElement& a, const gfase::SamElement& b);
-//
-//bool operator>(const gfase::SamElement& a, const gfase::SamElement& b);
-//
-//bool operator==(const gfase::SamElement& a, const gfase::SamElement& b);
-
 ostream& operator<<(ostream& o, const gfase::SamElement& a);
 
 ostream& operator<<(ostream& o, const gfase::AlignmentBlock& a);
 
-// TODO: if this needs to be hashable, it will need a unique identifier...
-//namespace std {
-//template<>
-//struct less<gfase::SamElement>
-//{
-//    bool operator()(const gfase::SamElement& a, const gfase::SamElement& b) const
-//    {
-//        return a.line < b.line;
-//    }
-//};
-//}
+ostream& operator<<(ostream& o, const gfase::FullAlignmentBlock& a);
+
 
 
 #endif //GFASE_SAM_HPP

@@ -123,6 +123,18 @@ void AlignmentChain::sort_chains(bool by_ref) {
 }
 
 
+void FullAlignmentChain::sort_chains(bool by_ref) {
+    sort(chain.begin(), chain.end(), [&](const FullAlignmentBlock& a, const FullAlignmentBlock& b){
+        if (by_ref){
+            return a.ref_start < b.ref_start;
+        }
+        else{
+            return a.query_start < b.query_start;
+        }
+    });
+}
+
+
 size_t AlignmentChain::get_approximate_non_overlapping_matches(){
     size_t total_matches = 0;
 
@@ -170,6 +182,11 @@ size_t AlignmentChain::get_total_matches(){
 
 
 bool AlignmentChain::empty() {
+    return chain.empty();
+}
+
+
+bool FullAlignmentChain::empty() {
     return chain.empty();
 }
 
@@ -312,6 +329,20 @@ ostream& operator<<(ostream& o, const gfase::AlignmentBlock& a){
     o << '\t' << "query_start: " << a.query_start << '\n';
     o << '\t' << "query_stop: " << a.query_stop << '\n';
     o << '\t' << "n_matches: " << a.n_matches << '\n';
+
+    return o;
+}
+
+
+ostream& operator<<(ostream& o, const gfase::FullAlignmentBlock& a){
+    o << '\t' << "ref: " << a.ref_name << '\n';
+    o << '\t' << "query: " << a.query_name << '\n';
+    o << '\t' << "ref_start: " << a.ref_start << '\n';
+    o << '\t' << "ref_stop: " << a.ref_stop << '\n';
+    o << '\t' << "query_start: " << a.query_start << '\n';
+    o << '\t' << "query_stop: " << a.query_stop << '\n';
+    o << '\t' << "n_matches: " << a.n_matches << '\n';
+    o << '\t' << "n_mismatches: " << a.n_mismatches << '\n';
 
     return o;
 }

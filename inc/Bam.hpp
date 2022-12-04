@@ -32,6 +32,7 @@ public:
     ~Bam();
     void for_alignment_in_bam(const function<void(const string& ref_name, const string& query_name, uint8_t map_quality, uint16_t flag)>& f);
     void for_alignment_in_bam(bool get_cigar, const function<void(SamElement& alignment)>& f);
+    void for_alignment_in_bam(const function<void(FullAlignmentBlock& a)>& f);
     static bool is_first_mate(uint16_t flag);
     static bool is_second_mate(uint16_t flag);
     static bool is_not_primary(uint16_t flag);
@@ -40,8 +41,8 @@ public:
 };
 
 
-void update_contact_map(
-        vector<SamElement>& alignments,
+template <class T> void update_contact_map(
+        const vector<T>& alignments,
         MultiContactGraph& contact_graph,
         IncrementalIdMap<string>& id_map);
 

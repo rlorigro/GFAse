@@ -764,6 +764,7 @@ set(EXECUTABLES
         create_bandage_path_color_table
         compute_minhash2
         extract_haplotype_kmers
+        evaluate_contacts
         evaluate_phasing
         find_bubbles
         find_shasta_bubbles

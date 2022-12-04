@@ -52,7 +52,7 @@ void Bam::for_alignment_in_bam(const function<void(const string& ref_name, const
 }
 
 
-void Bam::for_alignment_in_bam(bool get_cigar, const function<void(SamElement& alignment)>& f){
+void Bam::for_alignment_in_bam(bool get_cigar, const function<void(SamElement& a)>& f){
     while (sam_read1(bam_file, bam_header, alignment) >= 0){
         SamElement e;
         e.query_name = bam_get_qname(alignment);
@@ -69,6 +69,85 @@ void Bam::for_alignment_in_bam(bool get_cigar, const function<void(SamElement& a
             auto n_cigar = alignment->core.n_cigar;
             auto cigar_ptr = bam_get_cigar(alignment);
             e.cigars.assign(cigar_ptr, cigar_ptr + n_cigar);
+        }
+
+        f(e);
+    }
+}
+
+
+void Bam::for_alignment_in_bam(const function<void(FullAlignmentBlock& a)>& f){
+    while (sam_read1(bam_file, bam_header, alignment) >= 0){
+        FullAlignmentBlock e;
+
+        // Ref name field might be empty if read is unmapped, in which case the target (aka ref) id might not be in range
+        if (alignment->core.tid < bam_header->n_targets and alignment->core.tid > -1) {
+            e.ref_name = bam_header->target_name[alignment->core.tid];
+        }
+
+        e.query_name = bam_get_qname(alignment);
+        e.query_length = alignment->core.l_qseq;
+        e.mapq = alignment->core.qual;
+        e.flag = alignment->core.flag;
+        e.ref_start = alignment->core.pos;
+        e.is_reverse = bam_is_rev(alignment);
+
+        auto n_cigar = alignment->core.n_cigar;
+        auto cigar_ptr = bam_get_cigar(alignment);
+        e.cigars.assign(cigar_ptr, cigar_ptr + n_cigar);
+
+        int32_t start_clip = 0;
+        int32_t end_clip = 0;
+        int32_t query_length;
+        e.n_matches = 0;
+        e.n_mismatches = 0;
+        e.n_inserts = 0;
+        e.n_deletes = 0;
+        e.n_n = 0;
+
+        size_t i = 0;
+
+        for (auto& c: e.cigars){
+            char type = bam_cigar_opchr(c);
+            auto length = bam_cigar_oplen(c);
+
+            if (type == 'M' or type == '='){
+                e.n_matches += length;
+            }
+            else if (type == 'X' ){
+                e.n_mismatches += length;
+            }
+            else if (type == 'I'){
+                e.n_inserts += length;
+            }
+            else if (type == 'D'){
+                e.n_deletes += length;
+            }
+            else if (type == 'N'){
+                e.n_n += length;
+            }
+            else if (type == 'S' or type == 'H'){
+                if (i == 0){
+                    start_clip = int32_t(length);
+                }
+                else{
+                    end_clip = int32_t(length);
+                }
+            }
+
+            i++;
+        }
+
+        query_length = int32_t(e.n_matches) + int32_t(e.n_mismatches) + int32_t(e.n_inserts) + int32_t(start_clip) + int32_t(end_clip);
+        e.ref_stop = int32_t(e.ref_start) + int32_t(e.n_matches) + int32_t(e.n_mismatches) + int32_t(e.n_deletes);
+
+        if (e.is_reverse){
+            e.query_start = int32_t(end_clip);
+            e.query_stop = int32_t(query_length) - int32_t(start_clip);
+        }
+        else{
+            e.query_start = int32_t(start_clip);
+            e.query_stop = int32_t(query_length) - int32_t(end_clip);
         }
 
         f(e);
@@ -110,8 +189,8 @@ bool Bam::is_supplementary(uint16_t flag){
 }
 
 
-void update_contact_map(
-        vector<SamElement>& alignments,
+template <class T> void update_contact_map(
+        const vector<T>& alignments,
         MultiContactGraph& contact_graph,
         IncrementalIdMap<string>& id_map){
 
