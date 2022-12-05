@@ -236,7 +236,7 @@ void evaluate_contacts(path bam_path, path phase_csv, path output_dir){
 
     Histogram subread_lengths(10000000, 50);
     Histogram subread_counts(10000, 1);
-    Histogram gap_lengths(1000000000, 500);
+    Histogram gap_lengths(1000000000, 10000);
     Histogram mapqs(100, 1);
 
     Histogram n_consistent_contacts(60,1);
