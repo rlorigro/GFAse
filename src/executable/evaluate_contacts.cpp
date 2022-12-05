@@ -11,6 +11,7 @@ using gfase::FullAlignmentBlock;
 using gfase::IncrementalIdMap;
 using gfase::for_element_in_sam_file;
 using gfase::SamElement;
+using gfase::edge;
 using gfase::Bam;
 
 using ghc::filesystem::path;
@@ -41,12 +42,9 @@ using std::max;
 
 
 void for_each_read_in_bam(
-        path bam_path,
+        Bam& reader,
         const function<void(const FullAlignmentChain& read_alignments)>& f
         ){
-
-    Bam reader(bam_path);
-
     size_t l = 0;
     string prev_query_name = "";
     FullAlignmentChain alignments;
@@ -79,22 +77,6 @@ void for_each_read_in_bam(
 }
 
 
-void write_vector_distribution_to_file(const vector<int32_t>& distribution, int32_t bin_size, path output_path){
-    ofstream file(output_path);
-
-    if (not (file.is_open() and file.good())){
-        throw runtime_error("ERROR: could not write to file: " + output_path.string());
-    }
-
-    for (size_t i=0; i<distribution.size(); i++){
-        if (distribution[i] == 0){
-            continue;
-        }
-        file << i*bin_size << ',' << distribution[i] << '\n';
-    }
-}
-
-
 void for_each_item_in_phase_csv(path csv_path, const function<void(const string& name, int8_t phase)>& f){
     string line;
     string name;
@@ -117,6 +99,125 @@ void for_each_item_in_phase_csv(path csv_path, const function<void(const string&
 }
 
 
+class Histogram{
+public:
+    vector<int32_t> frequencies;
+    size_t max_value;
+    size_t bin_size;
+
+    Histogram(size_t max_value, size_t bin_size);
+    void for_each_item(const function<void(size_t value, int32_t frequency)>& f) const;
+    void get_reverse_cdf(vector<int32_t>& cdf) const;
+    void update(size_t value);
+    void update(size_t value, int32_t count);
+    void write_to_csv(path output_path) const;
+};
+
+
+Histogram::Histogram(size_t max_value, size_t bin_size):
+    frequencies(max_value/bin_size + 1),
+    max_value(max_value),
+    bin_size(bin_size)
+{}
+
+
+void Histogram::update(size_t value){
+    if (value <= max_value){
+        frequencies[value/bin_size]++;
+    }
+}
+
+
+void Histogram::update(size_t value, int32_t count){
+    if (value <= max_value){
+        frequencies[value/bin_size]+= count;
+    }
+}
+
+
+void Histogram::for_each_item(const function<void(size_t value, int32_t frequency)>& f) const{
+    for (size_t i=0; i<frequencies.size(); i++){
+        f(i*bin_size, frequencies[i]);
+    }
+}
+
+
+void Histogram::write_to_csv(path output_path) const{
+    ofstream file(output_path);
+
+    if (not (file.is_open() and file.good())){
+        throw runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    for (size_t i=0; i<frequencies.size(); i++){
+        if (frequencies[i] == 0){
+            continue;
+        }
+        file << i*bin_size << ',' << frequencies[i] << '\n';
+    }
+}
+
+
+
+void Histogram::get_reverse_cdf(vector<int32_t>& cdf) const{
+    cdf.clear();
+    cdf.resize(frequencies.size());
+
+    int64_t i = int64_t(frequencies.size()) - 1;
+    int32_t prev = 0;
+    for (auto it = frequencies.rbegin(); it<frequencies.rend(); it++){
+        cdf[i] = *it + prev;
+        prev = cdf[i];
+        i--;
+    }
+}
+
+
+class StratifiedContactMap{
+public:
+    unordered_map <pair <int32_t, int32_t>, Histogram> contacts;
+    unordered_map <int32_t, int8_t> partitions;
+
+    StratifiedContactMap()=default;
+    void update(int32_t a, int32_t b, uint8_t mapq);
+    void set_partition(int32_t id, int8_t partition);
+    void for_each_edge(const function<void(const pair<int32_t,int32_t>& edge, const Histogram& weights)>& f) const;
+    int8_t get_partition(int32_t id) const;
+};
+
+
+void StratifiedContactMap::update(int32_t a, int32_t b, uint8_t mapq){
+    auto e = edge(a,b);
+
+    auto result = contacts.find(e);
+
+    // Make a new histogram if this edge doesn't exist yet
+    if (result == contacts.end()){
+        result = contacts.emplace(e,Histogram(60,1)).first;
+    }
+
+    // Update the (now guaranteed to exist) histogram
+    result->second.update(mapq);
+}
+
+
+void StratifiedContactMap::set_partition(int32_t id, int8_t partition){
+    partitions[id] = partition;
+}
+
+
+int8_t StratifiedContactMap::get_partition(int32_t id) const{
+    return partitions.at(id);
+}
+
+
+void StratifiedContactMap::for_each_edge(const function<void(const pair<int32_t,int32_t>& edge, const Histogram& weights)>& f) const{
+    for (auto& [e,w]: contacts){
+        f(e,w);
+    }
+}
+
+
 void evaluate_contacts(path bam_path, path phase_csv, path output_dir){
     if (exists(output_dir)){
         throw runtime_error("ERROR: output directory exists already");
@@ -125,26 +226,26 @@ void evaluate_contacts(path bam_path, path phase_csv, path output_dir){
         create_directories(output_dir);
     }
 
+    Bam reader(bam_path);
     IncrementalIdMap<string> id_map;
-    MultiContactGraph contact_graph;
-    vector<int32_t> subread_lengths(10000000, 0);
-    vector<int32_t> subread_counts(10000, 0);
-    vector<int32_t> gap_lengths(10000000, 0);
-    vector<int32_t> mapqs(100, 0);
+    StratifiedContactMap contact_map;
 
-    vector <tuple <string,string,int32_t> > inconsistent_contacts;
-    int64_t n_consistent_contacts = 0;
-    int64_t n_inconsistent_contacts = 0;
-    int64_t total_alignments = 0;
+    reader.for_ref_in_header([&](const string& ref_name, uint32_t length){
+        id_map.try_insert(ref_name);
+    });
 
-    int32_t bin_size = 100;
+    Histogram subread_lengths(10000000, 50);
+    Histogram subread_counts(10000, 1);
+    Histogram gap_lengths(1000000000, 500);
+    Histogram mapqs(100, 1);
 
-    for_each_read_in_bam(bam_path, [&](const FullAlignmentChain& alignments){
-        if (alignments.chain.size() < subread_counts.size() - 1){
-            subread_counts[alignments.chain.size()]++;
-        }
+    Histogram n_consistent_contacts(60,1);
+    Histogram n_inconsistent_contacts(60,1);
+    size_t total_alignments = 0;
 
-        total_alignments += int64_t(alignments.chain.size());
+    for_each_read_in_bam(reader, [&](const FullAlignmentChain& alignments){
+        subread_counts.update(alignments.chain.size());
+        total_alignments += alignments.chain.size();
 
         // Skip processing singleton chains, but note them in the chain length distribution
         if (alignments.chain.size() == 1){
@@ -154,99 +255,73 @@ void evaluate_contacts(path bam_path, path phase_csv, path output_dir){
         // Iterate one triangle of the all-by-all matrix, accumulating stats for alignments and linkages
         for (size_t i=0; i<alignments.chain.size(); i++){
             auto& a = alignments.chain[i];
-            auto ref_id_a = int32_t(id_map.try_insert(a.ref_name));
-            contact_graph.try_insert_node(ref_id_a, 0);
-
-            contact_graph.increment_coverage(ref_id_a, 1);
+            auto ref_id_a = int32_t(id_map.get_id(a.ref_name));
 
             for (size_t j=i+1; j<alignments.chain.size(); j++) {
                 auto& b = alignments.chain[j];
-                auto ref_id_b = int32_t(id_map.try_insert(b.ref_name));
-                contact_graph.try_insert_node(ref_id_b, 0);
-                contact_graph.try_insert_edge(ref_id_a, ref_id_b);
-                contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 1);
+                auto ref_id_b = int32_t(id_map.get_id(b.ref_name));
 
+                // Update contact map
+                auto min_mapq = min(a.mapq, b.mapq);
+                contact_map.update(ref_id_a,ref_id_b,min_mapq);
+
+                // Update gap lengths
                 if (ref_id_a == ref_id_b){
                     auto a_middle = (a.ref_stop + a.ref_start)/2;
                     auto b_middle = (b.ref_stop + b.ref_start)/2;
                     auto distance = max(a_middle,b_middle) - min(a_middle,b_middle);
-                    auto distance_bin = distance/bin_size;
 
-                    if (distance_bin < gap_lengths.size() - 1){
-                        gap_lengths[distance_bin]++;
-                    }
+                    gap_lengths.update(distance);
                 }
             }
 
             auto length = a.query_stop - a.query_start;
-            auto length_bin = length/bin_size;
-
-            if (length_bin < subread_lengths.size() - 1){
-                subread_lengths[length_bin]++;
-            }
-
-            if (a.mapq < mapqs.size() - 1){
-                mapqs[a.mapq]++;
-            }
+            subread_lengths.update(length);
+            mapqs.update(a.mapq);
         }
     });
 
+    // Read phases from CSV
     for_each_item_in_phase_csv(phase_csv, [&](const string& name, int8_t phase){
-        auto id = int32_t(id_map.try_insert(name));
-
-        if (contact_graph.has_node(id)){
-            contact_graph.set_partition(id,phase);
-        }
+        auto id = int32_t(id_map.get_id(name));
+        contact_map.set_partition(id, phase);
     });
 
-    contact_graph.for_each_edge([&](const pair<int32_t,int32_t> e, int32_t weight){
-        auto p_a = contact_graph.get_partition(e.first);
-        auto p_b = contact_graph.get_partition(e.second);
+    // Find which edges are cross-phase or not
+    contact_map.for_each_edge([&](const pair<int32_t,int32_t> e, const Histogram& weights){
+        auto p_a = contact_map.get_partition(e.first);
+        auto p_b = contact_map.get_partition(e.second);
+
+        vector<int32_t> reverse_cdf;
+        weights.get_reverse_cdf(reverse_cdf);
 
         if ((p_a != 0) and (p_b != 0)){
             if (p_a == p_b){
-                n_consistent_contacts += weight;
+                for (size_t i=0; i<reverse_cdf.size(); i++) {
+                    n_consistent_contacts.update(i, reverse_cdf[i]);
+                }
             }
             else{
-                n_inconsistent_contacts += weight;
+                for (size_t i=0; i<reverse_cdf.size(); i++) {
+                    n_inconsistent_contacts.update(i, reverse_cdf[i]);
+                }
                 auto a_name = id_map.get_name(e.first);
                 auto b_name = id_map.get_name(e.second);
-                inconsistent_contacts.emplace_back(a_name, b_name, weight);
             }
         }
     });
 
     path output_path;
 
-    cerr << "Writing to file: observed lengths " << '\n';
     output_path = output_dir / "subread_lengths.csv";
-    write_vector_distribution_to_file(subread_lengths, bin_size, output_path);
-
-    cerr << "Writing to file: observed gaps " << '\n';
+    subread_lengths.write_to_csv(output_path);
     output_path = output_dir / "subread_counts.csv";
-    write_vector_distribution_to_file(subread_counts, 1, output_path);
-
-    cerr << "Writing to file: observed subread counts" << '\n';
+    subread_counts.write_to_csv(output_path);
     output_path = output_dir / "gap_lengths.csv";
-    write_vector_distribution_to_file(gap_lengths, bin_size, output_path);
-
-    cerr << "Writing to file: observed mapq counts" << '\n';
+    gap_lengths.write_to_csv(output_path);
     output_path = output_dir / "mapq.csv";
-    write_vector_distribution_to_file(mapqs, 1, output_path);
+    mapqs.write_to_csv(output_path);
 
-    cerr << "Writing to file: inconsistent contacts" << '\n';
-    output_path = output_dir / "inconsistent_contacts.csv";
-    ofstream inconsistent_contacts_file(output_path);
-
-    if (not (inconsistent_contacts_file.is_open() and inconsistent_contacts_file.good())){
-        throw runtime_error("ERROR: could not write to file: " + output_path.string());
-    }
-
-    for (auto& [a,b,n]: inconsistent_contacts){
-        inconsistent_contacts_file << a << ',' << b << ',' << n << '\n';
-    }
-
-    cerr << "Writing to file: contacts summary" << '\n';
     output_path = output_dir / "contacts_summary.csv";
     ofstream contacts_summary_file(output_path);
 
@@ -255,10 +330,40 @@ void evaluate_contacts(path bam_path, path phase_csv, path output_dir){
     }
 
     contacts_summary_file << "total_alignments" << ',' << total_alignments << '\n';
-    contacts_summary_file << "singletons" << ',' << subread_counts[1] << '\n';
-    contacts_summary_file << "n_consistent_contacts" << ',' << n_consistent_contacts << '\n';
-    contacts_summary_file << "n_inconsistent_contacts" << ',' << n_inconsistent_contacts << '\n';
-    contacts_summary_file << "signal_ratio" << ',' << double(n_consistent_contacts)/double(n_inconsistent_contacts) << '\n';
+    contacts_summary_file << "singletons" << ',' << subread_counts.frequencies[1] << '\n';
+
+    output_path = output_dir / "phasing_summary.csv";
+    ofstream phasing_summary_file(output_path);
+
+    if (not (phasing_summary_file.is_open() and phasing_summary_file.good())){
+        throw runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+
+    phasing_summary_file << "" << ',';
+    n_consistent_contacts.for_each_item([&](size_t value, int32_t frequency){
+        phasing_summary_file << value << ',';
+    });
+    phasing_summary_file << '\n';
+
+    phasing_summary_file << "n_consistent_contacts" << ',';
+    n_consistent_contacts.for_each_item([&](size_t value, int32_t frequency){
+        phasing_summary_file << frequency << ',';
+    });
+    phasing_summary_file << '\n';
+
+    phasing_summary_file << "n_inconsistent_contacts" << ',';
+    n_inconsistent_contacts.for_each_item([&](size_t value, int32_t frequency){
+        phasing_summary_file << frequency << ',';
+    });
+    phasing_summary_file << '\n';
+
+    phasing_summary_file << "signal_ratio" << ',';
+    for (size_t i=0; i<n_consistent_contacts.frequencies.size(); i++){
+        auto a = double(n_consistent_contacts.frequencies[i]);
+        auto b = double(n_inconsistent_contacts.frequencies[i]);
+        phasing_summary_file << a/b << ',';
+    }
+    phasing_summary_file << '\n';
 }
 
 

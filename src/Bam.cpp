@@ -15,17 +15,11 @@ namespace gfase{
 Bam::Bam(path bam_path):
     bam_path(bam_path),
     bam_file(nullptr),
-//    bam_index(nullptr),
     bam_iterator(nullptr)
 {
     if ((bam_file = hts_open(bam_path.string().c_str(), "r")) == 0) {
         throw runtime_error("ERROR: Cannot open bam file: " + bam_path.string());
     }
-
-//    // bam index
-//    if ((bam_index = sam_index_load(bam_file, bam_path.string().c_str())) == 0) {
-//        throw runtime_error("ERROR: Cannot open index for bam file: " + bam_path.string() + "\n");
-//    }
 
     // bam header
     if ((bam_header = sam_hdr_read(bam_file)) == 0){
@@ -151,6 +145,16 @@ void Bam::for_alignment_in_bam(const function<void(FullAlignmentBlock& a)>& f){
         }
 
         f(e);
+    }
+}
+
+
+void Bam::for_ref_in_header(const function<void(const string& ref_name, uint32_t length)>& f) const{
+    for (size_t i=0; i < bam_header->n_targets; i++){
+        const auto& name = bam_header->target_name[i];
+        auto length = bam_header->target_len[i];
+
+        f(name, length);
     }
 }
 

@@ -23,7 +23,6 @@ class Bam {
 
     samFile* bam_file;
     bam_hdr_t* bam_header;
-//    hts_idx_t* bam_index;
     hts_itr_t* bam_iterator;
     bam1_t* alignment;
 
@@ -33,6 +32,7 @@ public:
     void for_alignment_in_bam(const function<void(const string& ref_name, const string& query_name, uint8_t map_quality, uint16_t flag)>& f);
     void for_alignment_in_bam(bool get_cigar, const function<void(SamElement& alignment)>& f);
     void for_alignment_in_bam(const function<void(FullAlignmentBlock& a)>& f);
+    void for_ref_in_header(const function<void(const string& ref_name, uint32_t length)>& f) const;
     static bool is_first_mate(uint16_t flag);
     static bool is_second_mate(uint16_t flag);
     static bool is_not_primary(uint16_t flag);
