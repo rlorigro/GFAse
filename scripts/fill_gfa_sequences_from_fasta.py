@@ -79,8 +79,8 @@ def main(gfa_path, fasta_path, output_path):
             # Write line
             out_file.write(line)
 
-    print("nodes in GFA:\t\t%d" % n_fasta_sequences)
-    print("sequences in Fasta:\t%d" % n_nodes)
+    print("sequences in Fasta:\t%d" % n_fasta_sequences)
+    print("nodes in GFA:\t\t%d" % n_nodes)
     print("nodes replaced:\t\t%d" % n_replaced)
     print("bp replaced:\t\t%d" % bp_replaced)
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         "-o",
         required=True,
         type=str,
-        help="Output directory, where the output GFA is written"
+        help="Output path, where the output GFA is written, must contain a filename. Directories will be created as specified"
     )
 
     args = parser.parse_args()
