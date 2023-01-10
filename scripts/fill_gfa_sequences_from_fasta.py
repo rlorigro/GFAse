@@ -44,6 +44,10 @@ def write_sequence_to_fasta(name, sequence, file):
 
 def main(gfa_path, fasta_path, output_path):
     output_directory = os.path.dirname(output_path)
+    bp_replaced = 0
+    n_replaced = 0
+    n_nodes = 0
+    n_fasta_sequences = 0
 
     if not len(output_directory) == 0:
         if not os.path.exists(output_directory):
@@ -52,11 +56,7 @@ def main(gfa_path, fasta_path, output_path):
     fasta_sequences = dict()
     for name,sequence in iterate_fasta(fasta_path):
         fasta_sequences[name] = sequence
-
-    bp_replaced = 0
-    n_replaced = 0
-    n_nodes = 0
-    n_fasta_sequences = len(fasta_sequences)
+        n_fasta_sequences += 1
 
     with open(output_path, 'w') as out_file, open(gfa_path, 'r') as gfa_file:
         for l,line in enumerate(gfa_file):
