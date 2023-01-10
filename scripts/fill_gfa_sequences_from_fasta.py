@@ -53,6 +53,11 @@ def main(gfa_path, fasta_path, output_path):
     for name,sequence in iterate_fasta(fasta_path):
         fasta_sequences[name] = sequence
 
+    bp_replaced = 0
+    n_replaced = 0
+    n_nodes = 0
+    n_fasta_sequences = len(fasta_sequences)
+
     with open(output_path, 'w') as out_file, open(gfa_path, 'r') as gfa_file:
         for l,line in enumerate(gfa_file):
 
@@ -61,14 +66,23 @@ def main(gfa_path, fasta_path, output_path):
             if line.startswith("S"):
                 data = line.split() + ["\n"]
                 name = data[1]
+                n_nodes += 1
 
                 # Only substitute if the sequence exists in the fasta
                 if name in fasta_sequences:
                     data[2] = fasta_sequences[name]
+                    bp_replaced += len(data[2])
+                    n_replaced += 1
+
                     line = '\t'.join(data)
 
             # Write line
             out_file.write(line)
+
+    print("nodes in GFA:\t\t%d" % n_fasta_sequences)
+    print("sequences in Fasta:\t%d" % n_nodes)
+    print("nodes replaced:\t\t%d" % n_replaced)
+    print("bp replaced:\t\t%d" % bp_replaced)
 
 
 if __name__ == "__main__":
