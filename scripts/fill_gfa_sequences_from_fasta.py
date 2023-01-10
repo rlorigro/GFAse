@@ -61,8 +61,11 @@ def main(gfa_path, fasta_path, output_path):
             if line.startswith("S"):
                 data = line.split() + ["\n"]
                 name = data[1]
-                data[2] = fasta_sequences[name]
-                line = '\t'.join(data)
+
+                # Only substitute if the sequence exists in the fasta
+                if name in fasta_sequences:
+                    data[2] = fasta_sequences[name]
+                    line = '\t'.join(data)
 
             # Write line
             out_file.write(line)
