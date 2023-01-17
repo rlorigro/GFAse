@@ -7,6 +7,7 @@
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
 #include "CLI11.hpp"
+#include "SubgraphOverlay.hpp"
 
 #include "bdsg/hash_graph.hpp"
 
@@ -76,6 +77,8 @@ void for_edge_in_bfs(
         const function<void(const handle_t& handle_a, const handle_t& handle_b)>& f);
 
 void for_each_connected_component(HandleGraph& graph, const function<void(unordered_set<nid_t>& connected_component)>& f);
+
+void for_each_connected_component_subgraph(HandleGraph& graph, const function<void(const HandleGraph& subgraph)>& f);
 
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,

@@ -202,6 +202,14 @@ void for_each_connected_component(HandleGraph& graph, const function<void(unorde
     }
 }
 
+void for_each_connected_component_subgraph(HandleGraph& graph,
+                                           const function<void(const HandleGraph& subgraph)>& f) {
+    for_each_connected_component(graph, [&](unordered_set<nid_t>& connected_component) {
+        f(SubgraphOverlay(graph, connected_component));
+    });
+}
+
+
 /// For any 2 graphs with corresponding id maps, take a handle from the source graph and translate it into
 /// an id in the destination graph, adding it to the destination id_map if it does not yet exist.
 /// Then, return the id of the handle in source and destination as a pair
