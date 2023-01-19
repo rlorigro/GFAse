@@ -106,15 +106,15 @@ void Hasher2::hash_sequence(const Sequence& sequence, int64_t id, const size_t h
             uint64_t h = hash(kmer, hash_index);
 
             if (h < n_bins){
-                auto& m = bin_mutexes.at(h % bin_mutexes.size());
                 auto bin_index = h % bins.size();
+                auto& m = bin_mutexes.at(bin_index % bin_mutexes.size());
                 auto& bin = bins[bin_index];
 
-                if (bin.size() < max_bin_size + 2){
-                    m.lock();
+                m.lock();
+                if (bin.size() < max_bin_size + 1){
                     bin.emplace(id);
-                    m.unlock();
                 }
+                m.unlock();
             }
         }
     }
@@ -134,15 +134,15 @@ void Hasher2::hash_sequence(const Sequence& sequence, int64_t id, const size_t h
             uint64_t h = hash(kmer, hash_index);
 
             if (h < n_bins){
-                auto& m = bin_mutexes.at(h % bin_mutexes.size());
                 auto bin_index = h % bins.size();
+                auto& m = bin_mutexes.at(bin_index % bin_mutexes.size());
                 auto& bin = bins[bin_index];
 
-                if (bin.size() < max_bin_size + 2){
-                    m.lock();
+                m.lock();
+                if (bin.size() < max_bin_size + 1){
                     bin.emplace(id);
-                    m.unlock();
                 }
+                m.unlock();
             }
         }
     }
