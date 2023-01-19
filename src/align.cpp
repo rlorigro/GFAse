@@ -46,7 +46,6 @@ void map_sequence_pair(
     mm_idxopt_t index_options;
     mm_mapopt_t map_options;
 
-    mm_verbose = 0; // disable message output to stderr
     mm_set_opt(0, &index_options, &map_options);
     mm_set_opt("asm10", &index_options, &map_options);
 

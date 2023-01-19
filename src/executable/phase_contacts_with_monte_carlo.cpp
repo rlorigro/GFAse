@@ -355,6 +355,8 @@ void find_unlabeled_alts(
     vector<thread> threads;
     mutex output_mutex;
 
+    mm_verbose = 0; // disable message output to stderr
+
     // Launch threads
     for (uint64_t n=0; n<n_threads; n++){
         try {
