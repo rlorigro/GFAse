@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <utility>
+#include <iostream>
 
 using std::tuple;
 using std::get;
@@ -17,11 +18,15 @@ using std::make_tuple;
 using std::reverse;
 using std::unordered_map;
 using std::unordered_set;
+using std::cerr;
+using std::endl;
 
 using handlegraph::as_integer;
 using handlegraph::nid_t;
 
 namespace gfase {
+
+static const bool debug = false;
 
 /*
  * Wrapper for a handle graph that uses the bi-edged formalism instead
@@ -39,8 +44,8 @@ public:
     handle_t get_arbitrary_node() const;
     
     void for_each_node(const function<void(handle_t)>& lambda) const;
-    // bool is true for across-node edges and false for adjacency edges
-    void for_each_neighbor(handle_t node, const function<void(handle_t, bool)>& lambda) const;
+    void for_each_neighbor(handle_t node, const function<void(handle_t)>& lambda) const;
+    bool is_across_node_edge(handle_t node1, handle_t node2) const;
     
 private:
     
@@ -73,49 +78,66 @@ void BiedgedGraph::for_each_node(const function<void(handle_t)>& lambda) const {
     });
 }
 
-void BiedgedGraph::for_each_neighbor(handle_t node, const function<void(handle_t, bool)>& lambda) const {
+void BiedgedGraph::for_each_neighbor(handle_t node, const function<void(handle_t)>& lambda) const {
     
-    lambda(graph.flip(node), true);
+    lambda(graph.flip(node));
     graph.follow_edges(node, false, [&](const handle_t& next) {
-        lambda(graph.flip(next), false);
+        lambda(graph.flip(next));
     });
+}
+
+bool BiedgedGraph::is_across_node_edge(handle_t node1, handle_t node2) const {
+    return graph.flip(node1) == node2;
 }
 
 vector<handle_t> bridge_nodes(const HandleGraph& graph) {
     
+    if (debug) {
+        cerr << "finding bridges in graph" << endl;
+        graph.for_each_handle([&](const handle_t& handle) {
+            cerr << graph.get_id(handle) << " " << graph.get_sequence(handle) << endl;
+            graph.follow_edges(handle, true, [&](const handle_t& prev) {
+                cerr << "\t" << graph.get_id(prev) << (graph.get_is_reverse(prev) ? "-" : "+") << " <-" << endl;
+            });
+            graph.follow_edges(handle, false, [&](const handle_t& next) {
+                cerr << "\t-> " << graph.get_id(next)  << (graph.get_is_reverse(next) ? "-" : "+")<< endl;
+            });
+        });
+    }
+    
     BiedgedGraph undir_graph(graph);
     
     // TODO: should I just make this a class?
-    // records of node -> (edge upward, traversed upward, dfs index, edges downward)
-    unordered_map<handle_t, tuple<pair<handle_t, bool>, bool, size_t, vector<pair<handle_t, bool>>>> dfs_tree;
+    // records of node -> (parent, traversed upward, dfs index, edges downward)
+    unordered_map<handle_t, tuple<handle_t, bool, size_t, vector<handle_t>>> dfs_tree;
     vector<handle_t> dfs_order;
     
     dfs_tree.reserve(undir_graph.size());
     dfs_order.reserve(undir_graph.size());
     
     // records of (node, next edge idx, edges)
-    vector<tuple<handle_t, size_t, vector<pair<handle_t, bool>>>> stack;
+    vector<tuple<handle_t, size_t, vector<handle_t>>> stack;
     
     // enqueue a non-visited node
-    auto enqueue = [&](handle_t node, handle_t parent, bool from_across_edge) {
+    auto enqueue = [&](handle_t node, handle_t parent) {
         
-        stack.emplace_back(node, 0, vector<pair<handle_t, bool>>());
+        stack.emplace_back(node, 0, vector<handle_t>());
         
         // record the order and initialize the tree edges
-        dfs_tree[node] = make_tuple(make_pair(parent, from_across_edge),
-                                    false,
-                                    dfs_order.size(),
-                                    vector<pair<handle_t, bool>>());
+        dfs_tree[node] = make_tuple(parent, false, dfs_order.size(), vector<handle_t>());
         dfs_order.emplace_back(node);
         
-        undir_graph.for_each_neighbor(node, [&](handle_t nbr, bool is_across_edge) {
-            get<2>(stack.back()).emplace_back(nbr, is_across_edge);;
+        undir_graph.for_each_neighbor(node, [&](handle_t nbr) {
+            get<2>(stack.back()).emplace_back(nbr);
         });
     };
     
     // DFS
     handle_t root = undir_graph.get_arbitrary_node();
-    enqueue(root, root, false);
+    if (debug) {
+        cerr << "beginning DFS from " << graph.get_id(root) << (graph.get_is_reverse(root) ? "L" : "R") << endl;
+    }
+    enqueue(root, root);
     // note: the root doesn't really have a parent, but we use itself as a sentinel
     while (!stack.empty()) {
         
@@ -129,11 +151,21 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
         
         auto next = get<2>(top)[get<1>(top)++];
         
-        if (!dfs_tree.count(next.first)) {
+        if (!dfs_tree.count(next)) {
             // the next node hasn't been visited yet, so we add its edge to
             // the DFS tree and queue it up
             get<3>(dfs_tree[get<0>(top)]).emplace_back(next);
-            enqueue(next.first, get<0>(top), next.second);
+            enqueue(next, get<0>(top));
+        }
+    }
+    
+    if (debug) {
+        cerr << "finished making DFS tree:" << endl;
+        for (const auto& node : dfs_tree) {
+            cerr << graph.get_id(node.first) << (graph.get_is_reverse(node.first) ? "L" : "R") << endl;
+            for (auto next : get<3>(node.second)) {
+                cerr << "\t-> " << graph.get_id(next) << (graph.get_is_reverse(next) ? "L" : "R") << endl;
+            }
         }
     }
     
@@ -146,22 +178,42 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
         // note: we count on the edges being iterated in the same order as previously
         const auto& tree_record = dfs_tree[node];
         size_t j = 0;
-        undir_graph.for_each_neighbor(node, [&](handle_t nbr, bool is_across_edge) {
-            if (j < get<3>(tree_record).size() && get<3>(tree_record)[j] == make_pair(nbr, is_across_edge)) {
+        if (debug) {
+            cerr << "checking for unused edges from " << graph.get_id(node) << (graph.get_is_reverse(node) ? "L" : "R") << endl;
+        }
+        undir_graph.for_each_neighbor(node, [&](handle_t nbr) {
+            if (debug) {
+                cerr << "\t" << graph.get_id(nbr) << (graph.get_is_reverse(nbr) ? "L" : "R");
+            }
+            if (j < get<3>(tree_record).size() && get<3>(tree_record)[j] == nbr) {
                 // this edge was used in the DFS tree
                 ++j;
+                if (debug) {
+                    cerr << " was used in tree" << endl;
+                }
             }
-            else if (get<2>(tree_record) > i) {
+            else if (get<2>(dfs_tree[nbr]) > i) {
                 // this edge points down the tree rather than up it
                 chain_heads.emplace_back(nbr);
+                if (debug) {
+                    cerr << " is a downward edge" << endl;
+                }
+            }
+            else {
+                if (debug) {
+                    cerr << " is an upward edge" << endl;
+                }
             }
         });
         
         // mark nodes in the untraversed portion of this chain's cycle as traversed
         for (handle_t chain_cursor : chain_heads) {
+            if (debug) {
+                cerr << "beginning upward traversal from " << graph.get_id(chain_cursor) << (graph.get_is_reverse(chain_cursor) ? "L" : "R") << endl;
+            }
             while (chain_cursor != node && !get<1>(dfs_tree[chain_cursor])) {
                 get<1>(dfs_tree[chain_cursor]) = true;
-                chain_cursor = get<0>(dfs_tree[chain_cursor]).first;
+                chain_cursor = get<0>(dfs_tree[chain_cursor]);
             }
         }
     }
@@ -170,7 +222,12 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
     vector<handle_t> bridges;
     
     for (const auto& tree_record : dfs_tree) {
-        if (!get<1>(tree_record.second) && get<0>(tree_record.second).second) {
+
+        if (!get<1>(tree_record.second) &&
+            undir_graph.is_across_node_edge(tree_record.first, get<0>(tree_record.second))) {
+            if (debug) {
+                cerr << "marking edge " << graph.get_id(tree_record.first) << " - " << (graph.get_is_reverse(tree_record.first) ? "L" : "R") << " as a bridge node" << endl;
+            }
             bridges.push_back(graph.forward(tree_record.first));
         }
     }
