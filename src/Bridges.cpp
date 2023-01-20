@@ -1,11 +1,14 @@
 #include "Bridges.hpp"
 
-#include <functional>
 #include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
 #include <utility>
 
-using std::function;
-using std::pair;
+using std::tuple
+using std::reverse;
+using std::unordered_map;
+using std::unordered_set;
 
 using handlegraph::as_integer;
 
@@ -162,6 +165,141 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
     }
     
     return bridges;
+}
+
+vector<vector<handle_t>> consolidate_bridges(const HandleGraph& graph,
+                                             const vector<handle_t>& bridges) {
+    
+    // return a bool if the node has degree 1 in that direction, and if so also
+    // the neighbor node
+    auto degree_one_neighbor = [&](handle_t n, bool left_side) {
+        int count = 0;
+        handle_t nbr;
+        graph.follow_edges(n, left_side, [&](const handle_t& next) {
+            ++count;
+            nbr = next;
+            return count <= 1;
+        });
+        return make_pair(count == 1, nbr);
+    };
+        
+    unordered_set<handle_t> remaining(bridges.begin(), bridges.end());
+    
+    vector<vector<handle_t>> return_val;
+    
+    for (handle_t node : bridges) {
+        
+        if (!remaining.count(node)) {
+            continue;
+        }
+        
+        // we will extend this node into a consolidated bridge
+        
+        return_val.emplace_back(1, node);
+        auto& consolidated_bridge = return_val.back();
+        remaining.erase(node);
+        
+        // try to extend the bridge in both directions
+        for (bool to_left : {true, false}) {
+            
+            while (true) {
+                
+                bool degree_one;
+                handle_t nbr;
+                tie(degree_one, nbr) = degree_one_neighbor(consolidated_bridge.back(), to_left);
+                if (!degree_one || !remaining.count(graph.forward(nbr))) {
+                    // there is not a single neighbor, or else it is not a bridge
+                    break;
+                }
+                if (!degree_one_neighbor(nbr, !to_left).first) {
+                    // the neighbor does not have degree 1 on this side
+                    break;
+                }
+                consolidated_bridge.push_back(nbr);
+                remaining.erase(nbr);
+            }
+            
+            // when we build leftwards, we need to reverse it to keep the
+            // order consistent
+            if (to_left) {
+                reverse(consolidated_bridge.begin(), consolidated_bridge.end());
+            }
+        }
+    }
+    
+    assert(remaining.empty());
+    return return_val;
+}
+
+
+void for_each_bridge_component(const HandleGraph& graph,
+                               const vector<vector<handle_t>>& bridges,
+                               const function<void(const HandleGraph&,
+                                                   const vector<pair<size_t, bool>>&)>& f) {
+    
+    
+    unordered_map<handle_t, pair<size_t, bool>> inward_bridges_remaining;
+    for (size_t i = 0; i < bridges.size(); ++i) {
+        const auto& bridge = bridges[i];
+        inward_bridges_remaining[bridge.back()] = make_pair(i, false);
+        inward_bridges_remaining[graph.flip(bridge.front())] = make_pair(i, true);
+    }
+    
+    for (size_t i = 0; i < bridges.size(); ++i) {
+        const auto& bridge = bridges[i];
+        for (bool to_left : {false, true}) {
+            
+            handle_t seed = to_left ? graph.flip(bridge.front()) : bridge.back();
+            
+            if (!inward_bridges_remaining.count(seed)) {
+                // we already encountered this bridge starting from a different bridge
+                continue;
+            }
+            
+            // DFS to walk the component
+            
+            vector<pair<size_t, bool>> adjacent_bridges;
+            unordered_set<nid_t> node_ids{graph.get_id(seed)};
+            
+            // flip the seed on the stack so it looks the same as if we traversed from
+            // inside the component to arrive at it
+            vector<handle_t> stack(1, graph.flip(seed));
+            while (!stack.empty()) {
+                
+                handle_t node = stack.back();
+                stack.pop_back();
+                
+                auto it = inward_bridges_remaining.find(graph.flip());
+                if (it != inward_bridges_remaining.end()) {
+                    // we hit a bridge, don't keep looking forwards, but remember which
+                    // bridge it was
+                    adjacent_bridges.push_back(inward_bridges_remaining);
+                    inward_bridges_remaining.erase(it);
+                }
+                else {
+                    // this is not a bridge, we can look forwards
+                    graph.follow_edges(node, false, [&](const handle_t& next) {
+                        if (!node_ids.count(graph.get_id(next))) {
+                            node_ids.insert(graph.get_id(next));
+                            stack.push_back(next);
+                        }
+                    });
+                }
+                
+                // we can always look backwards
+                graph.follow_edges(graph.flip(node), false, [&](const handle_t& next) {
+                    if (!node_ids.count(graph.get_id(next))) {
+                        node_ids.insert(graph.get_id(next));
+                        stack.push_back(next);
+                    }
+                });
+            }
+            
+            // make a component subgraph and execute the lambda
+            SubgraphOverlay bridge_component(graph, node_ids);
+            f(bridge_component, adjacent_bridges);
+        }
+    }
 }
 
 }

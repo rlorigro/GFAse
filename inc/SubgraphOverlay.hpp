@@ -1,8 +1,7 @@
 #ifndef GFASE_SUBGRAPH_OVERLAY_HPP_INCLUDED
 #define GFASE_SUBGRAPH_OVERLAY_HPP_INCLUDED
 
-#include "hash_graph.hpp"
-
+#include "bdsg/hash_graph.hpp"
 
 using bdsg::HandleGraph;
 using std::string;
