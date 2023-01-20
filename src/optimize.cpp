@@ -293,12 +293,15 @@ void monte_carlo_phase_contacts(
         path output_dir
         ){
 
+    // Keep the original graph for scoring purposes (some bubbles will be merged later)
     MultiContactGraph unmerged_contact_graph = contact_graph;
 
+    // Don't evaluate a pair of bubbles twice during merging
     unordered_set<orientation_edge_t> visited_edges;
     vector <pair <int32_t,int8_t> > phase_state;
 
     for (size_t i=0; i<n_rounds; i++){
+        // Initialize DS for tracking results of repeated samples from the converged graph
         OrientationDistribution orientation_distribution(contact_graph);
 
         cerr << "---- " << i << " ----" << '\n';
@@ -309,6 +312,7 @@ void monte_carlo_phase_contacts(
                 n_threads,
                 core_iterations);
 
+        // Convert to non-mutable graph for efficiency of optimization
         VectorMultiContactGraph vector_contact_graph(contact_graph);
 
         path components_path = output_dir / ("components_" + to_string(i) + ".csv");
@@ -317,9 +321,11 @@ void monte_carlo_phase_contacts(
         path orientations_path = output_dir / ("orientations_" + to_string(i) + ".csv");
         orientation_distribution.write_contact_map(orientations_path, id_map);
 
+        // Initialize storage for the edges in order of best first (for merging purposes)
         vector <pair <orientation_edge_t, orientation_weight_t> > ordered_edges;
         ordered_edges.reserve(contact_graph.edge_count());
 
+        // Only accumulate edges which are perfectly consistent
         for (const auto& [edge,weights]: orientation_distribution.edge_weights){
             auto current_weight = max(weights[0],weights[1]);
 
@@ -328,6 +334,7 @@ void monte_carlo_phase_contacts(
             }
         }
 
+        // Order by edge weight
         sort(ordered_edges.begin(), ordered_edges.end(), [&](
                 const pair<orientation_edge_t,orientation_weight_t>& a,
                 const pair<orientation_edge_t,orientation_weight_t>& b
@@ -361,6 +368,7 @@ void monte_carlo_phase_contacts(
 
         unordered_set<int32_t> visited_nodes;
 
+        // Iterate top 20% of edges
         size_t e = 0;
         for (auto& [edge, weights]: ordered_edges){
             if (double(e)/double(ordered_edges.size()) > 0.2){
@@ -373,6 +381,7 @@ void monte_carlo_phase_contacts(
                 break;
             }
 
+            // Keep track of the orientation so that merging step merges in correct orientation
             auto partition = vector_contact_graph.get_partition(edge.first);
             bool flipped = weights[0] < weights[1];
 
@@ -387,6 +396,7 @@ void monte_carlo_phase_contacts(
                 flip_component(component_b);
             }
 
+            // Update alt relationships among nodes within merged bubbles, and set partitions
             contact_graph.add_alt(component_a, component_b, true);
             contact_graph.set_partition(edge.first, partition);
 
@@ -405,6 +415,7 @@ void monte_carlo_phase_contacts(
 
     OrientationDistribution orientation_distribution(contact_graph);
 
+    // Perform finishing convergence on the most merged graph, with more iterations
     cerr << "Final phase:" << '\n';
     sample_orientation_distribution(
             orientation_distribution,
@@ -413,6 +424,7 @@ void monte_carlo_phase_contacts(
             n_threads,
             3*core_iterations);
 
+    // Store best result for future use
     vector <pair <int32_t,int8_t> > best_partitions;
     contact_graph.get_partitions(best_partitions);
     unmerged_contact_graph.set_partitions(best_partitions);
