@@ -1,11 +1,16 @@
-#include <atomic>
 #include "SubgraphOverlay.hpp"
+
+#include <atomic>
+#include <vector>
 
 namespace gfase {
 
-SubgraphOverlay::SubgraphOverlay(const HandleGraph& backing, const unordered_set<nid_t>& node_subset) :
-    backing_graph(&backing),
-    node_subset(&node_subset) {
+using std::vector;
+using std::runtime_error;
+
+SubgraphOverlay::SubgraphOverlay(const HandleGraph* backing, const unordered_set<nid_t>* node_subset) :
+    backing_graph(backing),
+    node_subset(node_subset) {
     if (!node_subset->empty()) {
         auto minmax_nodes = std::minmax_element(node_subset->begin(), node_subset->end());
         min_node = *minmax_nodes.first;

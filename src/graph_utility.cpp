@@ -205,7 +205,7 @@ void for_each_connected_component(HandleGraph& graph, const function<void(unorde
 void for_each_connected_component_subgraph(HandleGraph& graph,
                                            const function<void(const HandleGraph& subgraph)>& f) {
     for_each_connected_component(graph, [&](unordered_set<nid_t>& connected_component) {
-        f(SubgraphOverlay(graph, connected_component));
+        f(SubgraphOverlay(&graph, &connected_component));
     });
 }
 

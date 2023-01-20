@@ -10,10 +10,7 @@
 #include <string>
 #include <set>
 
-using gfase::IncrementalIdMap;
-using gfase::handle_graph_to_gfa;
-using gfase::for_node_in_bfs;
-using gfase::for_edge_in_bfs;
+using namespace gfase;
 
 using ghc::filesystem::path;
 using bdsg::HashGraph;
@@ -40,11 +37,11 @@ int main(){
         set<string> bridge_names;
         for_each_connected_component_subgraph(graph, [&](const HandleGraph& component) {
             for (auto bridge : bridge_nodes(component)) {
-                bridge_names.insert(id_map.get_name(bridge));
+                bridge_names.insert(id_map.get_name(graph.get_id(bridge)));
             }
         });
         return bridge_names;
-    }
+    };
     
     {
         string file = "data/simple_chain.gfa";

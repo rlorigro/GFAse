@@ -3,9 +3,14 @@
 
 #include "bdsg/hash_graph.hpp"
 
+#include <unordered_set>
+#include <string>
+
 using bdsg::HandleGraph;
+using bdsg::nid_t;
+using bdsg::handle_t;
 using std::string;
-using libhandlegraph::nid_t;
+using std::unordered_set;
 
 namespace gfase {
 
@@ -24,7 +29,7 @@ public:
      * while the overlay exists.
      *
      */
-    SubgraphOverlay(const HandleGraph& backing, const unordered_set<nid_t>& node_subset);
+    SubgraphOverlay(const HandleGraph* backing, const unordered_set<nid_t>* node_subset);
 
     ~SubgraphOverlay();
 

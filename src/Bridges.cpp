@@ -1,16 +1,25 @@
 #include "Bridges.hpp"
 
+#include "SubgraphOverlay.hpp"
+
+#include "handlegraph/util.hpp"
+
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
 #include <utility>
 
-using std::tuple
+using std::tuple;
+using std::get;
+using std::tie;
+using std::make_pair;
+using std::make_tuple;
 using std::reverse;
 using std::unordered_map;
 using std::unordered_set;
 
 using handlegraph::as_integer;
+using handlegraph::nid_t;
 
 namespace gfase {
 
@@ -44,7 +53,7 @@ BiedgedGraph::BiedgedGraph(const HandleGraph& graph) : graph(graph) {
 }
 
 size_t BiedgedGraph::size() const {
-    return 2 * graph.size();
+    return 2 * graph.get_node_count();
 }
 
 handle_t BiedgedGraph::get_arbitrary_node() const {
@@ -57,9 +66,8 @@ handle_t BiedgedGraph::get_arbitrary_node() const {
     return handle;
 }
 
-
 void BiedgedGraph::for_each_node(const function<void(handle_t)>& lambda) const {
-    graph.for_each_handle([&graph](const handle_t& h) {
+    graph.for_each_handle([&](const handle_t& h) {
         lambda(h);
         lambda(graph.flip(h));
     });
@@ -68,7 +76,7 @@ void BiedgedGraph::for_each_node(const function<void(handle_t)>& lambda) const {
 void BiedgedGraph::for_each_neighbor(handle_t node, const function<void(handle_t, bool)>& lambda) const {
     
     lambda(graph.flip(node), true);
-    graph.follow_edges(node, false, [&graph, &lambda](const handle_t& next) {
+    graph.follow_edges(node, false, [&](const handle_t& next) {
         lambda(graph.flip(next), false);
     });
 }
@@ -94,7 +102,10 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
         stack.emplace_back(node, 0, vector<pair<handle_t, bool>>());
         
         // record the order and initialize the tree edges
-        dfs_tree[node].emplace_back({parent, from_across_edge}, false, dfs_order.sizse(), {});
+        dfs_tree[node] = make_tuple(make_pair(parent, from_across_edge),
+                                    false,
+                                    dfs_order.size(),
+                                    vector<pair<handle_t, bool>>());
         dfs_order.emplace_back(node);
         
         undir_graph.for_each_neighbor(node, [&](handle_t nbr, bool is_across_edge) {
@@ -133,7 +144,7 @@ vector<handle_t> bridge_nodes(const HandleGraph& graph) {
         // get the non-tree edges that will initiate chains
         vector<handle_t> chain_heads;
         // note: we count on the edges being iterated in the same order as previously
-        const auto& tree_record = dfs_order[node];
+        const auto& tree_record = dfs_tree[node];
         size_t j = 0;
         undir_graph.for_each_neighbor(node, [&](handle_t nbr, bool is_across_edge) {
             if (j < get<3>(tree_record).size() && get<3>(tree_record)[j] == make_pair(nbr, is_across_edge)) {
@@ -231,6 +242,7 @@ vector<vector<handle_t>> consolidate_bridges(const HandleGraph& graph,
     return return_val;
 }
 
+// FIXME: this will not find any bridge-free connected components...
 
 void for_each_bridge_component(const HandleGraph& graph,
                                const vector<vector<handle_t>>& bridges,
@@ -269,11 +281,11 @@ void for_each_bridge_component(const HandleGraph& graph,
                 handle_t node = stack.back();
                 stack.pop_back();
                 
-                auto it = inward_bridges_remaining.find(graph.flip());
+                auto it = inward_bridges_remaining.find(graph.flip(node));
                 if (it != inward_bridges_remaining.end()) {
                     // we hit a bridge, don't keep looking forwards, but remember which
                     // bridge it was
-                    adjacent_bridges.push_back(inward_bridges_remaining);
+                    adjacent_bridges.push_back(it->second);
                     inward_bridges_remaining.erase(it);
                 }
                 else {
@@ -296,7 +308,7 @@ void for_each_bridge_component(const HandleGraph& graph,
             }
             
             // make a component subgraph and execute the lambda
-            SubgraphOverlay bridge_component(graph, node_ids);
+            SubgraphOverlay bridge_component(&graph, &node_ids);
             f(bridge_component, adjacent_bridges);
         }
     }
