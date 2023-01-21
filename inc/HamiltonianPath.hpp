@@ -23,9 +23,9 @@ public:
     
     bool is_solved = false;
     vector<handle_t> hamiltonian_path;
-    bool is unique = false;
+    bool is_unique = false;
     vector<handle_t> unique_prefix;
-}
+};
 
 // empty vectors for starts or ends indicdate that any start or end node is allowed
 // allowed starts and ends are oriented
