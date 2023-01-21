@@ -64,6 +64,7 @@ set(SOURCES
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/graph_utility.cpp
+        src/HamiltonianPath.cpp
         src/HaplotypePathKmer.cpp
         src/Hasher.cpp
         src/Hasher2.cpp
@@ -723,6 +724,7 @@ set(TESTS
         test_fixed_binary_sequence_performance_2
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
+        test_hamiltonian_path
         test_htslib
         test_htslib_bam_reader
         test_incremental_id_io
