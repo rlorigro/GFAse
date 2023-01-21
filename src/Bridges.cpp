@@ -307,59 +307,67 @@ void for_each_bridge_component(const HandleGraph& graph,
                                                    const vector<pair<size_t, bool>>&)>& f) {
     
     
-    unordered_map<handle_t, pair<size_t, bool>> inward_bridges_remaining;
+    unordered_map<handle_t, pair<size_t, bool>> bridge_ends;
+    unordered_set<handle_t> visited;
     for (size_t i = 0; i < bridges.size(); ++i) {
         const auto& bridge = bridges[i];
-        inward_bridges_remaining[bridge.back()] = make_pair(i, false);
-        inward_bridges_remaining[graph.flip(bridge.front())] = make_pair(i, true);
+        bridge_ends[bridge.back()] = make_pair(i, false);
+        bridge_ends[graph.flip(bridge.front())] = make_pair(i, true);
+        
+        // we pre-mark the sides we don't want to traverse as visited
+        for (size_t j = 0; j < bridge.size(); ++j) {
+            if (j != 0) {
+                visited.insert(graph.flip(bridge[j]));
+            }
+            if (j + 1 != bridge.size()) {
+                visited.insert(bridge[j]);
+            }
+        }
     }
     
-    for (size_t i = 0; i < bridges.size(); ++i) {
-        const auto& bridge = bridges[i];
-        for (bool to_left : {false, true}) {
+    
+    graph.for_each_handle([&](const handle_t& node) {
+        for (bool left_side : {false, true}) {
             
-            handle_t seed = to_left ? graph.flip(bridge.front()) : bridge.back();
-            
-            if (!inward_bridges_remaining.count(seed)) {
-                // we already encountered this bridge starting from a different bridge
+            handle_t seed = left_side ? graph.flip(node) : node;
+            if (visited.count(seed)) {
+                // we've already traversed this side's component
                 continue;
             }
             
-            // DFS to walk the component
+            visited.insert(seed);
             
             vector<pair<size_t, bool>> adjacent_bridges;
             unordered_set<nid_t> node_ids{graph.get_id(seed)};
+            vector<handle_t> stack(1, seed);
             
-            // flip the seed on the stack so it looks the same as if we traversed from
-            // inside the component to arrive at it
-            vector<handle_t> stack(1, graph.flip(seed));
             while (!stack.empty()) {
                 
                 handle_t node = stack.back();
                 stack.pop_back();
                 
-                auto it = inward_bridges_remaining.find(graph.flip(node));
-                if (it != inward_bridges_remaining.end()) {
-                    // we hit a bridge, don't keep looking forwards, but remember which
+                auto it = bridge_ends.find(node);
+                if (it != bridge_ends.end()) {
+                    // we hit a bridge, don't cross it, but remember which
                     // bridge it was
                     adjacent_bridges.push_back(it->second);
-                    inward_bridges_remaining.erase(it);
                 }
                 else {
-                    // this is not a bridge, we can look forwards
-                    graph.follow_edges(node, false, [&](const handle_t& next) {
-                        if (!node_ids.count(graph.get_id(next))) {
-                            node_ids.insert(graph.get_id(next));
-                            stack.push_back(next);
-                        }
-                    });
+                    // this is not a bridge, we can look at the other side
+                    handle_t across_node = graph.flip(node);
+                    if (!visited.count(across_node)) {
+                        stack.push_back(across_node);
+                        visited.insert(across_node);
+                    }
                 }
                 
-                // we can always look backwards
-                graph.follow_edges(graph.flip(node), false, [&](const handle_t& next) {
-                    if (!node_ids.count(graph.get_id(next))) {
-                        node_ids.insert(graph.get_id(next));
-                        stack.push_back(next);
+                // we can always look across edges
+                graph.follow_edges(node, false, [&](const handle_t& next) {
+                    handle_t adjacent = graph.flip(next);
+                    if (!visited.count(adjacent)) {
+                        node_ids.insert(graph.get_id(adjacent));
+                        visited.insert(adjacent);
+                        stack.push_back(adjacent);
                     }
                 });
             }
@@ -368,7 +376,7 @@ void for_each_bridge_component(const HandleGraph& graph,
             SubgraphOverlay bridge_component(&graph, &node_ids);
             f(bridge_component, adjacent_bridges);
         }
-    }
+    });
 }
 
 }
