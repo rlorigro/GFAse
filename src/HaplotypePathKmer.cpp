@@ -99,8 +99,6 @@ void HaplotypePathKmer::initialize(step_handle_t s, size_t index){
     terminal_step = graph.path_back(path);
     terminal_index = graph.get_length(graph.get_handle_of_step(terminal_step));
 
-    bool sufficient_path_length = true;
-
     while (sequence.size() < k - 1){
         // Preload the kmer queue up until it almost has k elements
         this->step();
