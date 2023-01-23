@@ -23,7 +23,7 @@ if (dev)
     set(ASAN_OPTIONS=check_initialization_order=1)
     set(ASAN_OPTIONS=detect_leaks=1)
 
-    add_definitions(-ggdb3 -O0 -Wall)       # Debugging + No optimization
+    add_definitions(-ggdb3 -Og -Wall)       # Debugging + Some optimization
 
 else()
     message(STATUS "---- Building with optimization ----")
