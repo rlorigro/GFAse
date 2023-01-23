@@ -213,9 +213,11 @@ template <class T> void update_contact_map(
             contact_graph.try_insert_node(ref_id_b, 0);
             contact_graph.try_insert_edge(ref_id_a, ref_id_b);
 
+            auto mapq = min(a.mapq, b.mapq);
+
             // Increment by the mapq
-            if (a.mapq <= 40) {
-                contact_graph.increment_edge_weight(ref_id_a, ref_id_b, a.mapq);
+            if (mapq <= 40) {
+                contact_graph.increment_edge_weight(ref_id_a, ref_id_b, mapq);
             }
             else{
                 contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 40);
