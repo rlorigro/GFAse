@@ -50,10 +50,7 @@ int main(){
         string name_b = to_string(b);
 
         auto old_id_a = id_map.get_id(name_a);
-        auto old_id_b = id_map.get_id(name_b);
-
         auto new_id_a = id_map_2.get_id(name_a);
-        auto new_id_b = id_map_2.get_id(name_b);
 
         auto old_bubble_id = bg.find_bubble_id_of_node(int32_t(old_id_a));
         auto new_bubble_id = bg2.find_bubble_id_of_node(int32_t(new_id_a));
