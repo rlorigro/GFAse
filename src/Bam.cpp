@@ -7,6 +7,7 @@
 using std::runtime_error;
 using std::vector;
 using std::cerr;
+using std::min;
 
 
 namespace gfase{
@@ -211,7 +212,14 @@ template <class T> void update_contact_map(
             auto ref_id_b = int32_t(id_map.try_insert(b.ref_name));
             contact_graph.try_insert_node(ref_id_b, 0);
             contact_graph.try_insert_edge(ref_id_a, ref_id_b);
-            contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 1);
+
+            // Increment by the mapq
+            if (a.mapq <= 40) {
+                contact_graph.increment_edge_weight(ref_id_a, ref_id_b, a.mapq);
+            }
+            else{
+                contact_graph.increment_edge_weight(ref_id_a, ref_id_b, 40);
+            }
         }
     }
 }
