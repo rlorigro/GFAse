@@ -178,22 +178,21 @@ HamilonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
         result.is_solved = true;
         if (!traceback.empty()) {
             // populate the path in the result
+            bool found_non_unique = false;
+            size_t i = traceback.size() - 1;
             for (auto it = traceback.rbegin(); it != traceback.rend(); ++it) {
+                
                 result.hamiltonian_path.push_back(it->second);
-            }
-            // check for uniqueness
-            result.is_unique = true;
-            for (size_t i = 0; i < traceback_clouds.size(); ++i) {
-                if (traceback_clouds[i].size() > 1) {
-                    result.is_unique = false;
-                    // record how much of the prefix is unique (if any)
-                    for (size_t j = 0; j < i; ++j) {
-                        result.unique_prefix.push_back(traceback_clouds[j].begin()->second);
-                    }
-                    break;
+                
+                // check for uniqueness
+                found_non_unique = found_non_unique || traceback_clouds[i].size() <= 1;
+                if (!found_non_unique) {
+                    result.unique_prefix.push_back(it->second);
                 }
+                --i;
             }
         }
+        
     }
     
     // we skip to the end if we run into the maximum number of iterations in the inner loop

@@ -21,9 +21,11 @@ public:
     HamilonianProblemResult() = default;
     ~HamilonianProblemResult() = default;
     
+    // true if the algorithm completed within the limit of iterations
     bool is_solved = false;
+    // a hamiltonian path identified (empty if the algorithm did not complete)
     vector<handle_t> hamiltonian_path;
-    bool is_unique = false;
+    // the prefix of the hamiltonian path that is shared among all possible solutions
     vector<handle_t> unique_prefix;
 };
 
