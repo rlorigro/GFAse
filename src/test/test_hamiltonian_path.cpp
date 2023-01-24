@@ -48,6 +48,7 @@ void run_test(string& data_file,
               const unordered_set<string>& targets,
               const unordered_set<string>& prohibited,
               bool should_complete,
+              bool should_find_hamiltonian,
               size_t minimum_hamiltonian_length,
               size_t unique_prefix_len,
               size_t max_iters = numeric_limits<size_t>::max()) {
@@ -64,6 +65,7 @@ void run_test(string& data_file,
     
     gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
     
+    
     unordered_set<nid_t> target_nodes, prohibited_nodes;
     for (auto target : targets) {
         target_nodes.insert(id_map.get_id(target));
@@ -79,8 +81,44 @@ void run_test(string& data_file,
         allowed_ends.insert(graph.get_handle(id_map.get_id(end.first), end.second));
     }
     
-    auto result = find_hamiltonian_path(graph, target_nodes, prohibited_nodes,
-                                        allowed_starts, allowed_ends, max_iters);
+    unordered_set<nid_t> combined_ids;
+    for (auto target_id : target_nodes) {
+        combined_ids.insert(target_id);
+    }
+    for (auto prohibited_id : prohibited_nodes) {
+        combined_ids.insert(prohibited_id);
+    }
+    for (auto handle : allowed_starts) {
+        combined_ids.insert(graph.get_id(handle));
+    }
+    for (auto handle : allowed_ends) {
+        combined_ids.insert(graph.get_id(handle));
+    }
+    
+    // execute in a connected component to keep the node set tractably small
+    HamiltonianProblemResult result;
+    for_each_connected_component_subgraph(graph, [&](const HandleGraph& component) {
+        if (!combined_ids.empty() && component.has_node(*combined_ids.begin())) {
+            for (auto nid : combined_ids) {
+                assert(component.has_node(nid));
+            }
+            
+//            cerr << "Node name to ID map:" << endl;
+//            component.for_each_handle([&](const handle_t& handle) {
+//                cerr << "\t" << component.get_id(handle) << " -> " << id_map.get_name(component.get_id(handle)) << endl;
+//            });
+            
+            result = find_hamiltonian_path(component, target_nodes, prohibited_nodes,
+                                           allowed_starts, allowed_ends, max_iters);
+        }
+        else {
+            for (auto nid : combined_ids) {
+                assert(!component.has_node(nid));
+            }
+        }
+    });
+    
+    
     
     if (!should_complete) {
         if (result.is_solved) {
@@ -88,6 +126,15 @@ void run_test(string& data_file,
             strm << "ERROR: Hamiltonian path algorithm exited successfully when it should fail on GFA " << data_file << endl;
             strm << "Hamiltonian path identified:" << endl;
             strm << path_to_string(result.hamiltonian_path, graph, id_map);
+            throw runtime_error(strm.str());
+        }
+        if (!result.hamiltonian_path.empty() || !result.unique_prefix.empty()) {
+            stringstream strm;
+            strm << "ERROR: Return value includes a path despite being marked incomplete on GFA " << data_file << endl;
+            strm << "Hamiltonian path:" << endl;
+            strm << path_to_string(result.hamiltonian_path, graph, id_map);
+            strm << "Unique prefix:" << endl;
+            strm << path_to_string(result.unique_prefix, graph, id_map);
             throw runtime_error(strm.str());
         }
     }
@@ -98,6 +145,14 @@ void run_test(string& data_file,
             throw runtime_error(strm.str());
         }
         else {
+            if (!should_find_hamiltonian) {
+                if (!result.hamiltonian_path.empty() || !result.unique_prefix.empty()) {
+                    stringstream strm;
+                    strm << "ERROR: Found a Hamiltonian when none should exist on GFA " << data_file << endl;
+                    throw runtime_error(strm.str());
+                }
+                return;
+            }
             if (!targets.empty()) {
                 const auto& path = result.hamiltonian_path;
                 const auto& prefix = result.unique_prefix;
@@ -215,7 +270,7 @@ int main(){
     
     {
         string data_file = "data/simple_chain.gfa";
-        
+
         unordered_set<pair<string, bool>> starts{
             pair<string, bool>("i", false)
         };
@@ -225,12 +280,221 @@ int main(){
         unordered_set<string> target_nodes{"a", "d", "e", "h"};
         unordered_set<string> prohibited_nodes{};
         bool should_complete = true;
+        bool should_find_hamiltonian = true;
         size_t minimum_hamiltonian_length = 9;
         size_t unique_prefix_len = 9;
+        size_t max_iters = 1000000;
+
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // similar problem but make it non-unique
+
+        string data_file = "data/simple_chain.gfa";
+
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("i", false)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("m", false)
+        };
+        unordered_set<string> target_nodes{"a", "d"};
+        unordered_set<string> prohibited_nodes{};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 9;
+        size_t unique_prefix_len = 5;
+        size_t max_iters = 1000000;
+
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // make it bail out early
+
+        string data_file = "data/simple_chain.gfa";
+
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("i", false)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("m", false)
+        };
+        unordered_set<string> target_nodes{"a", "d", "e", "h"};
+        unordered_set<string> prohibited_nodes{};
+        bool should_complete = false;
+        bool should_find_hamiltonian = false;
+        size_t minimum_hamiltonian_length = 0;
+        size_t unique_prefix_len = 0;
+        size_t max_iters = 10;
+
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // make it impossible
+
+        string data_file = "data/simple_chain.gfa";
+
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("i", false)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("m", false)
+        };
+        unordered_set<string> target_nodes{"a", "b", "d", "e", "h"};
+        unordered_set<string> prohibited_nodes{};
+        bool should_complete = true;
+        bool should_find_hamiltonian = false;
+        size_t minimum_hamiltonian_length = 0;
+        size_t unique_prefix_len = 0;
+        size_t max_iters = 1000000;
+
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // multiple starts and ends
+        
+        string data_file = "data/chain_test.gfa";
+        
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("diploid_a0", false),
+            pair<string, bool>("diploid_a1", false)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("triploid_e0", false),
+            pair<string, bool>("triploid_e1", false),
+            pair<string, bool>("triploid_e2", false)
+        };
+        unordered_set<string> target_nodes{"diploid_b1", "diploid_c0"};
+        unordered_set<string> prohibited_nodes{};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 6;
+        size_t unique_prefix_len = 0;
+        size_t max_iters = 1000000;
         
         run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
-                 should_complete, minimum_hamiltonian_length, unique_prefix_len);
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
     }
+    {
+        // give it a unique prefix by means of prohibited nodes
+
+        string data_file = "data/chain_test.gfa";
+
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("diploid_a0", false)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("triploid_e0", false),
+            pair<string, bool>("triploid_e1", false),
+            pair<string, bool>("triploid_e2", false)
+        };
+        unordered_set<string> target_nodes{"diploid_d1"};
+        unordered_set<string> prohibited_nodes{"diploid_c1"};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 6;
+        size_t unique_prefix_len = 5;
+        size_t max_iters = 1000000;
+
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // make sure it chooses the shortest option
+        
+        string data_file = "data/test_gfa1.gfa";
+        
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("13", true)
+        };
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("11", true)
+        };
+        unordered_set<string> target_nodes{"13", "11"};
+        unordered_set<string> prohibited_nodes{};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 2;
+        size_t unique_prefix_len = 1;
+        size_t max_iters = 1000000;
+        
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // works without designated start nodes
+        
+        string data_file = "data/chain_test.gfa";
+        
+        unordered_set<pair<string, bool>> starts{
+            pair<string, bool>("tree_a", false)
+        };
+        unordered_set<pair<string, bool>> ends{};
+        unordered_set<string> target_nodes{"tree_e", "tree_c3", "tree_a"};
+        unordered_set<string> prohibited_nodes{"tree_d0"};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 5;
+        size_t unique_prefix_len = 5;
+        size_t max_iters = 1000000;
+        
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // works without designated end nodes
+        
+        string data_file = "data/chain_test.gfa";
+        
+        unordered_set<pair<string, bool>> starts{};
+        unordered_set<pair<string, bool>> ends{
+            pair<string, bool>("tree_e", false)
+        };
+        unordered_set<string> target_nodes{"tree_e", "tree_c3", "tree_a"};
+        unordered_set<string> prohibited_nodes{"tree_d0"};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 5;
+        size_t unique_prefix_len = 5;
+        size_t max_iters = 1000000;
+        
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    {
+        // works without designated start or end nodes
+        
+        string data_file = "data/chain_test.gfa";
+        
+        unordered_set<pair<string, bool>> starts{};
+        unordered_set<pair<string, bool>> ends{};
+        unordered_set<string> target_nodes{"tree_e", "tree_c3", "tree_a"};
+        unordered_set<string> prohibited_nodes{"tree_d0"};
+        bool should_complete = true;
+        bool should_find_hamiltonian = true;
+        size_t minimum_hamiltonian_length = 5;
+        size_t unique_prefix_len = 5;
+        size_t max_iters = 1000000;
+        
+        run_test(data_file, starts, ends, target_nodes, prohibited_nodes,
+                 should_complete, should_find_hamiltonian,
+                 minimum_hamiltonian_length, unique_prefix_len, max_iters);
+    }
+    
+    cerr << "All tests successful!" << endl;
     
     return 0;
 }
