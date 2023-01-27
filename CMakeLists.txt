@@ -725,6 +725,7 @@ set(TESTS
         test_fixed_binary_sequence_performance_2
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
+        test_hamiltonian_chainer
         test_hamiltonian_path
         test_htslib
         test_htslib_bam_reader

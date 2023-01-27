@@ -29,7 +29,7 @@ public:
     vector<handle_t> unique_prefix;
 };
 
-// empty vectors for starts or ends indicdate that any start or end node is allowed
+// empty sets for starts or ends indicdate that any start or end node is allowed
 // allowed starts and ends are oriented
 HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
                                                const unordered_set<nid_t>& target_nodes,
