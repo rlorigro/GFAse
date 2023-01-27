@@ -1,5 +1,9 @@
 #include "HamiltonianChainer.hpp"
 
+#include "HamiltonianPath.hpp"
+#include "Bridges.hpp"
+#include "graph_utility.hpp"
+
 #include "handlegraph/util.hpp"
 #include "handlegraph/types.hpp"
 
@@ -55,9 +59,8 @@ struct ChainableComponent {
 };
 
 
-HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
-                                         const IncrementalIdMap<string>& id_map,
-                                         const MultiContactGraph& contact_graph) {
+void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
+                                              const MultiContactGraph& contact_graph) const {
     
     
     /*
@@ -136,7 +139,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                                 no_edges = no_edges && graph.follow_edges(missing_node, true, [&](const handle_t& null) {
                                     return false;
                                 });
-                                if (!no_edge) {
+                                if (!no_edges) {
                                     // this bridge component is not phasable
                                     return false;
                                 }
@@ -156,6 +159,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                         }
                     }
                 }
+                return true;
             });
             
             if (!all_phasable) {
@@ -206,7 +210,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
             // record the result of the allele identification
             chain_links.emplace_back();
             auto& link = chain_links.back();
-            if (!starts.empty()) {
+            if (!start.empty()) {
                 link.has_left_side = true;
                 link.left_side = *start.begin();
                 boundary_to_chain_link[link.left_side] = chain_links.size() - 1;
@@ -294,7 +298,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                     }
                     alt_component_t alt_component;
                     contact_graph.get_alt_component(bridge_component.get_id(neighbors[0]), false, alt_component);
-                    if (alt_component.first.size() != 1 || alt_component.second size != 1) {
+                    if (alt_component.first.size() != 1 || alt_component.second.size() != 1) {
                         // these have other homology partners outside of this motif
                         continue;
                     }
@@ -327,8 +331,11 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                     link.allele_from_left[0] = (order_swapped ? move(allele_1) : move(allele_0));
                     link.allele_from_left[1] = (order_swapped ? move(allele_0) : move(allele_1));
                     
-                    bubble_unipath_boundaries.push_back(walk_diploid_unipath(link.left_side, true));
-                    bubble_unipath_boundaries.push_back(walk_diploid_unipath(link.right_side, false));
+                    // walk out the full unipath boundary (i.e. not just the inward-facing node)
+                    bubble_unipath_boundaries.push_back(walk_diploid_unipath(bridge_component, contact_graph,
+                                                                             link.left_side, true));
+                    bubble_unipath_boundaries.push_back(walk_diploid_unipath(bridge_component, contact_graph,
+                                                                             link.right_side, false));
                     
                     processed_sides.insert(side);
                     for (int i = 0; i < 2; ++i) {
@@ -345,7 +352,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
     // they're technically not bridges)
     // note: we don't need to worry about re-identifuying a bridge because if a bridge satisfied
     // the rigid topological bubble criterion, then it would have been solved by the hamiltonian
-    for (auto& unipath_bridge = unipath_bridges[i]) {
+    for (auto& unipath_bridge : bubble_unipath_boundaries) {
         boundary_to_bridge[graph.flip(unipath_bridge.front())] = unipath_bridges.size();
         boundary_to_bridge[unipath_bridge.back()] = unipath_bridges.size();
         unipath_bridges.emplace_back(move(unipath_bridge));
@@ -385,7 +392,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
         handle_t adjacent_side = go_to_left ? curr_link.left_side : curr_link.right_side;
         size_t bridge_idx = boundary_to_bridge.at(adjacent_side);
         auto& unipath_bridge = unipath_bridges[bridge_idx];
-        handle_t final_outward;
+        handle_t final_outward; // the last node of the bridge, facing into the next component
         if (unipath_bridge.back() == adjacent_side) {
             // we're traversing the bridge backwards
             for (int64_t j = unipath_bridges.size() - 2; j >= 0; --j) {
@@ -396,7 +403,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                     graph.append_step(curr_path, graph.flip(unipath_bridge[j]));
                 }
             }
-            final_outward = graph.flip(unipath_bridges.front());
+            final_outward = graph.flip(unipath_bridge.front());
         }
         else {
             // we're traversing the bridge forwards
@@ -409,7 +416,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                     graph.append_step(curr_path, unipath_bridge[j]);
                 }
             }
-            final_outward = graph.flip(unipath_bridges.front());
+            final_outward = unipath_bridge.back();
         }
         
         // gather information about the next chain link and its orientation
@@ -507,7 +514,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
         // TODO: it's a bit silly that i maintain these variables separately for both haplotypes,
         // but i don't want it to get set during one haplotype iteration and mess up the next
         array<bool, 2> link_is_left_to_right{true, true};
-        array<int64_t, 2> link_index{i, i};
+        array<int64_t, 2> link_index{(int64_t) i, (int64_t) i};
         bool keep_going = init_link.has_left_side;
         bool found_cycle = false;
         
@@ -515,7 +522,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
         while (keep_going) {
             for (int hap : {0, 1}) {
                 add_next_component(hap, true, link_is_left_to_right[hap],
-                                   curr_path[hap], link_index[hap], keep_going, found_cycle);
+                                   curr_paths[hap], link_index[hap], keep_going, found_cycle);
             }
         }
         
@@ -541,7 +548,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
                 link_index[hap] = i;
                 if (init_link.allele_from_right[hap].empty()) {
                     // we can continue the initial allele
-                    curr_paths[hap] = init_paths[hap]
+                    curr_paths[hap] = init_paths[hap];
                 }
                 else {
                     // we have to start a new path
@@ -556,7 +563,7 @@ HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
             while (keep_going) {
                 for (int hap : {0, 1}) {
                     add_next_component(hap, false, link_is_left_to_right[hap],
-                                       curr_path[hap], link_index[hap], keep_going, found_cycle);
+                                       curr_paths[hap], link_index[hap], keep_going, found_cycle);
                 }
             }
         }
@@ -569,7 +576,7 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
                                                const unordered_set<nid_t>& in_phase_nodes,
                                                const unordered_set<nid_t>& out_phase_nodes,
                                                const unordered_set<handle_t>& starts,
-                                               const unordered_set<handle_t>& ends
+                                               const unordered_set<handle_t>& ends,
                                                bool& resolved_hamiltonian) const {
     
     pair<vector<handle_t>, vector<handle_t>> return_val;
@@ -654,7 +661,7 @@ vector<handle_t> HamiltonianChainer::max_unambiguous_path(const HandleGraph& gra
     return walk;
 }
 
-vector<handle_t> HamiltonianChainer::walk_diploid_unipath(const HandleGraph& graph, const MultiContactGraph& contact_graph
+vector<handle_t> HamiltonianChainer::walk_diploid_unipath(const HandleGraph& graph, const MultiContactGraph& contact_graph,
                                                           handle_t handle, bool go_left) const {
     vector<handle_t> unipath(1, handle);
     while (true) {

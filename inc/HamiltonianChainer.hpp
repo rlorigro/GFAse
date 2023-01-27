@@ -27,7 +27,6 @@ public:
     // expects nodes that do not have alts to have been deleted from
     // the contact graph
     void generate_chain_paths(MutablePathDeletableHandleGraph& graph,
-                              const IncrementalIdMap<string>& id_map,
                               const MultiContactGraph& contact_graph) const;
     
     // the number of iterations we allow in a Hamiltonian path problem
@@ -43,7 +42,7 @@ private:
                                                                         const unordered_set<nid_t>& in_phase_nodes,
                                                                         const unordered_set<nid_t>& out_phase_nodes,
                                                                         const unordered_set<handle_t>& starts,
-                                                                        const unordered_set<handle_t>& ends
+                                                                        const unordered_set<handle_t>& ends,
                                                                         bool& resolved_hamiltonian) const;
     
     // the maximum length walk using only the allowed nodes before encountering
@@ -51,7 +50,7 @@ private:
     vector<handle_t> max_unambiguous_path(const HandleGraph& graph, handle_t start,
                                           const unordered_set<nid_t>& allowed_nodes) const;
     
-    vector<handle_t> walk_diploid_unipath(const HandleGraph& graph, const MultiContactGraph& contact_graph
+    vector<handle_t> walk_diploid_unipath(const HandleGraph& graph, const MultiContactGraph& contact_graph,
                                           handle_t handle, bool go_left) const;
     
 };
