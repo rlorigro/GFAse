@@ -31,7 +31,7 @@ vector<vector<handle_t>> consolidate_bridges(const HandleGraph& graph,
 // execute a function on each bridge component, delimited by a (sub)set of consolidated
 // unipath bridges. the function is also given the set of bridges that delimit
 // the bridge component, which are identified by their index in the input vector
-// and the direction from the bridge into the component (true = left). if a bridge
+// and the direction from the bridge into the component (true = reverse). if a bridge
 // consists of multiple nodes, then only the innermost one is included in the subgraph.
 void for_each_bridge_component(const HandleGraph& graph,
                                const vector<vector<handle_t>>& bridges,

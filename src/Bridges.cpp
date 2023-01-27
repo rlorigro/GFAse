@@ -22,6 +22,7 @@ using std::cerr;
 using std::endl;
 
 using handlegraph::as_integer;
+using handlegraph::as_handle;
 using handlegraph::nid_t;
 
 namespace gfase {
@@ -62,8 +63,7 @@ size_t BiedgedGraph::size() const {
 }
 
 handle_t BiedgedGraph::get_arbitrary_node() const {
-    handle_t handle;
-    as_integer(handle) = -1; // to avoid uninitialized warnings
+    handle_t handle = as_handle(-1); // to avoid uninitialized warnings
     graph.for_each_handle([&handle](const handle_t& h) {
         handle = h;
         return false;
