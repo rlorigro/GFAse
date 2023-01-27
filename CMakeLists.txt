@@ -65,6 +65,7 @@ set(SOURCES
         src/gfa_to_handle.cpp
         src/graph_utility.cpp
         src/HamiltonianPath.cpp
+        src/HamiltonianChainer.cpp
         src/HaplotypePathKmer.cpp
         src/Hasher.cpp
         src/Hasher2.cpp
