@@ -73,6 +73,12 @@ HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
     
     HamiltonianProblemResult result;
     
+    if (target_nodes.empty() && allowed_ends.empty() && allowed_starts.empty()) {
+        // the empty walk solves this problem
+        result.is_solved = true;
+        return result;
+    }
+    
     unordered_map<handle_t, size_t> handle_number;
     graph.for_each_handle([&](const handle_t& h) {
         if (prohibited_nodes.count(graph.get_id(h))) {
@@ -81,6 +87,7 @@ HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
         handle_number[h] = handle_number.size();
         handle_number[graph.flip(h)] = handle_number.size();
     });
+    
     
     if (handle_number.size() > 64) {
         // we can't fit the allowed handles into our bitset
@@ -235,10 +242,19 @@ HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
             // an allowed end (this prevents unnecessary elongation into non-target nodes)
             // it must also not be a part of a traceback that we're already extending
             for (const auto& entry : table) {
-                if ((allowed_ends.empty() || allowed_ends.count(entry.second)) &&
-                    (allowed_ends.count(entry.second) || target_nodes.count(graph.get_id(entry.second))) &&
-                    !cloud.count(entry) && // TODO: is this condition necessary?
-                    is_complete(entry.first)) {
+                if (debug) {
+                    cerr << "checking for new traceback in entry ending in " << graph.get_id(entry.second) << (graph.get_is_reverse(entry.second) ? "-" : "+") << endl;
+                    cerr << "\tat specified end? " << allowed_ends.count(entry.second) << endl;
+                    cerr << "\tat a target node? " << target_nodes.count(graph.get_id(entry.second)) << endl;
+                    cerr << "\tin the current cloud? " << cloud.count(entry) << endl;
+                    cerr << "\tis complete? " << is_complete(entry.first) << endl;
+                }
+                if ((allowed_ends.empty() || allowed_ends.count(entry.second)) && // allowed ending
+                    (allowed_ends.count(entry.second)
+                     || target_nodes.count(graph.get_id(entry.second))
+                     || allowed_starts.count(entry.second)) && // ends in a necessary node (to ensure shortest)
+                    !cloud.count(entry) && // not a shorted traceback TODO: is this condition necessary?
+                    is_complete(entry.first)) { // is hamiltonian
                     
                     if (debug) {
                         cerr << "found a new complete DP entry, (re)starting main traceback" << endl;
@@ -299,6 +315,7 @@ HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
             // populate the path in the result
             bool all_unique = true;
             size_t i = 0;
+            result.hamiltonian_path.reserve(traceback.size());
             for (auto it = traceback.rbegin(); it != traceback.rend(); ++it) {
                 
                 result.hamiltonian_path.push_back(it->second);

@@ -19,6 +19,7 @@ using handlegraph::path_handle_t;
 #include <deque>
 #include <array>
 #include <algorithm>
+#include <iostream>
 
 using std::vector;
 using std::unordered_set;
@@ -28,8 +29,12 @@ using std::move;
 using std::deque;
 using std::array;
 using std::reverse;
+using std::cerr;
+using std::endl;
 
 namespace gfase {
+
+static const bool debug = false;
 
 /*
  * A 0-, 1-, or 2-sided component with 2 fully or partially walked alleles
@@ -80,6 +85,19 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     
     // merge into unipath bridges
     auto unipath_bridges = consolidate_bridges(graph, nonhaploid_bridges);
+    if (debug) {
+        cerr << "identified unipath bridges:" << endl;
+        for (const auto& bridge : unipath_bridges) {
+            cerr << "\t";
+            for (size_t i = 0; i < bridge.size(); ++i) {
+                if (i != 0) {
+                    cerr << ", ";
+                }
+                cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+");
+            }
+            cerr << endl;
+        }
+    }
     
     // and we can use this to look up bridges by their component-facing boundaries
     unordered_map<handle_t, size_t> boundary_to_bridge;
@@ -105,9 +123,26 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                               [&](const HandleGraph& bridge_component,
                                   const vector<pair<size_t, bool>>& incident_bridges) {
         
+        if (debug) {
+            cerr << "phasing in component bordering bridges:" << endl;
+            for (const auto& bridge_idx : incident_bridges) {
+                cerr << "\trev? " << bridge_idx.second << ": ";
+                const auto& bridge = unipath_bridges[bridge_idx.first];
+                for (size_t i = 0; i < bridge.size(); ++i) {
+                    if (i != 0) {
+                        cerr << ", ";
+                    }
+                    cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+");
+                }
+                cerr << endl;
+            }
+        }
         
         bool found_allele_success = false;
         if (incident_bridges.size() <= 2) {
+            if (debug) {
+                cerr << "bridge degree is " << incident_bridges.size() << ", attempting to find hamiltonian alleles" << endl;
+            }
             
             // this bridge component is a potentially phaseable unit in itself
             
@@ -207,28 +242,52 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             // if we found a hamiltonian path for either of the phases
             found_allele_success = (resolved_hamiltonian_0 || resolved_hamiltonian_1);
             
-            // record the result of the allele identification
-            chain_links.emplace_back();
-            auto& link = chain_links.back();
-            if (!start.empty()) {
-                link.has_left_side = true;
-                link.left_side = *start.begin();
-                boundary_to_chain_link[link.left_side] = chain_links.size() - 1;
+            if (found_allele_success) {
+                // TODO: is this the right logic? should i ever add the partial alleles even if
+                // the hamiltonian isn't successful? it's hard to know when to fall back on the
+                // smaller simple bubbles contained in the component...
+                
+                // record the result of the allele identification
+                chain_links.emplace_back();
+                auto& link = chain_links.back();
+                if (!start.empty()) {
+                    link.has_left_side = true;
+                    link.left_side = *start.begin();
+                    boundary_to_chain_link[link.left_side] = chain_links.size() - 1;
+                }
+                if (!end.empty()) {
+                    link.has_right_side = true;
+                    link.right_side = bridge_component.flip(*end.begin());
+                    boundary_to_chain_link[link.right_side] = chain_links.size() - 1;
+                }
+                link.allele_from_left[0] = move(phase_0_walks.first);
+                link.allele_from_right[0] = move(phase_0_walks.second);
+                link.allele_from_left[1] = move(phase_1_walks.first);
+                link.allele_from_right[1] = move(phase_1_walks.second);
+                
+                if (debug) {
+                    cerr << "succeeded in finding hamiltonian allele(s), added a chainable component" << endl;
+                    for (auto left : {true, false}) {
+                        cerr << "from " << (left ? "left" : "right") << ":" << endl;
+                        auto alleles = left ? link.allele_from_left : link.allele_from_right;
+                        for (auto allele : alleles) {
+                            for (auto handle : allele) {
+                                cerr << " " << bridge_component.get_id(handle) << (bridge_component.get_is_reverse(handle) ? "-" : "+");
+                            }
+                            cerr << endl;
+                        }
+                    }
+                }
             }
-            if (!end.empty()) {
-                link.has_right_side = true;
-                link.right_side = bridge_component.flip(*end.begin());
-                boundary_to_chain_link[link.right_side] = chain_links.size() - 1;
-            }
-            link.allele_from_left[0] = move(phase_0_walks.first);
-            link.allele_from_right[0] = move(phase_0_walks.second);
-            link.allele_from_left[1] = move(phase_1_walks.first);
-            link.allele_from_right[1] = move(phase_1_walks.second);
         }
         
         if (incident_bridges.size() > 2 || !found_allele_success) {
             // this bridge component has bridge degree > 2 or else the hamiltonian algorithm failed on both
-            // alleles. we could maybe find phaseable ubbles inside it using a rigid topological motif criterion
+            // alleles. we could maybe find phaseable bubbles inside it using a rigid topological motif criterion
+            
+            if (debug) {
+                cerr << "no hamiltonian alleles are possible, attempting to find chainable simple bubbles" << endl;
+            }
             
             unordered_set<handle_t> processed_sides;
             bridge_component.for_each_handle([&](const handle_t& handle) {
@@ -337,6 +396,16 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                     bubble_unipath_boundaries.push_back(walk_diploid_unipath(bridge_component, contact_graph,
                                                                              link.right_side, false));
                     
+                    if (debug) {
+                        cerr << "found a chainable simple bubble consisting of alleles:" << endl;
+                        for (auto allele : link.allele_from_left) {
+                            for (auto handle : allele) {
+                                cerr << " " << bridge_component.get_id(handle) << (bridge_component.get_is_reverse(handle) ? "-" : "+");
+                            }
+                            cerr << endl;
+                        }
+                    }
+                    
                     processed_sides.insert(side);
                     for (int i = 0; i < 2; ++i) {
                         processed_sides.insert(neighbors[i]);
@@ -358,49 +427,73 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         unipath_bridges.emplace_back(move(unipath_bridge));
     }
     
+    if (debug) {
+        cerr << "found " << chain_links.size() << " chainable components" << endl;
+    }
+    
     /*
-     * Part 3: find bridges
+     * Part 3: form chains
      */
     
     array<int, 2> next_path_id{0, 0};
     auto get_next_path_name = [&](int hap) {
-        return string("gfase_hap_" + to_string(next_path_id[hap]++) +"_" + to_string(hap));
+        string name = "gfase_hap_" + to_string(next_path_id[hap]++) + "_" + to_string(hap);
+        if (debug) {
+            cerr << "generating new path named " << name << endl;
+        }
+        return name;
     };
     
     vector<bool> is_chained(chain_links.size(), false);
     
-    // add the next bridge and chain link to the growing chain
-    // TODO: if i split this into the bridge and the component walk, i could avoid doing the same
-    // bridge traversing logic on both haplotypes...
-    auto add_next_component = [&](int haplotype,
-                                  bool extending_backward,
-                                  bool& left_to_right, // which direction is "forward" relative to the path
-                                  path_handle_t& curr_path,
-                                  int64_t& curr_link_idx,
-                                  bool& keep_going,
-                                  bool& found_cycle) {
+    // function to add the next bridge to both chains and advance the tracking variables to the next link
+    auto add_next_bridge = [&](bool extending_backward,
+                               bool& left_to_right,
+                               const array<path_handle_t, 2>& curr_paths,
+                            int64_t& curr_link_idx,
+                               bool& keep_going,
+                               bool& found_cycle) {
         
         auto& curr_link = chain_links[curr_link_idx];
         bool go_to_left = (extending_backward == left_to_right);
         if ((!curr_link.has_left_side && go_to_left) || (!curr_link.has_right_side && !go_to_left)) {
-            // TODO: should i actually mark that we don't keep going after adding the allele?
+            if (debug) {
+                cerr << "reached end of chain" << endl;
+            }
             keep_going = false;
             return;
         }
         
-        // add the nodes of the bridge
         handle_t adjacent_side = go_to_left ? curr_link.left_side : curr_link.right_side;
+        if (debug) {
+            cerr << "moving to bridge following link " << curr_link_idx << ", leaving out of " << (go_to_left ? "left" : "right") << " side of link at " << graph.get_id(adjacent_side) << (graph.get_is_reverse(adjacent_side) ? "-" : "+") << endl;
+            
+        }
+        
+        // add the nodes of the bridge
         size_t bridge_idx = boundary_to_bridge.at(adjacent_side);
         auto& unipath_bridge = unipath_bridges[bridge_idx];
+        if (debug) {
+            cerr << "adding brige with index " << bridge_idx << " consisting of node(s)" << endl;
+            for (auto handle : unipath_bridge) {
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+            }
+            cerr << endl;
+        }
         handle_t final_outward; // the last node of the bridge, facing into the next component
         if (unipath_bridge.back() == adjacent_side) {
             // we're traversing the bridge backwards
-            for (int64_t j = unipath_bridges.size() - 2; j >= 0; --j) {
+            if (debug) {
+                cerr << "iterating backwards" << endl;
+            }
+            for (int64_t j = unipath_bridge.size() - 2; j >= 0; --j) {
                 if (extending_backward) {
-                    graph.prepend_step(curr_path, unipath_bridge[j]);
+                    graph.prepend_step(curr_paths[0], unipath_bridge[j]);
+                    graph.prepend_step(curr_paths[1], unipath_bridge[j]);
                 }
                 else {
-                    graph.append_step(curr_path, graph.flip(unipath_bridge[j]));
+                    graph.append_step(curr_paths[0], graph.flip(unipath_bridge[j]));
+                    graph.append_step(curr_paths[1], graph.flip(unipath_bridge[j]));
                 }
             }
             final_outward = graph.flip(unipath_bridge.front());
@@ -408,15 +501,29 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         else {
             // we're traversing the bridge forwards
             assert(adjacent_side == graph.flip(unipath_bridge.front()));
-            for (size_t j = 1; j < unipath_bridges.size(); ++j) {
+            if (debug) {
+                cerr << "iterating forwards" << endl;
+            }
+            for (size_t j = 1; j < unipath_bridge.size(); ++j) {
                 if (extending_backward) {
-                    graph.prepend_step(curr_path, graph.flip(unipath_bridge[j]));
+                    graph.prepend_step(curr_paths[0], graph.flip(unipath_bridge[j]));
+                    graph.prepend_step(curr_paths[1], graph.flip(unipath_bridge[j]));
                 }
                 else {
-                    graph.append_step(curr_path, unipath_bridge[j]);
+                    graph.append_step(curr_paths[0], unipath_bridge[j]);
+                    graph.append_step(curr_paths[1], unipath_bridge[j]);
                 }
             }
             final_outward = unipath_bridge.back();
+        }
+        if (debug) {
+            cerr << "finished adding bridge, current allele paths:" << endl;
+            for (auto curr_path : curr_paths) {
+                for (auto handle : graph.scan_path(curr_path)) {
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                }
+                cerr << endl;
+            }
         }
         
         // gather information about the next chain link and its orientation
@@ -429,19 +536,42 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             found_cycle = true;
             return;
         }
+        
         auto& next_link = chain_links[curr_link_idx];
         assert(final_outward == next_link.left_side || final_outward == next_link.right_side);
-        bool enter_left = final_outward == next_link.left_side;
-        left_to_right = enter_left != extending_backward;
+        left_to_right = (final_outward == next_link.left_side) != extending_backward;
+    };
+    
+    // function to add the (partial) allele(s) for one haplotype to its chain path
+    auto add_next_component = [&](int haplotype,
+                                  bool extending_backward,
+                                  bool left_to_right, // which direction is "forward" relative to the path
+                                  path_handle_t& curr_path,
+                                  int64_t curr_link_idx) {
+        
+        
+        auto& next_link = chain_links[curr_link_idx];
+        bool enter_left = (extending_backward != left_to_right);
+        
+        if (debug) {
+            cerr << "adding haplotype " << haplotype << " for next link at index " << curr_link_idx << " with alleles" << endl;
+            for (bool left : {true, false}) {
+                cerr << "from " << (left ? "left" : "right") << endl;
+                for (auto allele : (left ? next_link.allele_from_left : next_link.allele_from_right)) {
+                    for (auto handle : allele) {
+                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    }
+                    cerr << endl;
+                }
+            }
+            cerr << "extending backward? " << extending_backward << ", entering from left? " << enter_left << ", link is left-to-right? " << left_to_right << endl;
+        }
         
         // handles the logic of adding either the left or right allele onto the path, optionally
         // checks consistency of whether
-        auto add_allele = [&](const vector<handle_t>& allele, handle_t* check_inward) {
+        auto add_allele = [&](const vector<handle_t>& allele) {
             if (enter_left) {
                 // we traverse this component left to right
-                if (check_inward) {
-                    assert(*check_inward == (left_to_right ? allele.front() : graph.flip(allele.front())));
-                }
                 for (size_t i = 1; i < allele.size(); ++i) {
                     if (extending_backward) {
                         graph.prepend_step(curr_path, graph.flip(allele[i]));
@@ -453,9 +583,6 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             }
             else {
                 // we traverse this component right to left
-                if (check_inward) {
-                    assert(*check_inward == (left_to_right ? allele.back() : graph.flip(allele.back())));
-                }
                 for (int64_t i = allele.size() - 2; i >= 0; --i) {
                     if (extending_backward) {
                         graph.prepend_step(curr_path, allele[i]);
@@ -470,25 +597,36 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         // add the alleles to the path
         if (next_link.allele_from_right[haplotype].empty()) {
             // the left walk goes across the entire link, or else there is no right side
-            add_allele(next_link.allele_from_left[haplotype], &final_outward);
-            keep_going = next_link.has_right_side;
+            if (debug) {
+                cerr << "there is only a one-side allele path for haplotype " << haplotype << endl;
+            }
+            add_allele(next_link.allele_from_left[haplotype]);
         }
         else {
             // the walk is broken in the middle
-            auto& left_allele = next_link.allele_from_left[haplotype];
-            auto& right_allele = next_link.allele_from_right[haplotype];
+            if (debug) {
+                cerr << "there is a broken allele path in this component for haplotype " << haplotype << endl;
+            }
             if (enter_left) {
-                add_allele(left_allele, &final_outward);
+                add_allele(next_link.allele_from_left[haplotype]);
                 // end the haplotype path and start a new one
                 curr_path = graph.create_path_handle(get_next_path_name(haplotype));
-                add_allele(right_allele, nullptr);
+                add_allele(next_link.allele_from_right[haplotype]);
             }
             else {
-                add_allele(right_allele, &final_outward);
+                add_allele(next_link.allele_from_right[haplotype]);
                 // end the haplotype path and start a new one
                 curr_path = graph.create_path_handle(get_next_path_name(haplotype));
-                add_allele(left_allele, nullptr);
+                add_allele(next_link.allele_from_left[haplotype]);
             }
+        }
+        
+        if (debug) {
+            cerr << "after completing component, current allele path:" << endl;
+            for (auto handle : graph.scan_path(curr_path)) {
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+            }
+            cerr << endl;
         }
         
         is_chained[curr_link_idx] = true;
@@ -499,36 +637,72 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             continue;
         }
         
+        auto& init_link = chain_links[i];
+        if (debug) {
+            cerr << "starting a chain at link " << i << " with ";
+            if (!init_link.has_left_side) {
+                cerr << " no boundary nodes" << endl;
+            }
+            else if (init_link.has_right_side) {
+                cerr << "boundaries " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " and " << graph.get_id(init_link.right_side) << (graph.get_is_reverse(init_link.right_side) ? "-" : "+") << endl;
+            }
+            else {
+                cerr << "single boundary " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << endl;
+            }
+        }
+        
         // make paths to extend into haplotypes
         array<path_handle_t, 2> init_paths;
         for (int hap : {0, 1}) {
             init_paths[hap] = graph.create_path_handle(get_next_path_name(hap));
         }
         array<path_handle_t, 2> curr_paths = init_paths;
-        auto& init_link = chain_links[i];
         for (int hap : {0, 1}) {
             for (handle_t step : init_link.allele_from_left[hap]) {
                 graph.append_step(curr_paths[hap], step);
             }
         }
+        is_chained[i] = true;
+        
         // TODO: it's a bit silly that i maintain these variables separately for both haplotypes,
         // but i don't want it to get set during one haplotype iteration and mess up the next
-        array<bool, 2> link_is_left_to_right{true, true};
-        array<int64_t, 2> link_index{(int64_t) i, (int64_t) i};
+        bool left_to_right = true;
+        int64_t link_index = i;
         bool keep_going = init_link.has_left_side;
         bool found_cycle = false;
         
-        // start by extending to the left
-        while (keep_going) {
-            for (int hap : {0, 1}) {
-                add_next_component(hap, true, link_is_left_to_right[hap],
-                                   curr_paths[hap], link_index[hap], keep_going, found_cycle);
+        if (debug) {
+            cerr << "inital haplotype paths:" << endl;
+            for (auto path : curr_paths) {
+                for (auto handle : graph.scan_path(path)) {
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                }
+                cerr << endl;
             }
+            cerr << "extending to the left" << endl;
+        }
+        
+        // start by extending to the left
+        while (true) {
+            add_next_bridge(true, left_to_right, curr_paths, link_index,
+                            keep_going, found_cycle);
+            if (!keep_going) {
+                break;
+            }
+            for (int hap : {0, 1}) {
+                add_next_component(hap, true, left_to_right, curr_paths[hap], link_index);
+            }
+            is_chained[link_index] = true;
         }
         
         if (found_cycle) {
             // we looped back around to the same link, but we might not have included the
             // right side of this link
+            
+            if (debug) {
+                cerr << "finishing a chain that consists of a cycle" << endl;
+            }
+            
             for (int hap : {0, 1}) {
                 auto& allele = init_link.allele_from_right[hap];
                 if (!allele.empty()) {
@@ -541,11 +715,15 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         else if (init_link.has_right_side) {
             // now we extend to the right
             
-            // initialize the rightward traversal
+            if (debug) {
+                cerr << "extending to the right" << endl;
+            }
+            
+            // re-initialize the rightward traversal
             keep_going = true;
+            left_to_right = true;
+            link_index = i;
             for (int hap : {0, 1}) {
-                link_is_left_to_right[hap] = true;
-                link_index[hap] = i;
                 if (init_link.allele_from_right[hap].empty()) {
                     // we can continue the initial allele
                     curr_paths[hap] = init_paths[hap];
@@ -553,18 +731,23 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 else {
                     // we have to start a new path
                     curr_paths[hap] = graph.create_path_handle(get_next_path_name(hap));
-                }
-                for (handle_t step : init_link.allele_from_right[hap]) {
-                    graph.append_step(curr_paths[hap], step);
+                    for (handle_t step : init_link.allele_from_right[hap]) {
+                        graph.append_step(curr_paths[hap], step);
+                    }
                 }
             }
             
             // add links to the right
-            while (keep_going) {
-                for (int hap : {0, 1}) {
-                    add_next_component(hap, false, link_is_left_to_right[hap],
-                                       curr_paths[hap], link_index[hap], keep_going, found_cycle);
+            while (true) {
+                add_next_bridge(false, left_to_right, curr_paths, link_index,
+                                keep_going, found_cycle);
+                if (!keep_going) {
+                    break;
                 }
+                for (int hap : {0, 1}) {
+                    add_next_component(hap, false, left_to_right, curr_paths[hap], link_index);
+                }
+                is_chained[link_index] = true;
             }
         }
         is_chained[i] = true;
@@ -578,6 +761,13 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
                                                const unordered_set<handle_t>& starts,
                                                const unordered_set<handle_t>& ends,
                                                bool& resolved_hamiltonian) const {
+    
+    if (debug) {
+        cerr << "finding alleles for in-phase nodes:" << endl;
+        for (auto nid : in_phase_nodes) {
+            cerr << "\t" << nid << endl;
+        }
+    }
     
     pair<vector<handle_t>, vector<handle_t>> return_val;
     
@@ -599,6 +789,19 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
         // this phase can be walked out as a hamiltonian path
         resolved_hamiltonian = true;
         
+        if (debug) {
+            cerr << "full hamiltonian:" << endl;
+            for (auto handle : hamiltonian.hamiltonian_path) {
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+            }
+            cerr << endl;
+            cerr << "unique prefix:" << endl;
+            for (auto handle : hamiltonian.unique_prefix) {
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+            }
+            cerr << endl;
+        }
+        
         // is the hamiltonian unique?
         bool fully_unique = (hamiltonian.unique_prefix.size() == hamiltonian.hamiltonian_path.size());
         return_val.first = move(hamiltonian.unique_prefix);
@@ -614,6 +817,14 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
             // should I additionally fall back to the unambiguous walk if this fails?
             if (rev_hamiltonian.is_solved) {
                 // reverse the prefix (to turn it into a suffix) and add it to the return value
+                if (debug) {
+                    cerr << "reverse unique prefix:" << endl;
+                    for (auto handle : rev_hamiltonian.unique_prefix) {
+                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    }
+                    cerr << endl;
+                }
+                
                 auto& prefix = rev_hamiltonian.unique_prefix;
                 for (auto it = prefix.rbegin(); it != prefix.rend(); ++it) {
                     return_val.second.push_back(graph.flip(*it));
@@ -627,13 +838,30 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
     else {
         // fall back on completely unambiguous walks if we can't find a full walk
         resolved_hamiltonian = false;
+        if (debug) {
+            cerr << "could not resolve hamiltonian allele" << endl;
+        }
         if (starts.size() == 1) {
             return_val.first = max_unambiguous_path(graph, *starts.begin(), in_phase_nodes);
+            if (debug) {
+                cerr << "forward max unamiguous path:" << endl;
+                for (auto handle : return_val.first) {
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                }
+                cerr << endl;
+            }
         }
         if (ends.size() == 1) {
             auto rev_suffix = max_unambiguous_path(graph, *rev_starts.begin(), in_phase_nodes);
             for (auto it = rev_suffix.rbegin(); it != rev_suffix.rend(); ++it) {
                 return_val.second.push_back(graph.flip(*it));
+            }
+            if (debug) {
+                cerr << "reverse max unamiguous path:" << endl;
+                for (auto handle : return_val.second) {
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                }
+                cerr << endl;
             }
         }
     }
