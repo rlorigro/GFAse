@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <vector>
 #include <utility>
+#include <cassert>
 
 using namespace gfase;
 
@@ -49,10 +50,10 @@ void run_test(string& data_file,
     
     gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
     
-    cerr << "node ID translation:" << endl;
-    graph.for_each_handle([&](const handle_t& handle) {
-        cerr << graph.get_id(handle) << " -> " << id_map.get_name(graph.get_id(handle)) << endl;
-    });
+//    cerr << "node ID translation:" << endl;
+//    graph.for_each_handle([&](const handle_t& handle) {
+//        cerr << graph.get_id(handle) << " -> " << id_map.get_name(graph.get_id(handle)) << endl;
+//    });
     
     // get rid of pre-existing paths
     vector<path_handle_t> embedded_paths;
@@ -65,14 +66,41 @@ void run_test(string& data_file,
     
     // fix the partition and alt relationships
     MultiContactGraph contact_graph;
-    for (auto node_set : {make_pair(phase_0_nodes, true), make_pair(phase_1_nodes, false)}) {
-        for (auto node_name : node_set.first) {
+    for (auto node_set : {phase_0_nodes, phase_1_nodes}) {
+        for (auto node_name : node_set) {
             int32_t node_id = id_map.get_id(node_name);
-            contact_graph.insert_node(node_id, node_set.second ? -1 : 1);
+            contact_graph.insert_node(node_id);
         }
     }
     for (auto alt_pair : alt_pairs) {
         contact_graph.add_alt(id_map.get_id(alt_pair.first), id_map.get_id(alt_pair.second));
+    }
+    vector<alt_component_t> alt_components;
+    contact_graph.get_alt_components(alt_components);
+    for (auto& alt_component : alt_components) {
+        unordered_set<int> partitions_first, partitions_second;
+        for (auto set_pair : {make_pair(alt_component.first, &partitions_first), make_pair(alt_component.second, &partitions_second)}) {
+            for (auto node_id : set_pair.first) {
+                int partition;
+                if (phase_0_nodes.count(id_map.get_name(node_id))) {
+                    partition = -1;
+                }
+                else if (phase_1_nodes.count(id_map.get_name(node_id))) {
+                    partition = 1;
+                }
+                else {
+                    partition = 0;
+                }
+                set_pair.second->insert(partition);
+            }
+        }
+        assert(!partitions_first.empty() && !partitions_second.empty());
+        assert(partitions_first.empty() || partitions_first.size() == 1);
+        assert(partitions_second.empty() || partitions_second.size() == 1);
+        if (!partitions_second.empty() && !partitions_first.empty()) {
+            assert(*partitions_first.begin() == -(*partitions_second.begin()));
+        }
+        contact_graph.set_partition(*alt_component.first.begin(), *partitions_first.begin());
     }
     
     set<vector<handle_t>> correct_phase_handle_paths;
@@ -137,6 +165,8 @@ int main(){
         };
         run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
     }
+    
+    cerr << "All tests successful!" << endl;
     
     return 0;
 }

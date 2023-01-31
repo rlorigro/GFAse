@@ -110,7 +110,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     
     /*
      * Part 2: identify walks through bridge components with bridge degree <= 2 and
-     * non-bridge simple bubbles
+     * non-bridge-bordered simple bubbles
      */
     
     // we'll try to fill these out for each bridge component
