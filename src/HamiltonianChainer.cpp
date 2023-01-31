@@ -64,7 +64,7 @@ struct ChainableComponent {
 };
 
 
-void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
+void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
                                               const MultiContactGraph& contact_graph) const {
     
     
@@ -435,13 +435,39 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
      * Part 3: form chains
      */
     
+    array<unordered_set<path_handle_t>, 2> phase_paths;
     array<int, 2> next_path_id{0, 0};
-    auto get_next_path_name = [&](int hap) {
-        string name = "gfase_hap_" + to_string(next_path_id[hap]++) + "_" + to_string(hap);
+    auto get_next_path = [&](int hap) {
+        string name = phase_path_name(hap, next_path_id[hap]++);
         if (debug) {
             cerr << "generating new path named " << name << endl;
         }
-        return name;
+        path_handle_t path_handle = graph.create_path_handle(name);
+        phase_paths[hap].insert(path_handle);
+        return path_handle;
+    };
+    
+    // check if we actually phased anything and purge the path if not
+    auto finish_path = [&](path_handle_t path_handle, int hap) {
+        if (debug) {
+            cerr << "finishing path " << graph.get_path_name(path_handle) << endl;
+        }
+        bool found_phased_step = false;
+        for (auto step = graph.path_begin(path_handle), end = graph.path_end(path_handle); step != end && !found_phased_step; step = graph.get_next_step(step)) {
+            auto node_id = graph.get_id(graph.get_handle_of_step(step));
+            if (contact_graph.has_node(node_id)) {
+                found_phased_step = contact_graph.has_alt(node_id);
+            }
+        }
+        if (!found_phased_step) {
+            // none of the nodes are phased, so get rid of this path and reset the path ID
+            graph.destroy_path(path_handle);
+            phase_paths[hap].erase(path_handle);
+            --next_path_id[hap];
+            if (debug) {
+                cerr << "did not include any phased sequence, erasing and recycling ID " << next_path_id[hap] << " on haplotype " << hap << endl;
+            }
+        }
     };
     
     vector<bool> is_chained(chain_links.size(), false);
@@ -450,7 +476,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     auto add_next_bridge = [&](bool extending_backward,
                                bool& left_to_right,
                                const array<path_handle_t, 2>& curr_paths,
-                            int64_t& curr_link_idx,
+                               int64_t& curr_link_idx,
                                bool& keep_going,
                                bool& found_cycle) {
         
@@ -527,7 +553,13 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         }
         
         // gather information about the next chain link and its orientation
-        curr_link_idx = boundary_to_chain_link.at(final_outward);
+        auto it = boundary_to_chain_link.find(final_outward);
+        if (it == boundary_to_chain_link.end()) {
+            // there's no neighboring chainable component
+            keep_going = false;
+            return;
+        }
+        curr_link_idx = it->second;
         if (is_chained[curr_link_idx]) {
             // we've previously walked this chain (probably it's in a cycle) and don't want
             // to do it again
@@ -567,12 +599,11 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             cerr << "extending backward? " << extending_backward << ", entering from left? " << enter_left << ", link is left-to-right? " << left_to_right << endl;
         }
         
-        // handles the logic of adding either the left or right allele onto the path, optionally
-        // checks consistency of whether
-        auto add_allele = [&](const vector<handle_t>& allele) {
+        // handles the logic of adding either the left or right allele onto the path
+        auto add_allele = [&](const vector<handle_t>& allele, bool extending) {
             if (enter_left) {
                 // we traverse this component left to right
-                for (size_t i = 1; i < allele.size(); ++i) {
+                for (size_t i = extending; i < allele.size(); ++i) {
                     if (extending_backward) {
                         graph.prepend_step(curr_path, graph.flip(allele[i]));
                     }
@@ -583,7 +614,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             }
             else {
                 // we traverse this component right to left
-                for (int64_t i = allele.size() - 2; i >= 0; --i) {
+                for (int64_t i = allele.size() - 1 - extending; i >= 0; --i) {
                     if (extending_backward) {
                         graph.prepend_step(curr_path, allele[i]);
                     }
@@ -600,7 +631,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             if (debug) {
                 cerr << "there is only a one-side allele path for haplotype " << haplotype << endl;
             }
-            add_allele(next_link.allele_from_left[haplotype]);
+            add_allele(next_link.allele_from_left[haplotype], true);
         }
         else {
             // the walk is broken in the middle
@@ -608,16 +639,18 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 cerr << "there is a broken allele path in this component for haplotype " << haplotype << endl;
             }
             if (enter_left) {
-                add_allele(next_link.allele_from_left[haplotype]);
+                add_allele(next_link.allele_from_left[haplotype], true);
+                finish_path(curr_path, haplotype);
                 // end the haplotype path and start a new one
-                curr_path = graph.create_path_handle(get_next_path_name(haplotype));
-                add_allele(next_link.allele_from_right[haplotype]);
+                curr_path = get_next_path(haplotype);
+                add_allele(next_link.allele_from_right[haplotype], false);
             }
             else {
-                add_allele(next_link.allele_from_right[haplotype]);
+                add_allele(next_link.allele_from_right[haplotype], true);
+                finish_path(curr_path, haplotype);
                 // end the haplotype path and start a new one
-                curr_path = graph.create_path_handle(get_next_path_name(haplotype));
-                add_allele(next_link.allele_from_left[haplotype]);
+                curr_path = get_next_path(haplotype);
+                add_allele(next_link.allele_from_left[haplotype], false);
             }
         }
         
@@ -654,7 +687,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         // make paths to extend into haplotypes
         array<path_handle_t, 2> init_paths;
         for (int hap : {0, 1}) {
-            init_paths[hap] = graph.create_path_handle(get_next_path_name(hap));
+            init_paths[hap] = get_next_path(hap);
         }
         array<path_handle_t, 2> curr_paths = init_paths;
         for (int hap : {0, 1}) {
@@ -710,6 +743,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                         graph.prepend_step(curr_paths[hap], allele[j]);
                     }
                 }
+                finish_path(curr_paths[hap], hap);
             }
         }
         else if (init_link.has_right_side) {
@@ -730,7 +764,8 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 }
                 else {
                     // we have to start a new path
-                    curr_paths[hap] = graph.create_path_handle(get_next_path_name(hap));
+                    finish_path(curr_paths[hap], hap);
+                    curr_paths[hap] = get_next_path(hap);
                     for (handle_t step : init_link.allele_from_right[hap]) {
                         graph.append_step(curr_paths[hap], step);
                     }
@@ -750,8 +785,18 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 is_chained[link_index] = true;
             }
         }
+        else {
+            // there is nothing to the right, just finish it
+            for (int hap : {0, 1}) {
+                finish_path(curr_paths[hap], hap);
+            }
+        }
         is_chained[i] = true;
     }
+}
+
+string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
+    return "gfase_hap_" +  to_string(haplotype) + "_" + to_string(path_id);
 }
 
 pair<vector<handle_t>, vector<handle_t>>
@@ -921,6 +966,18 @@ vector<handle_t> HamiltonianChainer::walk_diploid_unipath(const HandleGraph& gra
         reverse(unipath.begin(), unipath.end());
     }
     return unipath;
+}
+
+void HamiltonianChainer::break_self_looping_phase_paths(MutablePathHandleGraph& graph,
+                                                        array<unordered_set<path_handle_t>, 2>& phase_paths,
+                                                        array<int, 2>& next_path_ids) const {
+    
+}
+
+void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathHandleGraph& graph,
+                                                        array<unordered_set<path_handle_t>, 2>& phase_paths,
+                                                        array<int, 2>& next_path_ids) const {
+    
 }
 
 }
