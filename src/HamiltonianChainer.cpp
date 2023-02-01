@@ -447,29 +447,6 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
         return path_handle;
     };
     
-    // check if we actually phased anything and purge the path if not
-    auto finish_path = [&](path_handle_t path_handle, int hap) {
-        if (debug) {
-            cerr << "finishing path " << graph.get_path_name(path_handle) << endl;
-        }
-        bool found_phased_step = false;
-        for (auto step = graph.path_begin(path_handle), end = graph.path_end(path_handle); step != end && !found_phased_step; step = graph.get_next_step(step)) {
-            auto node_id = graph.get_id(graph.get_handle_of_step(step));
-            if (contact_graph.has_node(node_id)) {
-                found_phased_step = contact_graph.has_alt(node_id);
-            }
-        }
-        if (!found_phased_step) {
-            // none of the nodes are phased, so get rid of this path and reset the path ID
-            graph.destroy_path(path_handle);
-            phase_paths[hap].erase(path_handle);
-            --next_path_id[hap];
-            if (debug) {
-                cerr << "did not include any phased sequence, erasing and recycling ID " << next_path_id[hap] << " on haplotype " << hap << endl;
-            }
-        }
-    };
-    
     vector<bool> is_chained(chain_links.size(), false);
     
     // function to add the next bridge to both chains and advance the tracking variables to the next link
@@ -640,14 +617,15 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
             }
             if (enter_left) {
                 add_allele(next_link.allele_from_left[haplotype], true);
-                finish_path(curr_path, haplotype);
                 // end the haplotype path and start a new one
                 curr_path = get_next_path(haplotype);
                 add_allele(next_link.allele_from_right[haplotype], false);
             }
             else {
                 add_allele(next_link.allele_from_right[haplotype], true);
-                finish_path(curr_path, haplotype);
+
+
+
                 // end the haplotype path and start a new one
                 curr_path = get_next_path(haplotype);
                 add_allele(next_link.allele_from_left[haplotype], false);
@@ -705,7 +683,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
         bool found_cycle = false;
         
         if (debug) {
-            cerr << "inital haplotype paths:" << endl;
+            cerr << "initial haplotype paths:" << endl;
             for (auto path : curr_paths) {
                 for (auto handle : graph.scan_path(path)) {
                     cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
@@ -743,7 +721,6 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
                         graph.prepend_step(curr_paths[hap], allele[j]);
                     }
                 }
-                finish_path(curr_paths[hap], hap);
             }
         }
         else if (init_link.has_right_side) {
@@ -764,7 +741,6 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
                 }
                 else {
                     // we have to start a new path
-                    finish_path(curr_paths[hap], hap);
                     curr_paths[hap] = get_next_path(hap);
                     for (handle_t step : init_link.allele_from_right[hap]) {
                         graph.append_step(curr_paths[hap], step);
@@ -785,14 +761,21 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
                 is_chained[link_index] = true;
             }
         }
-        else {
-            // there is nothing to the right, just finish it
-            for (int hap : {0, 1}) {
-                finish_path(curr_paths[hap], hap);
-            }
-        }
-        is_chained[i] = true;
     }
+    
+    /*
+     * Part 4: finish off with some heuristic post-processing to improve contiguity and correctness
+     */
+    
+    // extend into unphaseable components if we can
+    extend_unambiguous_phase_paths(graph, contact_graph, phase_paths);
+    
+    // self loops are ambiguous, so we don't allow them in phased paths
+    break_self_looping_phase_paths(graph, phase_paths, next_path_id);
+    
+    // we might have broken paths enough that some don't actually have any haploid, phased
+    // sequence in them, in which case we remove them
+    purge_null_phase_paths(graph, contact_graph, phase_paths);
 }
 
 string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
@@ -972,12 +955,163 @@ void HamiltonianChainer::break_self_looping_phase_paths(MutablePathHandleGraph& 
                                                         array<unordered_set<path_handle_t>, 2>& phase_paths,
                                                         array<int, 2>& next_path_ids) const {
     
+    for (int hap : {0, 1}) {
+        vector<path_handle_t> to_remove, to_add;
+        for (auto path_handle : phase_paths[hap]) {
+            
+            // the steps before where we need to break the path
+            unordered_set<step_handle_t> breaks;
+            
+            unordered_map<handle_t, step_handle_t> previous_steps;
+            // scan the path
+            for (auto step = graph.path_begin(path_handle), end = graph.path_end(path_handle); step != end; step = graph.get_next_step(step)) {
+                
+                previous_steps[graph.get_handle_of_step(step)] = step;
+                // check if any edges backtrack to an earlier step of the path
+                graph.follow_edges(graph.get_handle_of_step(step), false, [&](const handle_t& next) {
+                    if (previous_steps.count(next)) {
+                        if (step != graph.path_back(path_handle)) {
+                            breaks.insert(step);
+                        }
+                        auto prev_step = previous_steps[next];
+                        if (prev_step != graph.path_begin(path_handle)) {
+                            breaks.insert(graph.get_previous_step(prev_step));
+                        }
+                        return false;
+                    }
+                    return true;
+                });
+            }
+            if (!breaks.empty()) {
+                // we will delete the old path
+                to_remove.push_back(path_handle);
+                
+                // scan the path again, breaking it up as we go
+                path_handle_t curr_path = graph.create_path_handle(phase_path_name(hap, next_path_ids[hap]++));
+                to_add.push_back(curr_path);
+                for (auto step = graph.path_begin(path_handle), end = graph.path_end(path_handle); step != end; step = graph.get_next_step(step)) {
+                    graph.append_step(curr_path, graph.get_handle_of_step(step));
+                    if (breaks.count(step)) {
+                        // break the path after this step
+                        curr_path = graph.create_path_handle(phase_path_name(hap, next_path_ids[hap]++));
+                        to_add.push_back(curr_path);
+                    }
+                }
+            }
+        }
+        for (auto path_handle : to_remove) {
+            graph.destroy_path(path_handle);
+            phase_paths[hap].erase(path_handle);
+        }
+        for (auto path_handle : to_add) {
+            phase_paths[hap].insert(path_handle);
+        }
+    }
+    
 }
 
 void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathHandleGraph& graph,
-                                                        array<unordered_set<path_handle_t>, 2>& phase_paths,
-                                                        array<int, 2>& next_path_ids) const {
+                                                        const MultiContactGraph& contact_graph,
+                                                        const array<unordered_set<path_handle_t>, 2>& phase_paths) const {
     
+    for (int hap : {0, 1}) {
+        const auto& hap_phase_paths = phase_paths[hap];
+        for (auto path_handle : phase_paths[hap]) {
+            for (bool beginning : {true, false}) {
+                if (debug) {
+                    cerr << "attempting to unambiguously extend phase path " << graph.get_path_name(path_handle) << " at the " << (beginning ? "beginning" : "end") << endl;
+                }
+                
+                auto step = beginning ? graph.path_begin(path_handle) : graph.path_back(path_handle);
+                
+                // are there any other phase paths that end here?
+                int num_overlapping = 0;
+                graph.for_each_step_on_handle(graph.get_handle_of_step(step), [&](const step_handle_t& overlapping) {
+                    num_overlapping += hap_phase_paths.count(graph.get_path_handle_of_step(overlapping));
+                });
+                if (num_overlapping != 1) {
+                    // it can't be unambiguous if we don't know which one to extend
+                    continue;
+                }
+                
+                while (true) {
+                    handle_t to_add = as_handle(-1);
+                    bool unambiguous = graph.follow_edges(graph.get_handle_of_step(step), beginning,
+                                                          [&](const handle_t& neighbor) {
+                        auto node_id = graph.get_id(neighbor);
+                        if (!contact_graph.has_node(node_id) || !contact_graph.has_alt(node_id)) {
+                            // it can't be an unambiguous walk because there are allowed, non-phased nodes adjacent
+                            return false;
+                        }
+                        int neighbor_hap = contact_graph.get_partition(node_id) == 1 ? 1 : 0;
+                        if (neighbor_hap != hap) {
+                            // we can ignore nodes that are phased to the other haplotype
+                            return true;
+                        }
+                        bool off_phase_path = graph.for_each_step_on_handle(neighbor,
+                                                                            [&](const step_handle_t& neighbor_step) {
+                            return !hap_phase_paths.count(graph.get_path_handle_of_step(neighbor_step));
+                        });
+                        if (!off_phase_path) {
+                            // we can't distinguish between extending this phase path and joining it with the adjacent one
+                            return false;
+                        }
+                        if (to_add == as_handle(-1)) {
+                            // this is the first in-phase node we've seen
+                            to_add = neighbor;
+                            return true;
+                        }
+                        // we've already seen a different in-phase node
+                        return false;
+                    });
+                    if (unambiguous && to_add != as_handle(-1)) {
+                        // we found a single, unambiguous extension into this component
+                        if (beginning) {
+                            graph.prepend_step(path_handle, to_add);
+                            step = graph.path_begin(path_handle);
+                        }
+                        else {
+                            graph.append_step(path_handle, to_add);
+                            step = graph.path_back(path_handle);
+                        }
+                    }
+                    else {
+                        // we can't add any more
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void HamiltonianChainer::purge_null_phase_paths(MutablePathHandleGraph& graph,
+                                                const MultiContactGraph& contact_graph,
+                                                array<unordered_set<path_handle_t>, 2>& phase_paths) const {
+    
+    for (int hap : {0, 1}) {
+        vector<path_handle_t> to_remove;
+        for (auto path_handle : phase_paths[hap]) {
+            // look for any step that is a haploid allele
+            bool found_phased_step = false;
+            for (auto step = graph.path_begin(path_handle), end = graph.path_end(path_handle); step != end && !found_phased_step; step = graph.get_next_step(step)) {
+                auto node_id = graph.get_id(graph.get_handle_of_step(step));
+                if (contact_graph.has_node(node_id)) {
+                    found_phased_step = contact_graph.has_alt(node_id);
+                }
+            }
+            if (!found_phased_step) {
+                if (debug) {
+                    cerr << "path " << graph.get_path_name(path_handle) << " did not include any phased sequence, erasing" << endl;
+                }
+                graph.destroy_path(path_handle);
+                to_remove.push_back(path_handle);
+            }
+        }
+        for (auto path_handle : to_remove) {
+            phase_paths[hap].erase(path_handle);
+        }
+    }
 }
 
 }

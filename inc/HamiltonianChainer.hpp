@@ -61,16 +61,21 @@ private:
     vector<handle_t> walk_diploid_unipath(const HandleGraph& graph, const MultiContactGraph& contact_graph,
                                           handle_t handle, bool go_left) const;
     
+    // check if we can extend phase path unambiguously into paths into components that
+    // we couldn't previously phase
+    void extend_unambiguous_phase_paths(MutablePathHandleGraph& graph,
+                                        const MultiContactGraph& contact_graph,
+                                        const array<unordered_set<path_handle_t>, 2>& phase_paths) const;
+    
     // split phase paths into 2 at self-loops
     void break_self_looping_phase_paths(MutablePathHandleGraph& graph,
                                         array<unordered_set<path_handle_t>, 2>& phase_paths,
                                         array<int, 2>& next_path_ids) const;
     
-    // check if we can extend phase path unambiguously into paths into components that
-    // we couldn't previously phase
-    void extend_unambiguous_phase_paths(MutablePathHandleGraph& graph,
-                                        array<unordered_set<path_handle_t>, 2>& phase_paths,
-                                        array<int, 2>& next_path_ids) const;
+    // remove phase paths that don't actually have any phased, haploid content
+    void purge_null_phase_paths(MutablePathHandleGraph& graph,
+                                const MultiContactGraph& contact_graph,
+                                array<unordered_set<path_handle_t>, 2>& phase_paths) const;
 };
 
 }

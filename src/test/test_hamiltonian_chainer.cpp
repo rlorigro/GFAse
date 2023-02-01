@@ -156,54 +156,54 @@ void run_test(string& data_file,
 
 int main(){
 
-//    {
-//        string file = "data/simple_chain_long_haploid.gfa";
-//        set<string> phase_0_nodes{"a", "d", "f"};
-//        set<string> phase_1_nodes{"b", "c", "e"};
-//        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"e", "f"}};
-//        vector<vector<pair<string, bool>>> correct_phase_paths{
-//            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}, {"f", false}, {"l", false}},
-//            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}, {"e", false}, {"l", false}}
-//        };
-//        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
-//    }
-//    {
-//        string file = "data/simple_chain_empty_node.gfa";
-//        set<string> phase_0_nodes{"a", "d", "f", "g"};
-//        set<string> phase_1_nodes{"b", "c", "e", "h"};
-//        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"e", "f"}, {"g", "h"}};
-//        vector<vector<pair<string, bool>>> correct_phase_paths{
-//            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}, {"f", false}, {"l", false}, {"g", false}, {"m", false}},
-//            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}, {"e", false}, {"l", false}, {"h", false}, {"m", false}}
-//        };
-//        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
-//    }
-//    {
-//        // induce a phase break by an unphased bubble
-//        string file = "data/simple_chain_empty_node.gfa";
-//        set<string> phase_0_nodes{"a", "d", "g"};
-//        set<string> phase_1_nodes{"b", "c", "h"};
-//        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"g", "h"}};
-//        vector<vector<pair<string, bool>>> correct_phase_paths{
-//            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}},
-//            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}},
-//            {{"l", false}, {"g", false}, {"m", false}},
-//            {{"l", false}, {"h", false}, {"m", false}}
-//        };
-//        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
-//    }
-//    {
-//        // include unphased, bridge-only components
-//        string file = "data/connected_components.gfa";
-//        set<string> phase_0_nodes{"b"};
-//        set<string> phase_1_nodes{"c"};
-//        set<pair<string, string>> alt_pairs{{"b", "c"}};
-//        vector<vector<pair<string, bool>>> correct_phase_paths{
-//            {{"a", false}, {"b", false}, {"d", false}},
-//            {{"a", false}, {"c", false}, {"d", false}}
-//        };
-//        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
-//    }
+    {
+        string file = "data/simple_chain_long_haploid.gfa";
+        set<string> phase_0_nodes{"a", "d", "f"};
+        set<string> phase_1_nodes{"b", "c", "e"};
+        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"e", "f"}};
+        vector<vector<pair<string, bool>>> correct_phase_paths{
+            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}, {"f", false}, {"l", false}},
+            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}, {"e", false}, {"l", false}}
+        };
+        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
+    }
+    {
+        string file = "data/simple_chain_empty_node.gfa";
+        set<string> phase_0_nodes{"a", "d", "f", "g"};
+        set<string> phase_1_nodes{"b", "c", "e", "h"};
+        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"e", "f"}, {"g", "h"}};
+        vector<vector<pair<string, bool>>> correct_phase_paths{
+            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}, {"f", false}, {"l", false}, {"g", false}, {"m", false}},
+            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}, {"e", false}, {"l", false}, {"h", false}, {"m", false}}
+        };
+        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
+    }
+    {
+        // induce a phase break by an unphased bubble
+        string file = "data/simple_chain_empty_node.gfa";
+        set<string> phase_0_nodes{"a", "d", "g"};
+        set<string> phase_1_nodes{"b", "c", "h"};
+        set<pair<string, string>> alt_pairs{{"a", "b"}, {"c", "d"}, {"g", "h"}};
+        vector<vector<pair<string, bool>>> correct_phase_paths{
+            {{"i", false}, {"a", false}, {"j", false}, {"d", false}, {"k", false}},
+            {{"i", false}, {"b", false}, {"j", false}, {"c", false}, {"k", false}},
+            {{"l", false}, {"g", false}, {"m", false}},
+            {{"l", false}, {"h", false}, {"m", false}}
+        };
+        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
+    }
+    {
+        // include unphased, bridge-only components
+        string file = "data/connected_components.gfa";
+        set<string> phase_0_nodes{"b"};
+        set<string> phase_1_nodes{"c"};
+        set<pair<string, string>> alt_pairs{{"b", "c"}};
+        vector<vector<pair<string, bool>>> correct_phase_paths{
+            {{"a", false}, {"b", false}, {"d", false}},
+            {{"a", false}, {"c", false}, {"d", false}}
+        };
+        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
+    }
     {
         string file = "data/big_test.gfa";
         set<string> phase_0_nodes{
@@ -246,10 +246,75 @@ int main(){
             {{"a3", false}, {"c3", false}, {"d3", false}, {"e3", false}, {"g3", false}, {"i3", false}, {"j3", false}, {"l3", false}},
             {{"a2", false}, {"b2", false}, {"d2", false}, {"f2", false}, {"g2", false}, {"h2", false}, {"j2", false}, {"x2", false}},
             {{"c2", false}, {"d2", false}, {"e2", false}, {"g2", false}, {"i2", false}, {"j2", false}, {"x2", false}},
-            {{"m2_0", false}, {"p2_0", false}, {"q2_0", false}}, // TODO: the current algorithm doesn't do well on [lk]_[01]
-            {{"m2_0", false}, {"o2_0", false}, {"q2_0", false}},
-            {{"m2_1", false}, {"p2_1", false}, {"q2_1", false}},
-            {{"m2_1", false}, {"o2_1", false}, {"q2_1", false}}
+            {{"l2_0", false}, {"m2_0", false}, {"p2_0", false}, {"q2_0", false}},
+            {{"k2_0", false}, {"m2_0", false}, {"o2_0", false}, {"q2_0", false}},
+            {{"l2_1", false}, {"m2_1", false}, {"p2_1", false}, {"q2_1", false}},
+            {{"k2_1", false}, {"m2_1", false}, {"o2_1", false}, {"q2_1", false}}
+        };
+        run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
+    }
+    {
+        // TODO: the current algorithm can't really do anything with the triploid component, but
+        // maybe it could if we inserted a dummy node into non-star biclique adjacency components,
+        // which could then act as a bridge
+        string file = "data/chain_test.gfa";
+        set<string> phase_0_nodes{
+            "b", "e",
+            "tip_c", "tip_f",
+            "h", "k", "n", "q", "s",
+            "b2", "f2", "h2",
+            "k2_0", "o2_0",
+            "k2_1", "o2_1",
+            "b3", "f3", "h3", "k3",
+            "tree_c2", "tree_c0",
+            "c4", "f4", "i4", "k4"
+        };
+        set<string> phase_1_nodes{
+            "c", "f",
+            "tip_b", "tip_e",
+            "i", "l", "o", "r", "t",
+            "c2", "e2", "i2",
+            "l2_0", "p2_0",
+            "l2_1", "p2_1",
+            "c3", "e3", "i3", "l3",
+            "tree_c3", "tree_c1",
+            "b4", "e4", "h4", "l4"
+        };
+        set<pair<string, string>> alt_pairs{
+            {"b", "c"}, {"e", "f"},
+            {"tip_b", "tip_c"}, {"tip_e", "tip_f"},
+            {"h", "i"}, {"k", "l"}, {"n", "o"}, {"q", "r"}, {"s", "t"},
+            {"b2", "c2"}, {"e2", "f2"}, {"h2", "i2"},
+            {"k2_0", "l2_0"}, {"o2_0", "p2_0"},
+            {"k2_1", "l2_1"}, {"o2_1", "p2_1"},
+            {"c3", "b3"}, {"f3", "e3"}, {"h3", "i3"}, {"k3", "l3"},
+            {"tree_c2", "tree_c3"}, {"tree_c0", "tree_c1"},
+            {"c4", "b4"}, {"e4", "f4"}, {"h4", "i4"}, {"k4", "l4"}
+        };
+        vector<vector<pair<string, bool>>> correct_phase_paths{
+            {{"a", false}, {"b", false}, {"d", false}, {"e", false}, {"g_a", false}},
+            {{"a", false}, {"c", false}, {"d", false}, {"f", false}, {"g_a", false}},
+            {{"tip_a", false}, {"tip_b", false}, {"tip_d", false}, {"tip_e", false}},
+            {{"tip_a", false}, {"tip_c", false}, {"tip_d", false}, {"tip_f", false}},
+            {{"g_b", false}, {"h", false}, {"j", false}, {"k", false}, {"m", false}},
+            {{"n", false}, {"p", false}, {"q", false}, {"s", false}},
+            {{"g_b", false}, {"i", false}, {"j", false}, {"l", false}, {"m", false}, {"o", false}, {"p", false}, {"r", false}, {"t", false}},
+            {{"a2", false}, {"b2", false}, {"d2", false}, {"f2", false}},
+            {{"h2", false}, {"j2", false}, {"x2", false}},
+            {{"a2", false}, {"c2", false}, {"d2", false}, {"e2", false}},
+            {{"i2", false}, {"j2", false}, {"x2", false}},
+            {{"l2_0", false}, {"m2_0", false}, {"p2_0", false}, {"q2_0", false}},
+            {{"k2_0", false}, {"m2_0", false}, {"o2_0", false}, {"q2_0", false}},
+            {{"l2_1", false}, {"m2_1", false}, {"p2_1", false}, {"q2_1", false}},
+            {{"k2_1", false}, {"m2_1", false}, {"o2_1", false}, {"q2_1", false}},
+            {{"a3", false}, {"b3", false}, {"d3", false}, {"f3", false}, {"g3", false}, {"h3", false}, {"j3", false}, {"k3", false}},
+            {{"a3", false}, {"c3", false}, {"d3", false}, {"e3", false}, {"g3", false}, {"i3", false}, {"j3", false}, {"l3", false}},
+            {{"tree_b1", false}, {"tree_c3", false}, {"tree_d1", false}},
+            {{"tree_b1", false}, {"tree_c2", false}, {"tree_d1", false}},
+            {{"tree_b0", false}, {"tree_c0", false}, {"tree_d0", false}},
+            {{"tree_b0", false}, {"tree_c1", false}, {"tree_d0", false}},
+            {{"a4", false}, {"b4", false}, {"e4", true}, {"g4", false}, {"h4", false}, {"j4", true}, {"l4", false}},
+            {{"a4", false}, {"c4", false}, {"f4", false}, {"g4", false}, {"i4", true}, {"j4", true}, {"k4", false}}
         };
         run_test(file, phase_0_nodes, phase_1_nodes, alt_pairs, correct_phase_paths);
     }
