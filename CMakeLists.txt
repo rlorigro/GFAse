@@ -53,6 +53,7 @@ set(SOURCES
         src/BinarySequence.cpp
         src/binomial.cpp
         src/Bipartition.cpp
+        src/Bridges.cpp
         src/BubbleGraph.cpp
         src/chain.cpp
         src/Chainer.cpp
@@ -63,6 +64,8 @@ set(SOURCES
         src/GfaReader.cpp
         src/gfa_to_handle.cpp
         src/graph_utility.cpp
+        src/HamiltonianPath.cpp
+        src/HamiltonianChainer.cpp
         src/HaplotypePathKmer.cpp
         src/Hasher.cpp
         src/Hasher2.cpp
@@ -80,6 +83,7 @@ set(SOURCES
         src/PhaseAssign.cpp
         src/Sequence.cpp
         src/Sam.cpp
+        src/SubgraphOverlay.cpp
         src/SvgPlot.cpp
         src/Timer.cpp
 )
@@ -708,11 +712,12 @@ set(TESTS
         test_assign_phase
         test_binomial
         test_bfs
+        test_binary_sequence
+        test_binary_sequence_performance
+        test_bridges
         test_bubble_graph
         test_bubblegraph_chaining
         test_bubble_align
-        test_binary_sequence
-        test_binary_sequence_performance
         test_connected_component_finder
         test_contact_graph
         test_chainer
@@ -720,6 +725,8 @@ set(TESTS
         test_fixed_binary_sequence_performance_2
         test_fixed_binary_sequence_sparsepp_performance
         test_gfareader
+        test_hamiltonian_chainer
+        test_hamiltonian_path
         test_htslib
         test_htslib_bam_reader
         test_incremental_id_io
