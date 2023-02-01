@@ -40,6 +40,8 @@ public:
     bool has_phase_chain(const string& name) const;
     // what is the partition of the phased hapotype path?
     int8_t get_partition(const string& name) const;
+    // after generating chain paths, write them to bandage annotations
+    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
     
     // the number of iterations we allow in a Hamiltonian path problem
     size_t hamiltonian_max_iters = 5000;

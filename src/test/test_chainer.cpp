@@ -97,7 +97,7 @@ void chain(path output_dir, path gfa_path){
 
     unzip(graph, id_map, false, false);
 
-    chainer.write_chainable_nodes_to_bandage_csv(output_dir, id_map);
+    chainer.write_chaining_results_to_bandage_csv(output_dir, id_map);
 
     path unzipped_gfa_path = output_dir / "unzipped.gfa";
     ofstream unzipped_gfa(unzipped_gfa_path);

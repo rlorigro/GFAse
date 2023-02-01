@@ -527,8 +527,7 @@ void phase(
     contact_graph.write_bandage_csv(phases_output_path, id_map);
 
     chainer->generate_chain_paths(graph, id_map, contact_graph);
-    // TODO: Jordan is disabling this for now, because the concept doesn't generalize to both chainers
-    //chainer.write_chainable_nodes_to_bandage_csv(output_dir, id_map);
+    chainer->write_chaining_results_to_bandage_csv(output_dir, id_map);
 
     cerr << t << "Writing GFA... " << '\n';
 
@@ -611,6 +610,10 @@ int main (int argc, char* argv[]){
             use_homology,
             "(Default = " + to_string(use_homology) + ")\tUse sequence homology to find alts. For whenever the GFA does not have Shasta node labels.");
 
+    app.add_flag(
+            "--use_hamiltonian_chainer",
+            use_hamiltonian_chainer,
+            "(Default = " + to_string(use_hamiltonian_chainer) + ")\tBuild chains using Hamiltonian paths of bridge components instead of simple bubbles.");
     app.add_flag(
             "--skip_unzip",
             skip_unzip,
