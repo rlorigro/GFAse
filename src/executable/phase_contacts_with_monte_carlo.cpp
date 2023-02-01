@@ -9,6 +9,7 @@
 #include "Filesystem.hpp"
 #include "optimize.hpp"
 #include "Chainer.hpp"
+#include "HamiltonianChainer.hpp"
 #include "Timer.hpp"
 #include "CLI11.hpp"
 #include "align.hpp"
@@ -23,8 +24,10 @@ using gfase::NonBipartiteEdgeException;
 using gfase::construct_alignment_graph;
 using gfase::gfa_to_handle_graph;
 using gfase::handle_graph_to_gfa;
+using gfase::HamiltonianChainer;
 using gfase::MultiContactGraph;
 using gfase::IncrementalIdMap;
+using gfase::AbstractChainer;
 using gfase::SamElement;
 using gfase::Sequence;
 using gfase::HashResult;
@@ -46,6 +49,7 @@ using CLI::App;
 #include <stdexcept>
 #include <fstream>
 #include <utility>
+#include <memory>
 #include <atomic>
 #include <thread>
 #include <limits>
@@ -59,6 +63,8 @@ using std::numeric_limits;
 using std::unordered_set;
 using std::unordered_map;
 using std::runtime_error;
+using std::make_unique;
+using std::unique_ptr;
 using std::streamsize;
 using std::exception;
 using std::to_string;
@@ -212,7 +218,7 @@ void write_nodes_to_fasta(
         const HandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
         const MultiContactGraph& contact_graph,
-        const Chainer& chainer,
+        const AbstractChainer& chainer,
         path output_dir
         ){
 
@@ -403,6 +409,7 @@ void find_unlabeled_alts(
 }
 
 
+
 void phase(
         path output_dir,
         path sam_path,
@@ -413,6 +420,7 @@ void phase(
         size_t n_rounds,
         bool use_homology,
         bool skip_unzip,
+        bool use_hamiltonian_chainer,
         size_t n_threads
         ){
 
@@ -444,7 +452,13 @@ void phase(
     MultiContactGraph contact_graph;
 
     // For finding and unzipping bubble chains
-    Chainer chainer;
+    unique_ptr<AbstractChainer> chainer;
+    if (use_hamiltonian_chainer) {
+        chainer = unique_ptr<AbstractChainer>(new HamiltonianChainer());
+    }
+    else {
+        chainer = unique_ptr<AbstractChainer>(new Chainer());
+    }
 
     cerr << t << "Loading GFA..." << '\n';
 
@@ -512,8 +526,9 @@ void phase(
     contact_graph.write_contact_map(contacts_output_path, id_map);
     contact_graph.write_bandage_csv(phases_output_path, id_map);
 
-    chainer.generate_chain_paths(graph, id_map, contact_graph);
-    chainer.write_chainable_nodes_to_bandage_csv(output_dir, id_map);
+    chainer->generate_chain_paths(graph, id_map, contact_graph);
+    // TODO: Jordan is disabling this for now, because the concept doesn't generalize to both chainers
+    //chainer.write_chainable_nodes_to_bandage_csv(output_dir, id_map);
 
     cerr << t << "Writing GFA... " << '\n';
 
@@ -528,7 +543,7 @@ void phase(
 
     cerr << t << "Writing FASTA... " << '\n';
 
-    write_nodes_to_fasta(graph, id_map, contact_graph, chainer, output_dir);
+    write_nodes_to_fasta(graph, id_map, contact_graph, *chainer, output_dir);
 
     cerr << t << "Done" << '\n';
 }
@@ -545,6 +560,7 @@ int main (int argc, char* argv[]){
     size_t n_rounds = 2;
     bool use_homology = false;
     bool skip_unzip = false;
+    bool use_hamiltonian_chainer = false;
 
     CLI::App app{"App description"};
 
@@ -613,6 +629,7 @@ int main (int argc, char* argv[]){
             n_rounds,
             use_homology,
             skip_unzip,
+            use_hamiltonian_chainer,
             n_threads
     );
 

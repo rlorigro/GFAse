@@ -20,7 +20,7 @@ using handlegraph::path_handle_t;
 #include <array>
 #include <algorithm>
 #include <iostream>
-#include <error>
+#include <stdexcept>
 
 using std::vector;
 using std::unordered_set;
@@ -69,7 +69,7 @@ bool HamiltonianChainer::has_phase_chain(const string& name) const {
     if (!path_graph || !path_graph->has_path(name)) {
         return false;
     }
-    path_handle_t path_handle = graph.get_path_handle(name);
+    path_handle_t path_handle = path_graph->get_path_handle(name);
     return (phase_paths[0].count(path_handle) || phase_paths[1].count(path_handle));
 }
 
@@ -77,7 +77,7 @@ int8_t HamiltonianChainer::get_partition(const string& name) const {
     if (!path_graph || !path_graph->has_path(name)) {
         return 0;
     }
-    path_handle_t path_handle = graph.get_path_handle(name);
+    path_handle_t path_handle = path_graph->get_path_handle(name);
     if (phase_paths[0].count(path_handle)) {
         return -1;
     }
