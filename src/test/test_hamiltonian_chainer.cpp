@@ -121,7 +121,7 @@ void run_test(string& data_file,
     sort(correct_phase_handle_paths.begin(), correct_phase_handle_paths.end());
     
     HamiltonianChainer chainer;
-    chainer.generate_chain_paths(graph, contact_graph);
+    chainer.generate_chain_paths(graph, id_map, contact_graph);
     
     vector<vector<handle_t>> identified_phase_handle_paths;
     graph.for_each_path_handle([&](const path_handle_t& path_handle) {

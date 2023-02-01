@@ -20,6 +20,7 @@ using handlegraph::path_handle_t;
 #include <array>
 #include <algorithm>
 #include <iostream>
+#include <error>
 
 using std::vector;
 using std::unordered_set;
@@ -31,6 +32,7 @@ using std::array;
 using std::reverse;
 using std::cerr;
 using std::endl;
+using std::runtime_error;
 
 namespace gfase {
 
@@ -63,10 +65,41 @@ struct ChainableComponent {
     
 };
 
+bool HamiltonianChainer::has_phase_chain(const string& name) const {
+    if (!path_graph || !path_graph->has_path(name)) {
+        return false;
+    }
+    path_handle_t path_handle = graph.get_path_handle(name);
+    return (phase_paths[0].count(path_handle) || phase_paths[1].count(path_handle));
+}
 
-void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
-                                              const MultiContactGraph& contact_graph) const {
+int8_t HamiltonianChainer::get_partition(const string& name) const {
+    if (!path_graph || !path_graph->has_path(name)) {
+        return 0;
+    }
+    path_handle_t path_handle = graph.get_path_handle(name);
+    if (phase_paths[0].count(path_handle)) {
+        return -1;
+    }
+    else if (phase_paths[1].count(path_handle)) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& graph,
+                                              const IncrementalIdMap<string>& id_map,
+                                              const MultiContactGraph& contact_graph) {
     
+    
+    // TODO: this is ugly, but it saves me from having to re-creating indexes that are mostly identical
+    // to the path handle interface
+    if (path_graph) {
+        throw runtime_error("ERROR: attempted to generate chain paths twice with the same HamiltonianChainer");
+    }
+    path_graph = &graph;
     
     /*
      * Part 1: find bridges
@@ -435,14 +468,11 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
      * Part 3: form chains
      */
     
-    array<unordered_set<path_handle_t>, 2> phase_paths;
-    array<int, 2> next_path_id{0, 0};
     auto get_next_path = [&](int hap) {
-        string name = phase_path_name(hap, next_path_id[hap]++);
+        path_handle_t path_handle = graph.create_path_handle(phase_path_name(hap, next_path_ids[hap]++));
         if (debug) {
-            cerr << "generating new path named " << name << endl;
+            cerr << "generating new path named " << graph.get_path_name(path_handle) << endl;
         }
-        path_handle_t path_handle = graph.create_path_handle(name);
         phase_paths[hap].insert(path_handle);
         return path_handle;
     };
@@ -675,13 +705,6 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
         }
         is_chained[i] = true;
         
-        // TODO: it's a bit silly that i maintain these variables separately for both haplotypes,
-        // but i don't want it to get set during one haplotype iteration and mess up the next
-        bool left_to_right = true;
-        int64_t link_index = i;
-        bool keep_going = init_link.has_left_side;
-        bool found_cycle = false;
-        
         if (debug) {
             cerr << "initial haplotype paths:" << endl;
             for (auto path : curr_paths) {
@@ -692,6 +715,11 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
             }
             cerr << "extending to the left" << endl;
         }
+        
+        bool left_to_right = true;
+        int64_t link_index = i;
+        bool keep_going = init_link.has_left_side;
+        bool found_cycle = false;
         
         // start by extending to the left
         while (true) {
@@ -707,8 +735,8 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
         }
         
         if (found_cycle) {
-            // we looped back around to the same link, but we might not have included the
-            // right side of this link
+            // we looped back around to the same link, but we might not have included its
+            // right side
             
             if (debug) {
                 cerr << "finishing a chain that consists of a cycle" << endl;
@@ -768,14 +796,14 @@ void HamiltonianChainer::generate_chain_paths(MutablePathHandleGraph& graph,
      */
     
     // extend into unphaseable components if we can
-    extend_unambiguous_phase_paths(graph, contact_graph, phase_paths);
+    extend_unambiguous_phase_paths(graph, contact_graph);
     
     // self loops are ambiguous, so we don't allow them in phased paths
-    break_self_looping_phase_paths(graph, phase_paths, next_path_id);
+    break_self_looping_phase_paths(graph);
     
     // we might have broken paths enough that some don't actually have any haploid, phased
     // sequence in them, in which case we remove them
-    purge_null_phase_paths(graph, contact_graph, phase_paths);
+    purge_null_phase_paths(graph, contact_graph);
 }
 
 string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
@@ -951,9 +979,7 @@ vector<handle_t> HamiltonianChainer::walk_diploid_unipath(const HandleGraph& gra
     return unipath;
 }
 
-void HamiltonianChainer::break_self_looping_phase_paths(MutablePathHandleGraph& graph,
-                                                        array<unordered_set<path_handle_t>, 2>& phase_paths,
-                                                        array<int, 2>& next_path_ids) const {
+void HamiltonianChainer::break_self_looping_phase_paths(MutablePathDeletableHandleGraph& graph) {
     
     for (int hap : {0, 1}) {
         vector<path_handle_t> to_remove, to_add;
@@ -1007,12 +1033,10 @@ void HamiltonianChainer::break_self_looping_phase_paths(MutablePathHandleGraph& 
             phase_paths[hap].insert(path_handle);
         }
     }
-    
 }
 
-void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathHandleGraph& graph,
-                                                        const MultiContactGraph& contact_graph,
-                                                        const array<unordered_set<path_handle_t>, 2>& phase_paths) const {
+void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathDeletableHandleGraph& graph,
+                                                        const MultiContactGraph& contact_graph) {
     
     for (int hap : {0, 1}) {
         const auto& hap_phase_paths = phase_paths[hap];
@@ -1085,9 +1109,8 @@ void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathHandleGraph& 
     }
 }
 
-void HamiltonianChainer::purge_null_phase_paths(MutablePathHandleGraph& graph,
-                                                const MultiContactGraph& contact_graph,
-                                                array<unordered_set<path_handle_t>, 2>& phase_paths) const {
+void HamiltonianChainer::purge_null_phase_paths(MutablePathDeletableHandleGraph& graph,
+                                                const MultiContactGraph& contact_graph) {
     
     for (int hap : {0, 1}) {
         vector<path_handle_t> to_remove;
