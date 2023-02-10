@@ -126,7 +126,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 if (i != 0) {
                     cerr << ", ";
                 }
-                cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+");
+                cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+") << "(" << id_map.get_name(graph.get_id(bridge[i])) << ")";
             }
             cerr << endl;
         }
@@ -305,7 +305,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                         auto alleles = left ? link.allele_from_left : link.allele_from_right;
                         for (auto allele : alleles) {
                             for (auto handle : allele) {
-                                cerr << " " << bridge_component.get_id(handle) << (bridge_component.get_is_reverse(handle) ? "-" : "+");
+                                cerr << " " << bridge_component.get_id(handle) << "(" << id_map.get_name(bridge_component.get_id(handle)) << ")" << (bridge_component.get_is_reverse(handle) ? "-" : "+");
                             }
                             cerr << endl;
                         }
@@ -898,9 +898,12 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
             cerr << "could not resolve hamiltonian allele" << endl;
         }
         if (starts.size() == 1) {
+            if (debug) {
+                cerr << "attempting to find forward unambiguous path" << endl;
+            }
             return_val.first = max_unambiguous_path(graph, *starts.begin(), in_phase_nodes);
             if (debug) {
-                cerr << "forward max unamiguous path:" << endl;
+                cerr << "forward max unambiguous path:" << endl;
                 for (auto handle : return_val.first) {
                     cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
                 }
@@ -908,12 +911,15 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
             }
         }
         if (ends.size() == 1) {
+            if (debug) {
+                cerr << "attempting to find reverse unambiguous path" << endl;
+            }
             auto rev_suffix = max_unambiguous_path(graph, *rev_starts.begin(), in_phase_nodes);
             for (auto it = rev_suffix.rbegin(); it != rev_suffix.rend(); ++it) {
                 return_val.second.push_back(graph.flip(*it));
             }
             if (debug) {
-                cerr << "reverse max unamiguous path:" << endl;
+                cerr << "reverse max unambiguous path:" << endl;
                 for (auto handle : return_val.second) {
                     cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
                 }
@@ -938,7 +944,8 @@ vector<handle_t> HamiltonianChainer::max_unambiguous_path(const HandleGraph& gra
             to_add = next;
             return num_neighbors == 1 && allowed_nodes.count(graph.get_id(next));
         });
-        if (num_neighbors != 0 && unambiguous) {
+        unambiguous = (unambiguous && num_neighbors == 1);
+        if (unambiguous) {
             walk.push_back(to_add);
         }
     }
@@ -1047,6 +1054,12 @@ void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathDeletableHand
                 }
                 
                 auto step = beginning ? graph.path_begin(path_handle) : graph.path_back(path_handle);
+                if (step == graph.path_end(path_handle) || step == graph.path_front_end(path_handle)) {
+                    if (debug) {
+                        cerr << "path is empty, skipping" << endl;
+                    }
+                    continue;
+                }
                 
                 // are there any other phase paths that end here?
                 int num_overlapping = 0;
