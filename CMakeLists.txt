@@ -740,6 +740,7 @@ set(TESTS
         test_nonbinary_sequence_performance
         test_nonbinary_sequence_sparsepp_performance
         test_rgb_to_hex
+        test_rechain
         test_set_intersection
         test_timer
 )
