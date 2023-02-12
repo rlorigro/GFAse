@@ -57,6 +57,7 @@ private:
     // walks are all oriented away from the starts, toward the ends.
     // also records whether the alleles were generated with a hamiltonian walk
     pair<vector<handle_t>, vector<handle_t>> generate_allelic_semiwalks(const HandleGraph& graph,
+                                                                        const IncrementalIdMap<string>& id_map,
                                                                         const unordered_set<nid_t>& in_phase_nodes,
                                                                         const unordered_set<nid_t>& out_phase_nodes,
                                                                         const unordered_set<handle_t>& starts,

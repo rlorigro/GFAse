@@ -259,6 +259,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             bool resolved_hamiltonian_0;
             auto phase_0_walks = generate_allelic_semiwalks(bridge_component,
+                                                            id_map,
                                                             phase_0_nodes,
                                                             phase_1_nodes,
                                                             start, end,
@@ -266,6 +267,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             bool resolved_hamiltonian_1;
             auto phase_1_walks = generate_allelic_semiwalks(bridge_component,
+                                                            id_map,
                                                             phase_1_nodes,
                                                             phase_0_nodes,
                                                             start, end,
@@ -812,6 +814,7 @@ string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
 
 pair<vector<handle_t>, vector<handle_t>>
 HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
+                                               const IncrementalIdMap<string>& id_map,
                                                const unordered_set<nid_t>& in_phase_nodes,
                                                const unordered_set<nid_t>& out_phase_nodes,
                                                const unordered_set<handle_t>& starts,
@@ -821,7 +824,7 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
     if (debug) {
         cerr << "finding alleles for in-phase nodes:" << endl;
         for (auto nid : in_phase_nodes) {
-            cerr << "\t" << nid << endl;
+            cerr << "\t" << nid << " (" << id_map.get_name(nid) << ")" << endl;
         }
     }
     
@@ -1154,6 +1157,10 @@ void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, 
     
     path output_path = output_dir / "chains.csv";
     ofstream file(output_path);
+    
+    if (!file.is_open() || !file.good()) {
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
     
     const string cap_0 = "Navy Blue";
     const string cap_1 = "Dark Red";
