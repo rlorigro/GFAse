@@ -511,7 +511,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         if (debug) {
             cerr << "adding brige with index " << bridge_idx << " consisting of node(s)" << endl;
             for (auto handle : unipath_bridge) {
-                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
             }
             cerr << endl;
         }
@@ -555,7 +555,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             cerr << "finished adding bridge, current allele paths:" << endl;
             for (auto curr_path : curr_paths) {
                 for (auto handle : graph.scan_path(curr_path)) {
-                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                 }
                 cerr << endl;
             }
@@ -600,7 +600,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 cerr << "from " << (left ? "left" : "right") << endl;
                 for (auto allele : (left ? next_link.allele_from_left : next_link.allele_from_right)) {
                     for (auto handle : allele) {
-                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                     }
                     cerr << endl;
                 }
@@ -687,10 +687,10 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 cerr << " no boundary nodes" << endl;
             }
             else if (init_link.has_right_side) {
-                cerr << "boundaries " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " and " << graph.get_id(init_link.right_side) << (graph.get_is_reverse(init_link.right_side) ? "-" : "+") << endl;
+                cerr << "boundaries " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " and " << graph.get_id(init_link.right_side) << (graph.get_is_reverse(init_link.right_side) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(init_link.left_side)) << " and " << id_map.get_name(graph.get_id(init_link.right_side)) << ")" << endl;
             }
             else {
-                cerr << "single boundary " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << endl;
+                cerr << "single boundary " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(init_link.left_side)) << ")" << endl;
             }
         }
         
@@ -711,7 +711,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             cerr << "initial haplotype paths:" << endl;
             for (auto path : curr_paths) {
                 for (auto handle : graph.scan_path(path)) {
-                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                 }
                 cerr << endl;
             }
@@ -1106,6 +1106,9 @@ void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathDeletableHand
                     });
                     if (unambiguous && to_add != as_handle(-1)) {
                         // we found a single, unambiguous extension into this component
+                        if (debug) {
+                            cerr << "adding unambiguous extension to " << graph.get_id(to_add) << (graph.get_is_reverse(to_add) ? "-" : "+") << endl;
+                        }
                         if (beginning) {
                             graph.prepend_step(path_handle, to_add);
                             step = graph.path_begin(path_handle);
@@ -1153,7 +1156,8 @@ void HamiltonianChainer::purge_null_phase_paths(MutablePathDeletableHandleGraph&
     }
 }
 
-void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const {
+void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                                               const MultiContactGraph& contact_graph) const {
     
     path output_path = output_dir / "chains.csv";
     ofstream file(output_path);
@@ -1162,54 +1166,77 @@ void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, 
         throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
     }
     
-    const string cap_0 = "Navy Blue";
+    const string cap_0 = "Dark Blue";
     const string cap_1 = "Dark Red";
     const string cap_both = "Indigo";
     const string middle_0 = "Cornflower Blue";
     const string middle_1 = "Crimson";
     const string middle_both = "Dark Orchid";
+    const string unchained_0 = "Powder Blue";
+    const string unchained_1 = "Light Coral";
     
     file << "Name,Color\n";
     path_graph->for_each_handle([&](const handle_t& handle) {
-        bool on_hap_0 = false, on_hap_1 = false, is_cap = false;
+        bool on_hap_0 = false, on_hap_1 = false, on_hap_0_path = false, on_hap_1_path = false, is_cap = false;
         path_graph->for_each_step_on_handle(handle, [&](const step_handle_t& step) {
             auto path = path_graph->get_path_handle_of_step(step);
             if (phase_paths[0].count(path)) {
+                on_hap_0_path = true;
                 on_hap_0 = true;
                 if (step == path_graph->path_begin(path) || step == path_graph->path_back(path)) {
                     is_cap = true;
                 }
             }
             else if (phase_paths[1].count(path)) {
+                on_hap_1_path = true;
                 on_hap_1 = true;
                 if (step == path_graph->path_begin(path) || step == path_graph->path_back(path)) {
                     is_cap = true;
                 }
             }
         });
+        if (contact_graph.has_node(path_graph->get_id(handle))) {
+            if (contact_graph.get_partition(path_graph->get_id(handle)) == -1) {
+                on_hap_0 = true;
+            }
+            else if (contact_graph.get_partition(path_graph->get_id(handle)) == 1) {
+                on_hap_1 = true;
+            }
+        }
+        if (debug) {
+            cerr << path_graph->get_id(handle) << " / " << id_map.get_name(path_graph->get_id(handle)) << " is on hap0? " << on_hap_0 << ", is on hap1? " << on_hap_1 << " is on hap0 path? " << on_hap_0_path << ", is on hap1 path? " << on_hap_1_path << ", is a cap? " << is_cap << endl;;
+        }
         if (on_hap_0 || on_hap_1) {
             string color;
-            if (is_cap) {
-                if (on_hap_0 && on_hap_1) {
-                    color = cap_both;
-                }
-                else if (on_hap_0) {
-                    color = cap_0;
+            if (on_hap_0_path || on_hap_1_path) {
+                if (is_cap) {
+                    if (on_hap_0_path && on_hap_1_path) {
+                        color = cap_both;
+                    }
+                    else if (on_hap_0_path) {
+                        color = cap_0;
+                    }
+                    else {
+                        color = cap_1;
+                    }
                 }
                 else {
-                    color = cap_1;
+                    if (on_hap_0_path && on_hap_1_path) {
+                        color = middle_both;
+                    }
+                    else if (on_hap_0_path) {
+                        color = middle_0;
+                    }
+                    else {
+                        color = middle_1;
+                    }
                 }
             }
+            else if (on_hap_0) {
+                color = unchained_0;
+            }
             else {
-                if (on_hap_0 && on_hap_1) {
-                    color = middle_both;
-                }
-                else if (on_hap_0) {
-                    color = middle_0;
-                }
-                else {
-                    color = middle_1;
-                }
+                color = unchained_1;
             }
             file << id_map.get_name(path_graph->get_id(handle)) << ',' << color << '\n';
         }

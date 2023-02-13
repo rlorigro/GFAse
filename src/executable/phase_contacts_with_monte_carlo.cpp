@@ -531,7 +531,7 @@ void phase(
     cerr << t << "Chaining homologous sequences... " << '\n';
 
     chainer->generate_chain_paths(graph, id_map, contact_graph);
-    chainer->write_chaining_results_to_bandage_csv(output_dir, id_map);
+    chainer->write_chaining_results_to_bandage_csv(output_dir, id_map, contact_graph);
 
     cerr << t << "Writing GFA... " << '\n';
 

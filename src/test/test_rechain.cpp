@@ -146,7 +146,7 @@ int main(int argc, char** argv){
     
     chainer.generate_chain_paths(graph, id_map, contact_graph);
     cerr << "writing results" << endl;
-    chainer.write_chaining_results_to_bandage_csv(path("./"), id_map);
+    chainer.write_chaining_results_to_bandage_csv(path("./"), id_map, contact_graph);
     
     
     return 0;

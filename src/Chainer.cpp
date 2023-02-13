@@ -572,7 +572,8 @@ int8_t Chainer::get_partition(const string& name) const{
 
 
 void Chainer::write_chaining_results_to_bandage_csv(path output_dir,
-                                                    const IncrementalIdMap<string>& id_map) const{
+                                                    const IncrementalIdMap<string>& id_map,
+                                                    const MultiContactGraph& contact_graph) const{
     path output_path = output_dir / "chainable_nodes.csv";
     ofstream file(output_path);
 
