@@ -41,7 +41,8 @@ public:
     // what is the partition of the phased hapotype path?
     int8_t get_partition(const string& name) const;
     // after generating chain paths, write them to bandage annotations
-    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
+    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                               const MultiContactGraph& contact_graph) const;
     
     // the number of iterations we allow in a Hamiltonian path problem
     size_t hamiltonian_max_iters = 5000;
@@ -57,6 +58,7 @@ private:
     // walks are all oriented away from the starts, toward the ends.
     // also records whether the alleles were generated with a hamiltonian walk
     pair<vector<handle_t>, vector<handle_t>> generate_allelic_semiwalks(const HandleGraph& graph,
+                                                                        const IncrementalIdMap<string>& id_map,
                                                                         const unordered_set<nid_t>& in_phase_nodes,
                                                                         const unordered_set<nid_t>& out_phase_nodes,
                                                                         const unordered_set<handle_t>& starts,

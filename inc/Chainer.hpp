@@ -74,7 +74,8 @@ public:
     // what is the partition of the phased hapotype path?
     virtual int8_t get_partition(const string& name) const = 0;
     // output any relevant information to bandage
-    virtual void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const = 0;
+    virtual void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                                       const MultiContactGraph& contact_graph) const = 0;
 };
 
 
@@ -135,7 +136,8 @@ public:
             const MultiContactGraph& contact_graph);
 
     // IO
-    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
+    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                               const MultiContactGraph& contact_graph) const;
 
     // Accessing
     bool has_phase_chain(const string& name) const;

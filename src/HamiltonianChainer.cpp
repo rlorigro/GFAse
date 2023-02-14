@@ -126,7 +126,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 if (i != 0) {
                     cerr << ", ";
                 }
-                cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+");
+                cerr << graph.get_id(bridge[i]) << (graph.get_is_reverse(bridge[i]) ? "-" : "+") << "(" << id_map.get_name(graph.get_id(bridge[i])) << ")";
             }
             cerr << endl;
         }
@@ -194,6 +194,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                     for (auto alt_set : {&alt_component.first, &alt_component.second}) {
                         for (auto member_id : *alt_set) {
                             if (!bridge_component.has_node(member_id)) {
+                                if (debug) {
+                                    cerr << "node " << member_id << " of alt component is not present in bridge component" << endl;
+                                }
                                 // a member of this alt set is not found in the bridge component.
                                 // this makes it less likely that the bridge component represents
                                 // a pair of allelic sequences, but we'll still allow it as long as
@@ -202,9 +205,15 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                                 // verkko graphs, but it could stand to be a bit more principled
                                 handle_t missing_node = graph.get_handle(member_id);
                                 bool no_edges = graph.follow_edges(missing_node, false, [&](const handle_t& null) {
+                                    if (debug) {
+                                        cerr << "alt has an edge to " << graph.get_id(null) << endl;
+                                    }
                                     return false;
                                 });
                                 no_edges = no_edges && graph.follow_edges(missing_node, true, [&](const handle_t& null) {
+                                    if (debug) {
+                                        cerr << "alt has an edge to " << graph.get_id(null) << endl;
+                                    }
                                     return false;
                                 });
                                 if (!no_edges) {
@@ -232,6 +241,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             if (!all_phasable) {
                 // the nodes had alts that are outside this bridge component
+                if (debug) {
+                    cerr << "skipping since all alts are not present" << endl;
+                }
                 return;
             }
             
@@ -259,6 +271,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             bool resolved_hamiltonian_0;
             auto phase_0_walks = generate_allelic_semiwalks(bridge_component,
+                                                            id_map,
                                                             phase_0_nodes,
                                                             phase_1_nodes,
                                                             start, end,
@@ -266,6 +279,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             bool resolved_hamiltonian_1;
             auto phase_1_walks = generate_allelic_semiwalks(bridge_component,
+                                                            id_map,
                                                             phase_1_nodes,
                                                             phase_0_nodes,
                                                             start, end,
@@ -305,7 +319,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                         auto alleles = left ? link.allele_from_left : link.allele_from_right;
                         for (auto allele : alleles) {
                             for (auto handle : allele) {
-                                cerr << " " << bridge_component.get_id(handle) << (bridge_component.get_is_reverse(handle) ? "-" : "+");
+                                cerr << " " << bridge_component.get_id(handle) << "(" << id_map.get_name(bridge_component.get_id(handle)) << ")" << (bridge_component.get_is_reverse(handle) ? "-" : "+");
                             }
                             cerr << endl;
                         }
@@ -509,7 +523,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         if (debug) {
             cerr << "adding brige with index " << bridge_idx << " consisting of node(s)" << endl;
             for (auto handle : unipath_bridge) {
-                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
             }
             cerr << endl;
         }
@@ -553,7 +567,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             cerr << "finished adding bridge, current allele paths:" << endl;
             for (auto curr_path : curr_paths) {
                 for (auto handle : graph.scan_path(curr_path)) {
-                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                 }
                 cerr << endl;
             }
@@ -598,7 +612,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 cerr << "from " << (left ? "left" : "right") << endl;
                 for (auto allele : (left ? next_link.allele_from_left : next_link.allele_from_right)) {
                     for (auto handle : allele) {
-                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                        cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                     }
                     cerr << endl;
                 }
@@ -685,10 +699,10 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 cerr << " no boundary nodes" << endl;
             }
             else if (init_link.has_right_side) {
-                cerr << "boundaries " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " and " << graph.get_id(init_link.right_side) << (graph.get_is_reverse(init_link.right_side) ? "-" : "+") << endl;
+                cerr << "boundaries " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " and " << graph.get_id(init_link.right_side) << (graph.get_is_reverse(init_link.right_side) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(init_link.left_side)) << " and " << id_map.get_name(graph.get_id(init_link.right_side)) << ")" << endl;
             }
             else {
-                cerr << "single boundary " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << endl;
+                cerr << "single boundary " << graph.get_id(init_link.left_side) << (graph.get_is_reverse(init_link.left_side) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(init_link.left_side)) << ")" << endl;
             }
         }
         
@@ -709,7 +723,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             cerr << "initial haplotype paths:" << endl;
             for (auto path : curr_paths) {
                 for (auto handle : graph.scan_path(path)) {
-                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
+                    cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+") << " (" << id_map.get_name(graph.get_id(handle)) << ")";
                 }
                 cerr << endl;
             }
@@ -812,6 +826,7 @@ string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
 
 pair<vector<handle_t>, vector<handle_t>>
 HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
+                                               const IncrementalIdMap<string>& id_map,
                                                const unordered_set<nid_t>& in_phase_nodes,
                                                const unordered_set<nid_t>& out_phase_nodes,
                                                const unordered_set<handle_t>& starts,
@@ -821,7 +836,7 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
     if (debug) {
         cerr << "finding alleles for in-phase nodes:" << endl;
         for (auto nid : in_phase_nodes) {
-            cerr << "\t" << nid << endl;
+            cerr << "\t" << nid << " (" << id_map.get_name(nid) << ")" << endl;
         }
     }
     
@@ -898,9 +913,12 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
             cerr << "could not resolve hamiltonian allele" << endl;
         }
         if (starts.size() == 1) {
+            if (debug) {
+                cerr << "attempting to find forward unambiguous path" << endl;
+            }
             return_val.first = max_unambiguous_path(graph, *starts.begin(), in_phase_nodes);
             if (debug) {
-                cerr << "forward max unamiguous path:" << endl;
+                cerr << "forward max unambiguous path:" << endl;
                 for (auto handle : return_val.first) {
                     cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
                 }
@@ -908,12 +926,15 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
             }
         }
         if (ends.size() == 1) {
+            if (debug) {
+                cerr << "attempting to find reverse unambiguous path" << endl;
+            }
             auto rev_suffix = max_unambiguous_path(graph, *rev_starts.begin(), in_phase_nodes);
             for (auto it = rev_suffix.rbegin(); it != rev_suffix.rend(); ++it) {
                 return_val.second.push_back(graph.flip(*it));
             }
             if (debug) {
-                cerr << "reverse max unamiguous path:" << endl;
+                cerr << "reverse max unambiguous path:" << endl;
                 for (auto handle : return_val.second) {
                     cerr << " " << graph.get_id(handle) << (graph.get_is_reverse(handle) ? "-" : "+");
                 }
@@ -938,7 +959,8 @@ vector<handle_t> HamiltonianChainer::max_unambiguous_path(const HandleGraph& gra
             to_add = next;
             return num_neighbors == 1 && allowed_nodes.count(graph.get_id(next));
         });
-        if (num_neighbors != 0 && unambiguous) {
+        unambiguous = (unambiguous && num_neighbors == 1);
+        if (unambiguous) {
             walk.push_back(to_add);
         }
     }
@@ -1047,6 +1069,12 @@ void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathDeletableHand
                 }
                 
                 auto step = beginning ? graph.path_begin(path_handle) : graph.path_back(path_handle);
+                if (step == graph.path_end(path_handle) || step == graph.path_front_end(path_handle)) {
+                    if (debug) {
+                        cerr << "path is empty, skipping" << endl;
+                    }
+                    continue;
+                }
                 
                 // are there any other phase paths that end here?
                 int num_overlapping = 0;
@@ -1090,6 +1118,9 @@ void HamiltonianChainer::extend_unambiguous_phase_paths(MutablePathDeletableHand
                     });
                     if (unambiguous && to_add != as_handle(-1)) {
                         // we found a single, unambiguous extension into this component
+                        if (debug) {
+                            cerr << "adding unambiguous extension to " << graph.get_id(to_add) << (graph.get_is_reverse(to_add) ? "-" : "+") << endl;
+                        }
                         if (beginning) {
                             graph.prepend_step(path_handle, to_add);
                             step = graph.path_begin(path_handle);
@@ -1137,59 +1168,87 @@ void HamiltonianChainer::purge_null_phase_paths(MutablePathDeletableHandleGraph&
     }
 }
 
-void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const {
+void HamiltonianChainer::write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                                               const MultiContactGraph& contact_graph) const {
     
     path output_path = output_dir / "chains.csv";
     ofstream file(output_path);
     
-    const string cap_0 = "Navy Blue";
+    if (!file.is_open() || !file.good()) {
+        throw std::runtime_error("ERROR: could not write to file: " + output_path.string());
+    }
+    
+    const string cap_0 = "Dark Blue";
     const string cap_1 = "Dark Red";
     const string cap_both = "Indigo";
     const string middle_0 = "Cornflower Blue";
     const string middle_1 = "Crimson";
     const string middle_both = "Dark Orchid";
+    const string unchained_0 = "Powder Blue";
+    const string unchained_1 = "Light Coral";
     
     file << "Name,Color\n";
     path_graph->for_each_handle([&](const handle_t& handle) {
-        bool on_hap_0 = false, on_hap_1 = false, is_cap = false;
+        bool on_hap_0 = false, on_hap_1 = false, on_hap_0_path = false, on_hap_1_path = false, is_cap = false;
         path_graph->for_each_step_on_handle(handle, [&](const step_handle_t& step) {
             auto path = path_graph->get_path_handle_of_step(step);
             if (phase_paths[0].count(path)) {
+                on_hap_0_path = true;
                 on_hap_0 = true;
                 if (step == path_graph->path_begin(path) || step == path_graph->path_back(path)) {
                     is_cap = true;
                 }
             }
             else if (phase_paths[1].count(path)) {
+                on_hap_1_path = true;
                 on_hap_1 = true;
                 if (step == path_graph->path_begin(path) || step == path_graph->path_back(path)) {
                     is_cap = true;
                 }
             }
         });
+        if (contact_graph.has_node(path_graph->get_id(handle))) {
+            if (contact_graph.get_partition(path_graph->get_id(handle)) == -1) {
+                on_hap_0 = true;
+            }
+            else if (contact_graph.get_partition(path_graph->get_id(handle)) == 1) {
+                on_hap_1 = true;
+            }
+        }
+        if (debug) {
+            cerr << path_graph->get_id(handle) << " / " << id_map.get_name(path_graph->get_id(handle)) << " is on hap0? " << on_hap_0 << ", is on hap1? " << on_hap_1 << " is on hap0 path? " << on_hap_0_path << ", is on hap1 path? " << on_hap_1_path << ", is a cap? " << is_cap << endl;;
+        }
         if (on_hap_0 || on_hap_1) {
             string color;
-            if (is_cap) {
-                if (on_hap_0 && on_hap_1) {
-                    color = cap_both;
-                }
-                else if (on_hap_0) {
-                    color = cap_0;
+            if (on_hap_0_path || on_hap_1_path) {
+                if (is_cap) {
+                    if (on_hap_0_path && on_hap_1_path) {
+                        color = cap_both;
+                    }
+                    else if (on_hap_0_path) {
+                        color = cap_0;
+                    }
+                    else {
+                        color = cap_1;
+                    }
                 }
                 else {
-                    color = cap_1;
+                    if (on_hap_0_path && on_hap_1_path) {
+                        color = middle_both;
+                    }
+                    else if (on_hap_0_path) {
+                        color = middle_0;
+                    }
+                    else {
+                        color = middle_1;
+                    }
                 }
             }
+            else if (on_hap_0) {
+                color = unchained_0;
+            }
             else {
-                if (on_hap_0 && on_hap_1) {
-                    color = middle_both;
-                }
-                else if (on_hap_0) {
-                    color = middle_0;
-                }
-                else {
-                    color = middle_1;
-                }
+                color = unchained_1;
             }
             file << id_map.get_name(path_graph->get_id(handle)) << ',' << color << '\n';
         }
