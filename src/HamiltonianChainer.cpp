@@ -194,6 +194,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                     for (auto alt_set : {&alt_component.first, &alt_component.second}) {
                         for (auto member_id : *alt_set) {
                             if (!bridge_component.has_node(member_id)) {
+                                if (debug) {
+                                    cerr << "node " << member_id << " of alt component is not present in bridge component" << endl;
+                                }
                                 // a member of this alt set is not found in the bridge component.
                                 // this makes it less likely that the bridge component represents
                                 // a pair of allelic sequences, but we'll still allow it as long as
@@ -202,9 +205,15 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                                 // verkko graphs, but it could stand to be a bit more principled
                                 handle_t missing_node = graph.get_handle(member_id);
                                 bool no_edges = graph.follow_edges(missing_node, false, [&](const handle_t& null) {
+                                    if (debug) {
+                                        cerr << "alt has an edge to " << graph.get_id(null) << endl;
+                                    }
                                     return false;
                                 });
                                 no_edges = no_edges && graph.follow_edges(missing_node, true, [&](const handle_t& null) {
+                                    if (debug) {
+                                        cerr << "alt has an edge to " << graph.get_id(null) << endl;
+                                    }
                                     return false;
                                 });
                                 if (!no_edges) {
@@ -232,6 +241,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
             
             if (!all_phasable) {
                 // the nodes had alts that are outside this bridge component
+                if (debug) {
+                    cerr << "skipping since all alts are not present" << endl;
+                }
                 return;
             }
             
