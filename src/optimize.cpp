@@ -439,6 +439,9 @@ void monte_carlo_phase_contacts(
 
     path orientations_path = output_dir / ("orientations_final.csv");
     orientation_distribution.write_contact_map(orientations_path, id_map);
+
+    // Reset the contact graph to the unmerged state so its alts can be used for chaining in future methods
+    contact_graph = unmerged_contact_graph;
 }
 
 
