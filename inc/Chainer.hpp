@@ -57,8 +57,29 @@ namespace gfase {
 
 using chain_t = deque <set <nid_t> >;
 
+/*
+ * The public-facing interface we will expect from all chainers
+ */
+class AbstractChainer {
+public:
+    virtual ~AbstractChainer() = default;
+    
+    // add phased haplotype paths to the graph
+    virtual void generate_chain_paths(MutablePathDeletableHandleGraph& graph,
+                                      const IncrementalIdMap<string>& id_map,
+                                      const MultiContactGraph& contact_graph) = 0;
+    
+    // is this the name of one of the phased haplotype paths?
+    virtual bool has_phase_chain(const string& name) const = 0;
+    // what is the partition of the phased hapotype path?
+    virtual int8_t get_partition(const string& name) const = 0;
+    // output any relevant information to bandage
+    virtual void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                                       const MultiContactGraph& contact_graph) const = 0;
+};
 
-class Chainer {
+
+class Chainer : public AbstractChainer {
     unordered_map<string,int8_t> path_phases;
     unordered_map<nid_t,nid_t> node_pairs;
     unordered_set<nid_t> diploid_nodes;
@@ -115,7 +136,8 @@ public:
             const MultiContactGraph& contact_graph);
 
     // IO
-    void write_chainable_nodes_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map) const;
+    void write_chaining_results_to_bandage_csv(path output_dir, const IncrementalIdMap<string>& id_map,
+                                               const MultiContactGraph& contact_graph) const;
 
     // Accessing
     bool has_phase_chain(const string& name) const;
