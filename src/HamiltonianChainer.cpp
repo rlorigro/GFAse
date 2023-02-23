@@ -262,6 +262,13 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 }
                 return;
             }
+            if (phase_1_nodes.empty() && phase_0_nodes.empty()) {
+                // there are no phased nodes in this component
+                if (debug) {
+                    cerr << "skipping component is entirely unphased" << endl;
+                }
+                return;
+            }
             
             unordered_set<handle_t> start, end;
             if (incident_bridges.size() >= 1) {
@@ -505,9 +512,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     // the next ID we assign to a phase paths
     array<int, 2> next_path_ids{0, 0};
     // bipartite graph of paths that overlap each other at a bridge
-    unordered_map<path_handle_t, unordered_set<path_handle_t>>> bridge_overlap_graph;
+    unordered_map<path_handle_t, unordered_set<path_handle_t>> bridge_overlap_graph;
     // graph of paths on bridges that lie across a broken allele (which exists but is non-unique)
-    unordered_map<path_handle_t, unordered_set<path_handle_t>>> broken_allele_graph;
+    unordered_map<path_handle_t, unordered_set<path_handle_t>> broken_allele_graph;
     // whether we have already made chains with each component
     vector<bool> is_chained(chain_links.size(), false);
     
@@ -689,7 +696,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
         else {
             // the walk is broken in the middle
             if (debug) {
-                cerr << "there is a broken allele path in this component for haplotype " << haplotype << endl;
+                cerr << "thre is no unique hamiltonian allele in this component for haplotype " << haplotype << endl;
             }
             path_handle_t path_on_entry = curr_path;
             if (enter_left) {
@@ -710,6 +717,9 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 // so we let bridge overlaps propagate across this component
                 broken_allele_graph[path_on_entry].insert(curr_path);
                 broken_allele_graph[curr_path].insert(path_on_entry);
+                if (debug) {
+                    cerr << "added a broken allele edge between " << graph.get_path_name(path_on_entry) << " and " << graph.get_path_name(curr_path) << endl;
+                }
             }
         }
         
@@ -858,6 +868,19 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     
     // self loops are ambiguous, so we don't allow them in phased paths
     break_self_looping_phase_paths(graph, next_path_ids);
+    
+    if (debug) {
+        cerr << "final phase paths:" << endl;
+        for (int hap : {0, 1}) {
+            for (auto path_handle : phase_paths[hap]) {
+                cerr << graph.get_path_name(path_handle) << ":";
+                for (handle_t step : graph.scan_path(path_handle)) {
+                    cerr << " " << graph.get_id(step) << "(" << id_map.get_name(graph.get_id(step)) << ")" << (graph.get_is_reverse(step) ? "-" : "+");
+                }
+                cerr << endl;
+            }
+        }
+    }
 }
 
 string HamiltonianChainer::phase_path_name(int haplotype, int path_id) {
@@ -1217,8 +1240,8 @@ void HamiltonianChainer::purge_null_phase_paths(MutablePathDeletableHandleGraph&
 
 void HamiltonianChainer::purge_mostly_unphased_phase_paths(MutablePathDeletableHandleGraph& graph,
                                                            const MultiContactGraph& contact_graph,
-                                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>>& bridge_overlap_graph,
-                                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>>& broken_allele_graph) {
+                                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& bridge_overlap_graph,
+                                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& broken_allele_graph) {
     
     
     // calculate the propotion of each phase path that is made up by phased haploid sequence
@@ -1240,6 +1263,9 @@ void HamiltonianChainer::purge_mostly_unphased_phase_paths(MutablePathDeletableH
             if (phased_len || unphased_len) {
                 proportion = double(phased_len) / double(phased_len + unphased_len);
             }
+            if (debug) {
+                cerr << "phase path " << graph.get_path_name(path_handle) << " has haploid proportion " << proportion << endl;
+            }
             haploid_proportion[path_handle] = proportion;
         }
     }
@@ -1248,28 +1274,46 @@ void HamiltonianChainer::purge_mostly_unphased_phase_paths(MutablePathDeletableH
     // of good-looking phase paths
     // TODO: it would be more consistent to consolidate broken alleles and let the broken
     // part of the allele also contribute to the haploid proportion...
-    unordered_set<path_handle_t> safe;
+    unordered_set<path_handle_t> traversed;
     for (int hap : {0, 1}) {
         for (auto path_handle : phase_paths[hap]) {
-            if (safe.count(path_handle) || haploid_proportion.at(path_handle) < min_haploid_proportion) {
+            if (traversed.count(path_handle) || haploid_proportion.at(path_handle) < min_haploid_proportion) {
                 // we've either already seen this path or it's not good enough to start of
                 continue;
             }
+            if (debug) {
+                cerr << "starting traversal of safe overlapping paths from " << graph.get_path_name(path_handle) << endl;
+            }
             
-            safe.insert(path_handle);
+            traversed.insert(path_handle);
             vector<path_handle_t> stack(1, path_handle);
             while (!stack.empty()) {
                 auto here = stack.back();
                 stack.pop_back();
+                if (debug) {
+                    cerr << "traversal at " << graph.get_path_name(here) << endl;
+                }
+                
                 // traverse paths that overlap on a bridge
                 if (bridge_overlap_graph.count(here)) {
                     for (auto next : bridge_overlap_graph.at(here)) {
                         // this is a partner of a seemingly good phase path
-                        if (!safe.count(next)) {
-                            safe.insert(next);
+                        if (!traversed.count(next)) {
+                            traversed.insert(next);
+                            if (debug) {
+                                cerr << "mark bridge overlap " << graph.get_path_name(next) << " as safe" << endl;
+                            }
                             if (haploid_proportion.at(next) >= min_haploid_proportion) {
                                 // it is also a seemingly good phase path itself
                                 stack.push_back(next);
+                                if (debug) {
+                                    cerr << "queueing up " << graph.get_path_name(next) << " for traversal" << endl;
+                                }
+                            }
+                            else {
+                                if (debug) {
+                                    cerr << "haploid proportion of " << haploid_proportion.at(next) << " is too low to traverse through" << graph.get_path_name(next) << endl;
+                                }
                             }
                         }
                     }
@@ -1278,8 +1322,11 @@ void HamiltonianChainer::purge_mostly_unphased_phase_paths(MutablePathDeletableH
                 if (broken_allele_graph.count(here)) {
                     for (auto next : broken_allele_graph.at(here)) {
                         // this is a partner of a seemingly good phase path
-                        if (!safe.count(next)) {
-                            safe.insert(next);
+                        if (!traversed.count(next)) {
+                            if (debug) {
+                                cerr << "mark broken allele  " << graph.get_path_name(next) << " as safe" << endl;
+                            }
+                            traversed.insert(next);
                             // this path inherits the seemingly-goodness of the other side of
                             // its broken allele
                             stack.push_back(next);
@@ -1294,11 +1341,14 @@ void HamiltonianChainer::purge_mostly_unphased_phase_paths(MutablePathDeletableH
     for (int hap : {0, 1}) {
         vector<path_handle_t> to_remove;
         for (auto path_handle : phase_paths[hap]) {
-            if (!safe.count(path_handle)) {
+            if (!traversed.count(path_handle)) {
                 to_remove.push_back(path_handle);
             }
         }
         for (auto path_handle : to_remove) {
+            if (debug) {
+                cerr << "destroying untraversed path " << graph.get_path_name(path_handle) << endl;
+            }
             graph.destroy_path(path_handle);
             phase_paths[hap].erase(path_handle);
         }

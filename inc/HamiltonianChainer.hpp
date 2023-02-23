@@ -101,8 +101,8 @@ private:
     // a path that does meet the minimum
     void purge_mostly_unphased_phase_paths(MutablePathDeletableHandleGraph& graph,
                                            const MultiContactGraph& contact_graph,
-                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>>& bridge_overlap_graph,
-                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>>& broken_allele_graph);
+                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& bridge_overlap_graph,
+                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& broken_allele_graph);
 };
 
 }
