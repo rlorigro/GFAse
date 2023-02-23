@@ -47,10 +47,16 @@ public:
     // the number of iterations we allow in a Hamiltonian path problem
     size_t hamiltonian_max_iters = 5000;
     
+    // we will discard putative haplotypes consisting of less than this proportion of
+    // phased haploid sequence
+    double min_haploid_proportion = 0.1;
+    
 private:
     
+    // keep track of which of the paths are the phase paths we added
     array<unordered_set<path_handle_t>, 2> phase_paths;
-    array<int, 2> next_path_ids{0, 0};
+    // we remember the graph so that we can use some of its in-built indexes in the public inferface
+    // TODO: ugly solution
     const PathHandleGraph* path_graph = nullptr;
     
     // returns the confident left and right sides of the allelic walk through a component.
@@ -83,11 +89,20 @@ private:
                                         const MultiContactGraph& contact_graph);
     
     // split phase paths into 2 at self-loops
-    void break_self_looping_phase_paths(MutablePathDeletableHandleGraph& graph);
+    void break_self_looping_phase_paths(MutablePathDeletableHandleGraph& graph,
+                                        array<int, 2> next_path_ids);
     
     // remove phase paths that don't actually have any phased, haploid content
     void purge_null_phase_paths(MutablePathDeletableHandleGraph& graph,
                                 const MultiContactGraph& contact_graph);
+    
+    // remove phase paths that don't meet the minimum phased proportion, unless they are extensions of
+    // alleles that exist but weren't fully resolved, or are the alternate allele on a bridge for
+    // a path that does meet the minimum
+    void purge_mostly_unphased_phase_paths(MutablePathDeletableHandleGraph& graph,
+                                           const MultiContactGraph& contact_graph,
+                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& bridge_overlap_graph,
+                                           const unordered_map<path_handle_t, unordered_set<path_handle_t>>& broken_allele_graph);
 };
 
 }

@@ -563,7 +563,7 @@ int main (int argc, char* argv[]){
     size_t n_rounds = 2;
     bool use_homology = false;
     bool skip_unzip = false;
-    bool use_hamiltonian_chainer = false;
+    bool use_simple_chainer = false;
 
     CLI::App app{"App description"};
 
@@ -615,9 +615,9 @@ int main (int argc, char* argv[]){
             "(Default = " + to_string(use_homology) + ")\tUse sequence homology to find alts. For whenever the GFA does not have Shasta node labels.");
 
     app.add_flag(
-            "--use_hamiltonian_chainer",
-            use_hamiltonian_chainer,
-            "(Default = " + to_string(use_hamiltonian_chainer) + ")\tBuild chains using Hamiltonian paths of bridge components instead of simple bubbles.");
+            "--use_simple_chainer",
+                 use_simple_chainer,
+            "(Default = " + to_string(use_simple_chainer) + ")\tBuild chains using only simple bubbles.");
     app.add_flag(
             "--skip_unzip",
             skip_unzip,
@@ -636,7 +636,7 @@ int main (int argc, char* argv[]){
             n_rounds,
             use_homology,
             skip_unzip,
-            use_hamiltonian_chainer,
+            !use_simple_chainer,
             n_threads
     );
 
