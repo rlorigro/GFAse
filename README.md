@@ -177,3 +177,5 @@ A recent ultra-long nanopore Shasta assembly with high phase-block contiguity af
 Three examples of shifts in NGx in Shasta assemblies after applying GFAse with k-mers. Note that initial phased contiguity in Shasta is not necessarily a predictor of phased contiguity after GFAse.
 ![image](https://user-images.githubusercontent.com/28764332/169709283-db012bc4-5fc7-4eee-9901-59fe83293fd6.png)
 
+### Citation
+Lorig-Roach, Ryan, Melissa Meredith, Jean Monlong, Miten Jain, Hugh Olsen, Brandy McNulty, David Porubsky, et al. 2023. “Phased Nanopore Assembly with Shasta and Modular Graph Phasing with GFAse.” bioRxiv. https://doi.org/10.1101/2023.02.21.529152.
