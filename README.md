@@ -16,7 +16,7 @@ Inputs are (1) assembly GFA, (2) read FASTA, (3) parameters (see below for `min_
 
 ## Installation
 
-If you cannot run a WDL or you prefer to perform the alignment step manually, use these directions:
+If you cannot run a WDL or you prefer to perform the alignment step manually, use these directions. You will also need whichever aligner is most appropriate for your data type. We have ued BWA-mem for Hi-C (illumina) or Minimap2 for Pore-C (ONT)
 
 Tested on Ubuntu20.04 
 
