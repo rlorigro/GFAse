@@ -159,82 +159,6 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 
-###############################################
-## ------------------------------------------ #
-## -------- LINKING EXTERNAL LIBRARY -------- #
-## --------------- bamtools ----------------- #
-## ------------------------------------------ #
-###############################################
-#
-## Need to explicitly enable ExternalProject functionality
-#include(ExternalProject)
-#
-#message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-#message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
-#message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
-#message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-#
-#if (dev)
-#    # Download or update library as an external project
-#    ExternalProject_Add(project_bamtools
-#            GIT_REPOSITORY https://github.com/pezmaster31/bamtools.git
-#            DOWNLOAD_COMMAND ""
-#            UPDATE_COMMAND ""
-#            PREFIX ${CMAKE_SOURCE_DIR}/external/bamtools/
-#            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bamtools/
-#            BUILD_IN_SOURCE True
-#            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bamtools/
-#            INSTALL_COMMAND make install
-#            )
-#else()
-#    # Download or update library as an external project
-#    ExternalProject_Add(project_bamtools
-#            GIT_REPOSITORY https://github.com/pezmaster31/bamtools.git
-#            PREFIX ${CMAKE_SOURCE_DIR}/external/bamtools/
-#            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/bamtools/
-#            BUILD_IN_SOURCE True
-#            INSTALL_DIR ${CMAKE_SOURCE_DIR}/external/bamtools/
-#            INSTALL_COMMAND make install
-#            )
-#endif()
-#
-## Define INSTALL_DIR as the install directory for external library
-#ExternalProject_Get_Property(project_bamtools INSTALL_DIR)
-#
-#if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-#    error("NO MACs")
-#elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-#    set(LIB_SUFFIX "a")
-#endif()
-#
-#
-## Create new library for external project (so it can be linked with main library)
-#add_library(bamtools STATIC IMPORTED)
-#set_property(TARGET bamtools
-#        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbamtools.${LIB_SUFFIX})
-#
-## Define library as dependent on the downloaded project
-#add_dependencies(bamtools
-#        project_bamtools
-#        )
-#
-## Define main library as dependent on the downloaded project (transitively)
-#add_dependencies(GFAse bamtools)
-#
-## Ensure that main library has access to primary dependencies' and secondary dependencies' headers
-#include_directories(external/bamtools/include/
-#        external/bamtools/include/bamtools/
-#        external/bamtools/include/bamtools/api
-#        external/bamtools/include/bamtools/algorithms
-#        external/bamtools/include/bamtools/shared
-#        )
-#
-## Add runtime path for main library so it can access external library
-##set_property(TARGET GFAse PROPERTY INSTALL_RPATH "$ORIGIN" "${INSTALL_DIR}/bin/bamtools")
-#
-#message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
-
-
 ##############################################
 # ------------------------------------------ #
 # -------- LINKING EXTERNAL LIBRARY -------- #
@@ -243,8 +167,6 @@ endif()
 ##############################################
 
 message(STATUS "Fetching htslib")
-
-# https://github.com/samtools/htslib/releases/download/1.15.1/htslib-1.15.1.tar.bz2
 
 find_package(ZLIB REQUIRED)
 
@@ -282,89 +204,6 @@ include_directories(
         ${CMAKE_SOURCE_DIR}/external/
 )
 
-#set(HTSLIB_SOURCES
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/arith_dynamic.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/fqzcomp_qual.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/htscodecs.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/pack.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static4x16pr.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static32x16pr.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static32x16pr_avx2.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static32x16pr_avx512.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static32x16pr_neon.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rANS_static32x16pr_sse4.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/tokenise_name3.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/rle.c
-##        ${project_htslib_SOURCE_DIR}/htscodecs/htscodecs/utils.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_codecs.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_decode.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_encode.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_external.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_index.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_io.c
-##        ${project_htslib_SOURCE_DIR}/cram/cram_samtools.c
-#        ${project_htslib_SOURCE_DIR}/cram/cram_stats.c
-##        ${project_htslib_SOURCE_DIR}/cram/files.c
-#        ${project_htslib_SOURCE_DIR}/cram/mFILE.c
-#        ${project_htslib_SOURCE_DIR}/cram/open_trace_file.c
-#        ${project_htslib_SOURCE_DIR}/cram/pooled_alloc.c
-##        ${project_htslib_SOURCE_DIR}/cram/rANS_static.c
-##        ${project_htslib_SOURCE_DIR}/cram/sam_header.c
-#        ${project_htslib_SOURCE_DIR}/cram/string_alloc.c
-##        ${project_htslib_SOURCE_DIR}/os/rand.c
-##        ${project_htslib_SOURCE_DIR}/test/fieldarith.c
-##        ${project_htslib_SOURCE_DIR}/test/hfile.c
-##        ${project_htslib_SOURCE_DIR}/test/hts_endian.c
-##        ${project_htslib_SOURCE_DIR}/test/sam.c
-##        ${project_htslib_SOURCE_DIR}/test/test-bcf-sr.c
-##        ${project_htslib_SOURCE_DIR}/test/test-regidx.c
-##        ${project_htslib_SOURCE_DIR}/test/test-vcf-api.c
-##        ${project_htslib_SOURCE_DIR}/test/test-vcf-sweep.c
-##        ${project_htslib_SOURCE_DIR}/test/test_bgzf.c
-##        ${project_htslib_SOURCE_DIR}/test/test_view.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads1.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads2.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads3.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads4.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads5.c
-##        ${project_htslib_SOURCE_DIR}/test/thrash_threads6.c
-#        ${project_htslib_SOURCE_DIR}/bcf_sr_sort.c
-#        ${project_htslib_SOURCE_DIR}/bgzf.c
-#        ${project_htslib_SOURCE_DIR}/bgzip.c
-#        ${project_htslib_SOURCE_DIR}/errmod.c
-#        ${project_htslib_SOURCE_DIR}/faidx.c
-#        ${project_htslib_SOURCE_DIR}/header.c
-#        ${project_htslib_SOURCE_DIR}/hfile.c
-#        ${project_htslib_SOURCE_DIR}/hfile_gcs.c
-##        ${project_htslib_SOURCE_DIR}/hfile_libcurl.c
-##        ${project_htslib_SOURCE_DIR}/hfile_net.c
-##        ${project_htslib_SOURCE_DIR}/hfile_s3.c
-#        ${project_htslib_SOURCE_DIR}/hts.c
-#        ${project_htslib_SOURCE_DIR}/hts_os.c
-#        ${project_htslib_SOURCE_DIR}/hts_expr.c
-#        ${project_htslib_SOURCE_DIR}/htsfile.c
-#        ${project_htslib_SOURCE_DIR}/kfunc.c
-##        ${project_htslib_SOURCE_DIR}/knetfile.c
-#        ${project_htslib_SOURCE_DIR}/kstring.c
-#        ${project_htslib_SOURCE_DIR}/md5.c
-#        ${project_htslib_SOURCE_DIR}/multipart.c
-##        ${project_htslib_SOURCE_DIR}/plugin.c
-#        ${project_htslib_SOURCE_DIR}/probaln.c
-#        ${project_htslib_SOURCE_DIR}/realn.c
-#        ${project_htslib_SOURCE_DIR}/regidx.c
-#        ${project_htslib_SOURCE_DIR}/region.c
-#        ${project_htslib_SOURCE_DIR}/sam.c
-#        ${project_htslib_SOURCE_DIR}/synced_bcf_reader.c
-#        ${project_htslib_SOURCE_DIR}/tabix.c
-#        ${project_htslib_SOURCE_DIR}/tbx.c
-#        ${project_htslib_SOURCE_DIR}/textutils.c
-#        ${project_htslib_SOURCE_DIR}/thread_pool.c
-#        ${project_htslib_SOURCE_DIR}/vcf.c
-#        ${project_htslib_SOURCE_DIR}/vcf_sweep.c
-##        ${project_htslib_SOURCE_DIR}/vcfutils.c
-#        )
-
 message(STATUS "htslib_SOURCE_DIR: ${project_htslib_SOURCE_DIR}")
 
 
@@ -374,17 +213,14 @@ set(HTS_DIR _deps/project_htslib-src)
 add_custom_target(
         BUILD_HTS
         ALL
-        #        OUTPUT ${PROJECT_SOURCE_DIR}/external/htslib/config.h # //TODO: at build time ${htslib_SOURCE_DIR} is not actually populated!! is an empty string
         WORKING_DIRECTORY ${HTS_DIR}
         COMMAND pwd
         COMMAND autoreconf -i
-        #        COMMAND autoheader
         COMMAND ./configure --disable-lzma --disable-libcurl --disable-bz2 --disable-s3 --disable-gcs --without-libdeflate --disable-plugins
         COMMAND $(MAKE) print-config
         COMMAND $(MAKE) prefix=${CMAKE_SOURCE_DIR}/external/htslib/ install
 )
 
-#add_library(htslib ${HTSLIB_SOURCES})
 
 add_library(htslib STATIC IMPORTED)
 set_property(TARGET htslib
@@ -393,8 +229,6 @@ set_property(TARGET htslib
 
 add_dependencies(htslib BUILD_HTS)
 add_dependencies(GFAse htslib)
-
-#target_link_libraries(htslib pthread bz2 z curl)
 
 
 ##############################################
