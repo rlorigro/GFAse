@@ -10,7 +10,7 @@ Tool for phasing genomic graph data using parental or proximity ligation data.
 ## Automated workflow
 
 Check out the repository here:  
-https://github.com/meredith705/gfase_wdl/tree/75fea4e1e7746c9d48f81d8e29ba425d7c75b6f9
+https://github.com/meredith705/gfase_wdl
 
 Inputs are (1) assembly GFA, (2) read FASTA, (3) parameters (see below for `min_mapq`, `skip-unzip`, etc). Steps are dockerized and automated for ease of use.
 
