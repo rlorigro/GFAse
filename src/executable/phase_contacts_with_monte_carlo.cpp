@@ -356,6 +356,11 @@ void find_unlabeled_alts(
             min_ab_over_b
     );
 
+    if (to_be_aligned.empty()){
+        throw runtime_error("ERROR: no passing candidates in homology detection step. Check overlaps.csv and consider "
+                            "rerunning with different homology args.");
+    }
+
     remove_adjacencies_from_candidates(graph, id_map, to_be_aligned);
 
     MultiContactGraph alignment_graph;
