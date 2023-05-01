@@ -66,6 +66,14 @@ CigarOperation::CigarOperation(uint32_t length, char type):
     }
 }
 
+char CigarOperation::type() const {
+    return cigar_type[code];
+}
+
+uint32_t CigarOperation::length() const {
+    return op_length;
+}
+
 Cigar::Cigar(const std::string& cigar_string) {
     
     if (cigar_string == "*") {

@@ -35,7 +35,7 @@ void unzip_gfa(path gfa_path){
     IncrementalIdMap<string> id_map;
     Overlaps overlaps(graph);
 
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
     // Output an image of the graph, can be uncommented for debugging
 //    plot_graph(graph, "test_unzip_unedited");

@@ -468,7 +468,7 @@ void phase(
     cerr << t << "Loading GFA..." << '\n';
 
     // Construct graph from GFA
-    gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false, true);
 
     cerr << t << "Writing IDs to file..." << '\n';
 
