@@ -67,6 +67,8 @@ public:
     // and with query/ref roles swapped
     Cigar reverse() const;
     
+    // true if there are no CIGAR operations with length > 0
+    bool empty() const;
     // number of operations
     size_t size() const;
     // i-th operation
@@ -92,7 +94,7 @@ public:
     Overlaps() = default;
     ~Overlaps() = default;
     
-    
+    // record an overlap, ignores "*" and "0M" alignments
     void record_overlap(handle_t a, handle_t b, const string& cigar);
     
     // true if there are no overlaps recorded

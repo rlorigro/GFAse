@@ -164,6 +164,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
     KmerSets <FixedBinarySequence <T, T2> > ks(paternal_kmers, maternal_kmers);
 
     if (ks.get_k() != k){
@@ -172,7 +173,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     cerr << "Loading GFA..." << '\n';
 
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     cerr << "\tNumber of components in graph: " << graph.get_path_count() << '\n';
 

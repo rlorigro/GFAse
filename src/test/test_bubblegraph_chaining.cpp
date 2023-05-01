@@ -88,6 +88,7 @@ void chain(path output_dir, path gfa_path, size_t n_threads, bool use_topology, 
     IncrementalIdMap<string> id_map(false);
 
     HashGraph graph;
+    Overlaps overlaps(graph);
 
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph;
@@ -102,7 +103,7 @@ void chain(path output_dir, path gfa_path, size_t n_threads, bool use_topology, 
         cerr << t << "GFA provided - Loading graph..." << '\n';
 
         // Construct graph from GFA
-        gfa_to_handle_graph(graph, id_map, gfa_path, false);
+        gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
         cerr << t << "Constructing bubble graph..." << '\n';
 

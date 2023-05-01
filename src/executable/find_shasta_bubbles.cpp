@@ -43,8 +43,9 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    Overlaps overlaps(graph);
+    
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     BubbleGraph bubble_graph(id_map);
 

@@ -33,6 +33,7 @@ using std::cerr;
 void unzip_gfa(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
 
     gfa_to_handle_graph(graph, id_map, gfa_path);
 

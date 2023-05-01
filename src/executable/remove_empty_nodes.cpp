@@ -109,9 +109,10 @@ void splice_out_empty_nodes(MutablePathDeletableHandleGraph& graph){
 void clean_gfa(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
 
     cerr << "Loading GFA..." << '\n';
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
     splice_out_empty_nodes(graph);
 

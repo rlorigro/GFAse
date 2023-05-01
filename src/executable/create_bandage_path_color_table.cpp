@@ -329,8 +329,9 @@ array<uint8_t,3> Colors::hex_to_rgb(string hex){
 void create_color_table(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
 
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     path out_path = gfa_path;
     out_path.replace_extension(".path_colors.csv");

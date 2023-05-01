@@ -60,11 +60,12 @@ void chain(path output_dir, path gfa_path){
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
     HashGraph graph;
+    Overlaps overlaps(graph);
     MultiContactGraph contact_graph;
     Chainer chainer;
 
     // Construct graph from GFA
-    gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false, true);
 
     chainer.find_chainable_nodes(graph, id_map);
     chainer.harmonize_chain_orientations(graph);

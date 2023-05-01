@@ -37,8 +37,9 @@ int main(){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
 
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
     set<string> bfs_node_names;
     for_node_in_bfs(graph, 1, [&](const handle_t& h){

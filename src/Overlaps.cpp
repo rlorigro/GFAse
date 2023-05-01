@@ -6,6 +6,7 @@
 using std::to_string;
 using std::make_pair;
 using std::runtime_error;
+using std::move;
 
 ///
 /// M   I   D   N   S   H   P   =   X
@@ -119,6 +120,10 @@ Cigar Cigar::reverse() const {
     return reversed;
 }
 
+bool Cigar::empty() const {
+    return operations.empty();
+}
+
 size_t Cigar::size() const {
     return operations.size();
 }
@@ -140,7 +145,10 @@ Overlaps::Overlaps(const HandleGraph& graph) : graph(&graph) {
 }
 
 void Overlaps::record_overlap(handle_t a, handle_t b, const string& cigar) {
-    overlaps[graph->edge_handle(a, b)] = Cigar(cigar);
+    Cigar parsed(cigar);
+    if (!parsed.empty()) {
+        overlaps[graph->edge_handle(a, b)] = move(parsed);
+    }
 }
 
 bool Overlaps::has_overlap(handle_t a, handle_t b) const {

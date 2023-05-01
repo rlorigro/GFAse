@@ -37,8 +37,9 @@ int main(){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps(graph);
 
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
     unordered_set<string> cc1 = {"a", "b", "c"};
     unordered_set<string> cc2 = {"d", "e"};

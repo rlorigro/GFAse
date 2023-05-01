@@ -35,7 +35,8 @@ void infer_bubbles_from_alignment(
     IncrementalIdMap<string> id_map(false);
 
     HashGraph graph;
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    Overlaps overlaps(graph);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
     // Hashing params
     double sample_rate = 0.04;

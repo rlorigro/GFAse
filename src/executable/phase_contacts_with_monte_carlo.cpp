@@ -449,6 +449,9 @@ void phase(
 
     // How GFA is stored in memory
     HashGraph graph;
+    
+    // Overlaps between the sequences
+    Overlaps overlaps(graph);
 
     // To keep track of pairs of segments which exist in diploid bubbles
     MultiContactGraph contact_graph;
