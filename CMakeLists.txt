@@ -77,6 +77,7 @@ set(SOURCES
         src/MurmurHash3.cpp
         src/MultiContactGraph.cpp
         src/optimize.cpp
+	src/Overlaps.cpp
         src/VectorMultiContactGraph.cpp
         ##        src/OverlapMap.cpp
         src/Phase.cpp
