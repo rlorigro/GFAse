@@ -41,10 +41,12 @@ int main(){
 
     gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
-    unordered_set<string> cc1 = {"a", "b", "c"};
-    unordered_set<string> cc2 = {"d", "e"};
+    unordered_set<string> cc1 = {"a", "b", "c", "d"};
+    unordered_set<string> cc2 = {"e", "f"};
+    unordered_set<string> cc3 = {"g", "h"};
     bool found_cc1 = false;
     bool found_cc2 = false;
+    bool found_cc3 = false;
 
     for_each_connected_component(graph, [&](unordered_set<nid_t>& connected_component){
         unordered_set<string> cc;
@@ -60,6 +62,9 @@ int main(){
         else if (cc == cc2){
             found_cc2 = true;
         }
+        else if (cc == cc3){
+            found_cc3 = true;
+        }
         else{
             cerr << "BAD COMPONENT:" << '\n';
             for (auto& item: cc){
@@ -72,9 +77,13 @@ int main(){
     if (not found_cc1){
         throw runtime_error("FAIL: cc1 not found");
     }
-
+    
     if (not found_cc2){
         throw runtime_error("FAIL: cc2 not found");
+    }
+    
+    if (not found_cc3){
+        throw runtime_error("FAIL: cc3 not found");
     }
 
     vector<HashGraph> connected_component_graphs;
