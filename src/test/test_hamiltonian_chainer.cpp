@@ -122,6 +122,7 @@ void run_test(string& data_file,
     sort(correct_phase_handle_paths.begin(), correct_phase_handle_paths.end());
     
     HamiltonianChainer chainer;
+    chainer.min_haploid_proportion = 0.0; // we don't want this heuristic for these tests
     chainer.generate_chain_paths(graph, id_map, contact_graph);
     
     vector<vector<handle_t>> identified_phase_handle_paths;
@@ -301,6 +302,8 @@ int main(){
             {{"n", false}, {"p", false}, {"q", false}, {"s", false}},
             {{"g_b", false}, {"i", false}, {"j", false}, {"l", false}, {"m", false}, {"o", false}, {"p", false}, {"r", false}, {"t", false}},
             {{"a2", false}, {"b2", false}, {"d2", false}, {"f2", false}},
+            {{"g2", false}},
+            {{"g2", false}},
             {{"h2", false}, {"j2", false}, {"x2", false}},
             {{"a2", false}, {"c2", false}, {"d2", false}, {"e2", false}},
             {{"i2", false}, {"j2", false}, {"x2", false}},
