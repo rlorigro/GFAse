@@ -38,7 +38,7 @@ using std::cerr;
 void extract_haplotype_kmers_from_gfa(path gfa_path, size_t k){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 

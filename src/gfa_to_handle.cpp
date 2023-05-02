@@ -63,7 +63,7 @@ void gfa_to_handle_graph(
         handle_t a = graph.get_handle(source_id, reversal_a);
         handle_t b = graph.get_handle(sink_id, reversal_b);
         graph.create_edge(a, b);
-        overlaps.record_overlap(a, b, cigar);
+        overlaps.record_overlap(graph, a, b, cigar);
     });
 
     if (ignore_paths){

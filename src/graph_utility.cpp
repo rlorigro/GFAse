@@ -256,8 +256,10 @@ tuple<nid_t,nid_t,bool> try_translate_id(const HandleGraph& source_graph,
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
+        vector<Overlaps>& comp_overlaps,
         vector <vector <pair <string, string> > >& in_edges,
         vector <vector <pair <string, string> > >& out_edges,
         const unordered_set<nid_t>& do_not_visit,
@@ -284,6 +286,7 @@ void split_connected_components(
         // Allocate new elements in the vectors for this component
         graphs.emplace_back();
         id_maps.emplace_back();
+        comp_overlaps.emplace_back();
         in_edges.emplace_back();
         out_edges.emplace_back();
 
@@ -333,6 +336,11 @@ void split_connected_components(
 
             assert(not graphs.back().has_edge(other_handle_a, other_handle_b));
             graphs.back().create_edge(other_handle_a, other_handle_b);
+            
+            if (overlaps.has_overlap(graph, handle_a, handle_b)) {
+                comp_overlaps.back().record_overlap(graphs.back(), other_handle_a, other_handle_b,
+                                                    overlaps.get_overlap(handle_a, handle_b));
+            }
         },
         [&](const handle_t& handle_a, const handle_t& handle_b){
             auto id_a = graph.get_id(handle_a);
@@ -391,6 +399,12 @@ void split_connected_components(
         if (delete_visited_components) {
             for (auto& n: to_be_deleted) {
                 auto h = graph.get_handle(n);
+                graph.follow_edges(h, true, [&](const handle_t& prev) {
+                    overlaps.remove_overlap(graph, prev, h);
+                });
+                graph.follow_edges(h, false, [&](const handle_t& next) {
+                    overlaps.remove_overlap(graph, h, next);
+                });
                 graph.destroy_handle(h);
             }
         }
@@ -401,6 +415,7 @@ void split_connected_components(
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
         bool delete_visited_components) {
@@ -415,6 +430,7 @@ void split_connected_components(
     while (not all_nodes.empty()) {
         graphs.emplace_back();
         id_maps.emplace_back();
+        comp_overlaps.emplace_back();
 
         unordered_set<string> paths_to_be_copied;
         unordered_set<nid_t> to_be_deleted;
@@ -462,6 +478,11 @@ void split_connected_components(
 
             assert(not graphs.back().has_edge(other_handle_a, other_handle_b));
             graphs.back().create_edge(other_handle_a, other_handle_b);
+            
+            if (overlaps.has_overlap(graph, handle_a, handle_b)) {
+                comp_overlaps.back().record_overlap(graphs.back(), other_handle_a, other_handle_b,
+                                                    overlaps.get_overlap(handle_a, handle_b));
+            }
         });
 
         // Duplicate all the paths
@@ -493,6 +514,12 @@ void split_connected_components(
         if (delete_visited_components) {
             for (auto& n: to_be_deleted) {
                 auto h = graph.get_handle(n);
+                graph.follow_edges(h, true, [&](const handle_t& prev) {
+                    overlaps.remove_overlap(graph, prev, h);
+                });
+                graph.follow_edges(h, false, [&](const handle_t& next) {
+                    overlaps.remove_overlap(graph, h, next);
+                });
                 graph.destroy_handle(h);
             }
         }
@@ -585,6 +612,12 @@ void split_connected_components(
         if (delete_visited_components) {
             for (auto& n: to_be_deleted) {
                 auto h = graph.get_handle(n);
+                graph.follow_edges(h, true, [&](const handle_t& prev) {
+                    overlaps.remove_overlap(graph, prev, h);
+                });
+                graph.follow_edges(h, false, [&](const handle_t& next) {
+                    overlaps.remove_overlap(graph, h, next);
+                });
                 graph.destroy_handle(h);
             }
         }
@@ -859,65 +892,99 @@ void un_extend_paths(
 }
 
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths, bool delete_islands){
-    unordered_set<nid_t> nodes_to_be_destroyed;
-    vector<string> path_names;
-    string temporary_suffix = "_hap";
-
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, const Overlaps& overlaps, bool keep_paths, bool delete_islands){
+    
+    unordered_set<handle_t> nodes_to_be_destroyed;
     vector<path_handle_t> paths;
 
 //    cerr << "Paths in component:" << '\n';
     graph.for_each_path_handle([&](const path_handle_t& p) {
         paths.emplace_back(p);
-        path_names.emplace_back(graph.get_path_name(p));
 //        cerr << graph.get_path_name(p) << '\n';
     });
 
     for (auto& p: paths){
+        
+        // Handle empty paths as a special case
+        if (graph.is_empty(p)) {
+            graph.destroy_path(p);
+            continue;
+        }
+        
         string path_sequence;
-
+        handle_t previous;
         graph.for_each_step_in_path(p, [&](const step_handle_t s){
+            
             handle_t h = graph.get_handle_of_step(s);
-            nid_t n = graph.get_id(h);
 
             string sequence = graph.get_sequence(h);
-            path_sequence += sequence;
+            if (s == graph.path_begin(graph.get_path_handle_of_step(s))) {
+                // the first iteration, no overlap
+                path_sequence = move(sequence);
+            }
+            else if (overlaps.has_overlap(graph, previous, h)) {
+                // we only add the part that wasn't overlapped
+                size_t length_overlapped = overlaps.get_overlap(graph, previous, h).aligned_length().second;
+                path_sequence += sequence.substr(length_overlapped, sequence.size());
+            }
+            else {
+                // we can add the whole thing
+                path_sequence += sequence;
+            }
 
-            string name = id_map.get_name(n);
-
-            nodes_to_be_destroyed.emplace(n);
+            nodes_to_be_destroyed.emplace(h);
+            previous = h;
         });
 
-        auto name = graph.get_path_name(p);
-        string haplotype_path_name = name + temporary_suffix;
-
-//        cerr << haplotype_path_name << '\n';
-
-        auto new_id = id_map.insert(name);
+        // Make the new ndoe
+        string name = graph.get_path_name(p);
+        int64_t new_id = id_map.insert(name);
         handle_t haplotype_handle = graph.create_handle(path_sequence, new_id);
-
+        
         auto path_start_handle = graph.get_handle_of_step(graph.path_begin(p));
         auto path_stop_handle = graph.get_handle_of_step(graph.path_back(p));
-
+        
         // Find neighboring nodes for the path and create edges to the new haplotype node (LEFT)
-        graph.follow_edges(path_start_handle, true, [&](const handle_t& other){
-            graph.create_edge(other, haplotype_handle);
+        graph.follow_edges(path_start_handle, true, [&](const handle_t& other) {
+            if (other == path_stop_handle) {
+                // preserve cyclic path
+                graph.create_edge(haplotype_handle, haplotype_handle);
+            }
+            else if (other == graph.flip(path_start_handle)) {
+                // preserve left hairpin
+                graph.create_edge(graph.flip(haplotype_handle), haplotype_handle);
+            }
+            else {
+                // normal edge
+                graph.create_edge(other, haplotype_handle);
+            }
         });
-
+        
         // Find neighboring nodes for the path and create edges to the new haplotype node (RIGHT)
-        graph.follow_edges(path_stop_handle, false, [&](const handle_t& other){
-            graph.create_edge(haplotype_handle, other);
+        graph.follow_edges(path_stop_handle, false, [&](const handle_t& other) {
+            if (other == graph.flip(path_stop_handle)) {
+                // preserve right hairpin
+                graph.create_edge(haplotype_handle, graph.flip(haplotype_handle));
+            }
+            else {
+                // normal edge (or maybe cyclic path that has already been handled in left direction)
+                graph.create_edge(haplotype_handle, other);
+            }
         });
-
-        // Label the new haplotype node using a path_name to indicate which path it is derived from
-        // TODO: track provenance?
-        auto haplotype_path_handle = graph.create_path_handle(haplotype_path_name);
-        graph.append_step(haplotype_path_handle, haplotype_handle);
+        
+        // Replace the old path with the new node
+        bool is_circular = graph.get_is_circular(p);
+        graph.destroy_path(p);
+        if (keep_paths) {
+            auto haplotype_path_handle = graph.create_path_handle(name);
+            graph.append_step(haplotype_path_handle, haplotype_handle);
+            graph.set_circularity(haplotype_path_handle, is_circular);
+        }
     }
 
     // Destroy the nodes that have had their sequences duplicated into haplotypes
-    for (auto& n: nodes_to_be_destroyed){
-        graph.destroy_handle(graph.get_handle(n));
+    for (auto& h: nodes_to_be_destroyed){
+        graph.destroy_handle(h);
     }
 
     // If there were no paths in this entire component, dont delete anything, just leave it as is
@@ -951,24 +1018,6 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
                 }
             }
         });
-    }
-
-    // Go back and rename all the paths so they don't have the unnecessary added suffix
-    for (const auto& name: path_names){
-        // Find the path that was renamed with a suffix, and find its only node (all unzipped paths are singletons)
-        auto path_name_with_suffix = name + temporary_suffix;
-        auto p_suffix = graph.get_path_handle(path_name_with_suffix);
-
-        if (keep_paths) {
-            auto h = graph.get_handle_of_step(graph.path_begin(p_suffix));
-
-            // Make a copy without the suffix
-            auto p = graph.create_path_handle(name);
-            graph.append_step(p, h);
-        }
-
-        // Destroy the path with the suffix
-        graph.destroy_path(p_suffix);
     }
 }
 

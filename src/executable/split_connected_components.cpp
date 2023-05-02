@@ -36,7 +36,7 @@ using std::cerr;
 void split_gfa_components(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     cerr << "Loading GFA..." << '\n';
     gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);

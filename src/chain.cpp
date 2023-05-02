@@ -106,15 +106,15 @@ void write_chaining_info_to_file(
 
 void chain_phased_gfa(
         MutablePathDeletableHandleGraph& graph,
-        IncrementalIdMap<string>& id_map, const
-        BubbleGraph& bubble_graph,
+        IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
+        const BubbleGraph& bubble_graph,
         path output_dir,
         bool write_gfa,
         bool write_fasta
         ){
 
     vector<HashGraph> connected_components;
-    vector <IncrementalIdMap<string> > connected_component_ids;
 
     cerr << "Finding connected components..." << '\n';
 
@@ -123,7 +123,7 @@ void chain_phased_gfa(
     cerr << "Chaining phased bubbles..." << '\n';
 
     for (size_t c=0; c<connected_components.size(); c++){
-        unzip(connected_components[c], connected_component_ids[c], false);
+        unzip(connected_components[c], id_map, overlaps, false);
 
         auto& cc_graph = connected_components[c];
 

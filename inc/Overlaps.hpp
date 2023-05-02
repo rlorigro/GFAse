@@ -32,6 +32,8 @@ public:
     
     char type() const;
     uint32_t length() const;
+    uint32_t ref_length() const;
+    uint32_t query_length() const;
     
 private:
     
@@ -56,16 +58,18 @@ private:
 class Cigar {
 public:
     // parse a CIGAR string
-    Cigar(const std::string& cigar_string);
+    Cigar(const string& cigar_string);
     Cigar() = default;
     ~Cigar() = default;
     
     // get the CIGAR string for this alignment
-    std::string get_string() const;
+    string get_string() const;
     
     // return the CIGAR string for the same alignment, but reversed
     // and with query/ref roles swapped
     Cigar reverse() const;
+    // the length in the ref and query, in that order
+    pair<size_t, size_t> aligned_length() const;
     
     // true if there are no CIGAR operations with length > 0
     bool empty() const;
@@ -90,25 +94,27 @@ private:
  */
 class Overlaps {
 public:
-    Overlaps(const HandleGraph& graph);
     Overlaps() = default;
     ~Overlaps() = default;
     
     // record an overlap, ignores "*" and "0M" alignments
-    void record_overlap(handle_t a, handle_t b, const string& cigar);
+    void record_overlap(const HandleGraph& graph, handle_t a, handle_t b, const string& cigar);
+    // record an overlap from an already-parsed CIGAR string
+    void record_overlap(const HandleGraph& graph, handle_t a, handle_t b, const Cigar& cigar);
+    // remove an overlap if one exists (otherwise do nothing)
+    void remove_overlap(const HandleGraph& graph, handle_t a, handle_t b);
     
     // true if there are no overlaps recorded
     bool is_blunt() const;
     
     // true if there is an edge from a to b with an overlap
-    bool has_overlap(handle_t a, handle_t b) const;
+    bool has_overlap(const HandleGraph& graph, handle_t a, handle_t b) const;
     
     // get the (oriented) overlap of a onto b
-    Cigar get_overlap(handle_t a, handle_t b) const;
+    Cigar get_overlap(const HandleGraph& graph, handle_t a, handle_t b) const;
     
 private:
     
-    const HandleGraph* graph;
     unordered_map<edge_t, Cigar> overlaps;
 };
 

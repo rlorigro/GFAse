@@ -164,7 +164,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
     KmerSets <FixedBinarySequence <T, T2> > ks(paternal_kmers, maternal_kmers);
 
     if (ks.get_k() != k){
@@ -217,10 +217,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
+    vector<Overlaps> connected_component_overlaps;
 
     cerr << "Finding connected components..." << '\n';
 
-    split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
+    split_connected_components(graph, id_map, overlaps, connected_components, connected_component_ids, connected_component_overlaps, true);
 
     cerr << "Unzipping..." << '\n';
 

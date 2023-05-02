@@ -451,7 +451,7 @@ void phase(
     HashGraph graph;
     
     // Overlaps between the sequences
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     // To keep track of pairs of segments which exist in diploid bubbles
     MultiContactGraph contact_graph;
@@ -511,7 +511,7 @@ void phase(
     contact_graph.write_contact_map(contacts_output_path, id_map);
 
     // Remove self edges in contact graph (now that they have been written to disk)
-    contact_graph.for_each_node([&](int32_t id){
+    contact_graph.for_each_node([&](int32_t id) {
         contact_graph.remove_edge(id,id);
     });
 

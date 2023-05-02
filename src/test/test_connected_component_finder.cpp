@@ -37,7 +37,7 @@ int main(){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
@@ -79,8 +79,9 @@ int main(){
 
     vector<HashGraph> connected_component_graphs;
     vector <IncrementalIdMap<string> > connected_component_ids;
+    vector<Overlaps> connected_component_overlaps;
 
-    split_connected_components(graph, id_map, connected_component_graphs, connected_component_ids);
+    split_connected_components(graph, id_map, overlaps, connected_component_graphs, connected_component_ids, connected_component_overlaps);
 
     for (size_t i=0; i<connected_component_graphs.size(); i++) {
         plot_graph(connected_component_graphs[i], "component_" + to_string(i));

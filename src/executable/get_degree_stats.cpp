@@ -32,7 +32,7 @@ using std::cerr;
 void get_degree_stats(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 

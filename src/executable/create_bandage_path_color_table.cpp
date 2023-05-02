@@ -329,7 +329,7 @@ array<uint8_t,3> Colors::hex_to_rgb(string hex){
 void create_color_table(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 

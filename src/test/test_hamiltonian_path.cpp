@@ -62,7 +62,7 @@ void run_test(string& data_file,
     
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
     
     gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
     

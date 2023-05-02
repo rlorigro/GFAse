@@ -33,7 +33,7 @@ using std::cerr;
 void unzip_gfa(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
@@ -42,8 +42,9 @@ void unzip_gfa(path gfa_path){
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
+    vector<Overlaps> connected_component_overlaps;
 
-    split_connected_components(graph, id_map, connected_components, connected_component_ids);
+    split_connected_components(graph, id_map, overlaps, connected_components, connected_component_ids, connected_component_overlaps);
 
     for (size_t i=0; i<connected_components.size(); i++){
         cerr << "Component " << to_string(i) << '\n';

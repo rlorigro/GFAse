@@ -74,6 +74,14 @@ uint32_t CigarOperation::length() const {
     return op_length;
 }
 
+uint32_t CigarOperation::ref_length() const {
+    return is_ref_move[code] ? op_length : 0;
+}
+
+uint32_t CigarOperation::query_length() const {
+    return is_query_move[code] ? op_length : 0;
+}
+
 Cigar::Cigar(const std::string& cigar_string) {
     
     if (cigar_string == "*") {
@@ -128,6 +136,15 @@ Cigar Cigar::reverse() const {
     return reversed;
 }
 
+pair<size_t, size_t> Cigar::aligned_length() const {
+    pair<size_t, size_t> lengths(0, 0);
+    for (const auto& op : operations) {
+        lengths.first += op.ref_length();
+        lengths.second += op.query_length();
+    }
+    return lengths;
+}
+
 bool Cigar::empty() const {
     return operations.empty();
 }
@@ -148,24 +165,31 @@ Cigar::iterator Cigar::end() const {
     return operations.end();
 }
 
-Overlaps::Overlaps(const HandleGraph& graph) : graph(&graph) {
-    
+void Overlaps::record_overlap(const HandleGraph& graph, handle_t a, handle_t b, const string& cigar) {
+    record_overlap(graph, a, b, Cigar(cigar));
 }
 
-void Overlaps::record_overlap(handle_t a, handle_t b, const string& cigar) {
-    Cigar parsed(cigar);
-    if (!parsed.empty()) {
-        overlaps[graph->edge_handle(a, b)] = move(parsed);
+void Overlaps::record_overlap(const HandleGraph& graph, handle_t a, handle_t b, const Cigar& cigar) {
+    if (!cigar.empty()) {
+        overlaps[graph.edge_handle(a, b)] = cigar;
     }
 }
 
-bool Overlaps::has_overlap(handle_t a, handle_t b) const {
-    return overlaps.count(graph->edge_handle(a, b));
+void Overlaps::remove_overlap(const HandleGraph& graph, handle_t a, handle_t b) {
+    auto it = overlaps.find(graph.edge_handle(a, b));
+    if (it != overlaps.end()) {
+        overlaps.erase(it);
+    }
 }
 
-Cigar Overlaps::get_overlap(handle_t a, handle_t b) const {
+
+bool Overlaps::has_overlap(const HandleGraph& graph, handle_t a, handle_t b) const {
+    return overlaps.count(graph.edge_handle(a, b));
+}
+
+Cigar Overlaps::get_overlap(const HandleGraph& graph, handle_t a, handle_t b) const {
     Cigar cigar;
-    auto it = overlaps.find(graph->edge_handle(a, b));
+    auto it = overlaps.find(graph.edge_handle(a, b));
     if (it != overlaps.end()) {
         if (it->first.first == a) {
             cigar = it->second;

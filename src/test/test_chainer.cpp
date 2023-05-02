@@ -60,7 +60,7 @@ void chain(path output_dir, path gfa_path){
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
     HashGraph graph;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
     MultiContactGraph contact_graph;
     Chainer chainer;
 

@@ -236,7 +236,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
 
     HashGraph graph;
     // The overlaps between sequences in the GFA
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph;

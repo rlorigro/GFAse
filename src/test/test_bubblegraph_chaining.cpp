@@ -88,7 +88,7 @@ void chain(path output_dir, path gfa_path, size_t n_threads, bool use_topology, 
     IncrementalIdMap<string> id_map(false);
 
     HashGraph graph;
-    Overlaps overlaps(graph);
+    Overlaps overlaps;
 
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph;
