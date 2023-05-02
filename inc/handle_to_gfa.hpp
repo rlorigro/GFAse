@@ -36,7 +36,7 @@ void write_path_to_gfa(
         const path_handle_t& path,
         ostream& output_file);
 
-void handle_graph_to_gfa(const HandleGraph& graph, const Overlaps& overlaps, ostream& output_gfa);
+void handle_graph_to_gfa(const HandleGraph& graph, ostream& output_gfa);
 
 void handle_graph_to_gfa(const PathHandleGraph& graph, const IncrementalIdMap<string>& id_map, const Overlaps& overlaps, ostream& output_gfa);
 

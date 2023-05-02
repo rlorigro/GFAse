@@ -623,6 +623,7 @@ void split_connected_components(
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
+        const Overlaps& overlaps,
         path output_directory) {
 
     unordered_set<nid_t> all_nodes;
@@ -660,7 +661,7 @@ void write_connected_components_to_gfas(
 
         // Duplicate all the edges
         for_edge_in_bfs(graph, start_node, [&](const handle_t& handle_a, const handle_t& handle_b) {
-            write_edge_to_gfa(graph, id_map, {handle_a, handle_b}, file);
+            write_edge_to_gfa(graph, id_map, overlaps, {handle_a, handle_b}, file);
         });
 
         // Duplicate all the paths

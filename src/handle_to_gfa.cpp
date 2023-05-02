@@ -78,16 +78,17 @@ void write_path_to_gfa(const PathHandleGraph& graph, const IncrementalIdMap<stri
 
 
 /// With no consideration for directionality, just dump all the edges/nodes into GFA format
-void handle_graph_to_gfa(const HandleGraph& graph, const Overlaps& overlaps, ostream& output_gfa){
+void handle_graph_to_gfa(const HandleGraph& graph, ostream& output_gfa){
 
     output_gfa << "H\tHVN:Z:1.0\n";
 
+    Overlaps null;
     graph.for_each_handle([&](const handle_t& node){
         write_node_to_gfa(graph, node, output_gfa);
     });
 
     graph.for_each_edge([&](const edge_t& edge){
-        write_edge_to_gfa(graph, overlaps, edge, output_gfa);
+        write_edge_to_gfa(graph, null, edge, output_gfa);
     });
 
     output_gfa << std::flush;
