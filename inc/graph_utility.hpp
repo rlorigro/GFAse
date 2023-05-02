@@ -111,6 +111,7 @@ void split_connected_components(
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
+        const Overlaps& overlaps,
         path output_directory);
 
 void run_command(string& argument_string);

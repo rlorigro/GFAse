@@ -94,7 +94,7 @@ void chain(path output_dir, path gfa_path){
         throw runtime_error("ERROR: could not write to file: " + chained_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, chained_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, chained_gfa);
 
     unzip(graph, id_map, overlaps, false, false);
 
@@ -107,7 +107,7 @@ void chain(path output_dir, path gfa_path){
         throw runtime_error("ERROR: could not write to file: " + unzipped_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, unzipped_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, unzipped_gfa);
 }
 
 

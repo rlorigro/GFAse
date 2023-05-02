@@ -121,7 +121,7 @@ void clean_gfa(path gfa_path){
 
     cerr << "Writing to GFA: " << output_path << '\n';
     ofstream file(output_path);
-    handle_graph_to_gfa(graph, id_map, file);
+    handle_graph_to_gfa(graph, id_map, overlaps, file);
 }
 
 

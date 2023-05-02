@@ -46,7 +46,7 @@ void split_gfa_components(path gfa_path){
     cerr << "Writing subgraph GFAs to: " << output_directory << '\n';
     create_directories(output_directory);
 
-    write_connected_components_to_gfas(graph, id_map, output_directory);
+    write_connected_components_to_gfas(graph, id_map, overlaps, output_directory);
 }
 
 

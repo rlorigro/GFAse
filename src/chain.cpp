@@ -85,7 +85,7 @@ void write_chaining_info_to_file(
     if (not test_gfa_chain.is_open() or not test_gfa_chain.good()){
         throw runtime_error("ERROR: could not write to file: " + test_gfa_chain_path.string());
     }
-    handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain, Overlaps());
+    handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
 
     path test_csv_meta_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph.csv");
     ofstream test_csv_meta_chain(test_csv_meta_chain_path);
@@ -152,7 +152,7 @@ void chain_phased_gfa(
         if (not test_gfa_meta.is_open() or not test_gfa_meta.good()){
             throw runtime_error("ERROR: could not write to file: " + test_gfa_meta_path.string());
         }
-        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta, Overlaps());
+        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
 
         path test_csv_meta_ploidy_path = output_dir / "components" / to_string(c) / (filename_prefix + "ploidy_metagraph.csv");
         ofstream test_csv_meta_ploidy(test_csv_meta_ploidy_path);
@@ -180,7 +180,7 @@ void chain_phased_gfa(
         if (not test_gfa_chain_merged.is_open() or not test_gfa_chain_merged.good()){
             throw runtime_error("ERROR: could not write to file: " + test_gfa_chain_merged_path.string());
         }
-        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged, Overlaps());
+        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged);
 
         path test_csv_meta_chain_merged_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph_merged.csv");
         ofstream test_csv_meta_chain_merged(test_csv_meta_chain_merged_path);

@@ -54,7 +54,7 @@ void unzip_gfa(path gfa_path){
 
         string filename_prefix = "component_" + to_string(i) + "_unzipped";
         ofstream file(filename_prefix + ".gfa");
-        handle_graph_to_gfa(connected_components[i], connected_component_ids[i], file);
+        handle_graph_to_gfa(connected_components[i], connected_component_ids[i], connected_component_overlaps[i], file);
     }
 }
 

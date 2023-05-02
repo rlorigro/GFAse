@@ -268,7 +268,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
         handle_graph_to_gfa(cc_graph, cc_id_map, cc_overlaps, file);
 
         ofstream test_gfa_meta(filename_prefix + "ploidy_metagraph.gfa");
-        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta, Overlaps());
+        handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
 
         ofstream test_csv_meta_ploidy(filename_prefix + "ploidy_metagraph.csv");
         ploidy_bipartition.write_meta_graph_csv(test_csv_meta_ploidy);
@@ -277,7 +277,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
         ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
 
         ofstream test_gfa_chain(filename_prefix + "chain_metagraph.gfa");
-        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain, Overlaps());
+        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain);
 
         ofstream test_csv_meta_chain(filename_prefix + "chain_metagraph.csv");
         chain_bipartition.write_meta_graph_csv(test_csv_meta_chain);
@@ -291,7 +291,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
         merge_diploid_singletons(diploid_path_names, chain_bipartition);
 
         ofstream test_gfa_chain_merged(filename_prefix + "chain_metagraph_merged.gfa");
-        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged, Overlaps());
+        handle_graph_to_gfa(chain_bipartition.metagraph, test_gfa_chain_merged);
 
         ofstream test_csv_meta_chain_merged(filename_prefix + "chain_metagraph_merged.csv");
         chain_bipartition.write_meta_graph_csv(test_csv_meta_chain_merged);
