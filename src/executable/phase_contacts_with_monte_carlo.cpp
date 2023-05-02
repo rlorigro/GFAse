@@ -536,6 +536,10 @@ void phase(
         contact_graph.remove_edge(id,id);
     });
 
+    if (contact_graph.edge_count() == 0){
+        throw runtime_error("ERROR: no inter-contig contacts detected in alignments, no usable phasing information");
+    }
+
     cerr << t << "Optimizing phases..." << '\n';
 
     monte_carlo_phase_contacts(
