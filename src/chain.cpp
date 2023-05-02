@@ -275,7 +275,7 @@ void chain_phased_gfa(
 
         write_paths_to_csv(cc_graph, id_map, provenance_csv_file);
 
-        unzip(cc_graph, id_map, false);
+        unzip(cc_graph, id_map, overlaps, false);
 
         if (write_gfa){
             // Write phased + unzipped gfa to file

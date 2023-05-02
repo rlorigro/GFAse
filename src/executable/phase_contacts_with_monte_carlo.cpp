@@ -202,14 +202,14 @@ void write_config(
 }
 
 
-void write_gfa_to_file(PathHandleGraph& graph, IncrementalIdMap<string>& id_map, path output_gfa_path){
+void write_gfa_to_file(PathHandleGraph& graph, IncrementalIdMap<string>& id_map, Overlaps& overlaps, path output_gfa_path){
     ofstream chained_gfa(output_gfa_path);
 
     if (not (chained_gfa.is_open() and chained_gfa.good())){
         throw runtime_error("ERROR: could not write to file: " + output_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, chained_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, chained_gfa);
 
 }
 
@@ -538,13 +538,13 @@ void phase(
 
     cerr << t << "Writing GFA... " << '\n';
 
-    write_gfa_to_file(graph, id_map, chained_gfa_path);
+    write_gfa_to_file(graph, id_map, overlaps, chained_gfa_path);
 
     if (not skip_unzip) {
         cerr << t << "Unzipping chains... " << '\n';
 
-        unzip(graph, id_map, false, false);
-        write_gfa_to_file(graph, id_map, unzipped_gfa_path);
+        unzip(graph, id_map, overlaps, false, false);
+        write_gfa_to_file(graph, id_map, overlaps, unzipped_gfa_path);
     }
 
     cerr << t << "Writing FASTA... " << '\n';

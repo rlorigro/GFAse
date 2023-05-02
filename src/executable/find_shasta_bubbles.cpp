@@ -52,7 +52,7 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
     path output_path = output_dir / "bubbles.csv";
     bubble_graph.write_bandage_csv(output_path, id_map);
 
-    chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
+    chain_phased_gfa(graph, id_map, overlaps, bubble_graph, output_dir);
 }
 
 

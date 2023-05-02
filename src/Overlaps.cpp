@@ -114,6 +114,10 @@ string Cigar::get_string() const {
         s += c.type();
     }
     
+    if (s.empty()) {
+        s = "0M";
+    }
+    
     return s;
 }
 

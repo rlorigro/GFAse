@@ -110,7 +110,8 @@ public:
     // true if there is an edge from a to b with an overlap
     bool has_overlap(const HandleGraph& graph, handle_t a, handle_t b) const;
     
-    // get the (oriented) overlap of a onto b
+    // get the (oriented) overlap of a onto b. if no overlap has been
+    // recorded, then returns an empty CIGAR
     Cigar get_overlap(const HandleGraph& graph, handle_t a, handle_t b) const;
     
 private:

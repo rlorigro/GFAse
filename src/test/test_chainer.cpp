@@ -96,7 +96,7 @@ void chain(path output_dir, path gfa_path){
 
     handle_graph_to_gfa(graph, id_map, chained_gfa);
 
-    unzip(graph, id_map, false, false);
+    unzip(graph, id_map, overlaps, false, false);
 
     chainer.write_chaining_results_to_bandage_csv(output_dir, id_map, contact_graph);
 

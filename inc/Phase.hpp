@@ -242,10 +242,12 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
     vector <vector <handle_t> > unphased_handles_per_component(connected_components.size());
 
     for (size_t c=0; c<connected_components.size(); c++){
-        unzip(connected_components[c], connected_component_ids[c], false);
-
+        
         auto& cc_graph = connected_components[c];
         auto& cc_id_map = connected_component_ids[c];
+        auto& cc_overlaps = connected_component_overlaps[c];
+        
+        unzip(cc_graph, cc_id_map, cc_overlaps, false);
 
         // Generate criteria for diploid node BFS
         unordered_set<nid_t> diploid_nodes;
@@ -355,7 +357,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
             prev_subgraph_index = subgraph_index;
         });
 
-        unzip(cc_graph, cc_id_map, false);
+        unzip(cc_graph, cc_id_map, cc_overlaps, false);
         write_paths_to_csv(cc_graph, cc_id_map, provenance_csv_file);
 
         ofstream test_gfa_phased(output_directory / (filename_prefix + "phased.gfa"));

@@ -339,7 +339,7 @@ void split_connected_components(
             
             if (overlaps.has_overlap(graph, handle_a, handle_b)) {
                 comp_overlaps.back().record_overlap(graphs.back(), other_handle_a, other_handle_b,
-                                                    overlaps.get_overlap(handle_a, handle_b));
+                                                    overlaps.get_overlap(graph, handle_a, handle_b));
             }
         },
         [&](const handle_t& handle_a, const handle_t& handle_b){
@@ -418,6 +418,7 @@ void split_connected_components(
         Overlaps& overlaps,
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
+        vector<Overlaps>& comp_overlaps,
         bool delete_visited_components) {
 
     unordered_set<nid_t> all_nodes;
@@ -481,7 +482,7 @@ void split_connected_components(
             
             if (overlaps.has_overlap(graph, handle_a, handle_b)) {
                 comp_overlaps.back().record_overlap(graphs.back(), other_handle_a, other_handle_b,
-                                                    overlaps.get_overlap(handle_a, handle_b));
+                                                    overlaps.get_overlap(graph, handle_a, handle_b));
             }
         });
 
@@ -612,12 +613,6 @@ void split_connected_components(
         if (delete_visited_components) {
             for (auto& n: to_be_deleted) {
                 auto h = graph.get_handle(n);
-                graph.follow_edges(h, true, [&](const handle_t& prev) {
-                    overlaps.remove_overlap(graph, prev, h);
-                });
-                graph.follow_edges(h, false, [&](const handle_t& next) {
-                    overlaps.remove_overlap(graph, h, next);
-                });
                 graph.destroy_handle(h);
             }
         }
@@ -892,7 +887,7 @@ void un_extend_paths(
 }
 
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, const Overlaps& overlaps, bool keep_paths, bool delete_islands){
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, Overlaps& overlaps, bool keep_paths, bool delete_islands){
     
     unordered_set<handle_t> nodes_to_be_destroyed;
     vector<path_handle_t> paths;
@@ -949,14 +944,20 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             if (other == path_stop_handle) {
                 // preserve cyclic path
                 graph.create_edge(haplotype_handle, haplotype_handle);
+                overlaps.record_overlap(graph, haplotype_handle, haplotype_handle,
+                                        overlaps.get_overlap(graph, other, path_start_handle));
             }
             else if (other == graph.flip(path_start_handle)) {
                 // preserve left hairpin
                 graph.create_edge(graph.flip(haplotype_handle), haplotype_handle);
+                overlaps.record_overlap(graph, graph.flip(haplotype_handle), haplotype_handle,
+                                        overlaps.get_overlap(graph, other, path_start_handle));
             }
             else {
                 // normal edge
                 graph.create_edge(other, haplotype_handle);
+                overlaps.record_overlap(graph, other, haplotype_handle,
+                                        overlaps.get_overlap(graph, other, path_start_handle));
             }
         });
         
@@ -965,10 +966,14 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             if (other == graph.flip(path_stop_handle)) {
                 // preserve right hairpin
                 graph.create_edge(haplotype_handle, graph.flip(haplotype_handle));
+                overlaps.record_overlap(graph, haplotype_handle, graph.flip(haplotype_handle),
+                                        overlaps.get_overlap(graph, path_stop_handle, other));
             }
             else {
                 // normal edge (or maybe cyclic path that has already been handled in left direction)
                 graph.create_edge(haplotype_handle, other);
+                overlaps.record_overlap(graph, haplotype_handle, other,
+                                        overlaps.get_overlap(graph, path_stop_handle, other));
             }
         });
         
@@ -984,6 +989,12 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
 
     // Destroy the nodes that have had their sequences duplicated into haplotypes
     for (auto& h: nodes_to_be_destroyed){
+        graph.follow_edges(h, true, [&](const handle_t& prev) {
+            overlaps.remove_overlap(graph, prev, h);
+        });
+        graph.follow_edges(h, false, [&](const handle_t& next) {
+            overlaps.remove_overlap(graph, h, next);
+        });
         graph.destroy_handle(h);
     }
 

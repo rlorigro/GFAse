@@ -125,7 +125,7 @@ void chain(path output_dir, path gfa_path, size_t n_threads, bool use_topology, 
     bubble_graph.write_bandage_csv(phases_output_path, id_map);
 
     if (not gfa_path.empty()){
-        chain_phased_gfa(graph, id_map, bubble_graph, output_dir, write_sequence, write_sequence);
+        chain_phased_gfa(graph, id_map, overlaps, bubble_graph, output_dir, write_sequence, write_sequence);
     }
 
     cerr << t << "Done" << '\n';

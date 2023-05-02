@@ -50,7 +50,7 @@ void unzip_gfa(path gfa_path){
         cerr << "Component " << to_string(i) << '\n';
         print_graph_paths(connected_components[i], connected_component_ids[i]);
 
-        unzip(connected_components[i], connected_component_ids[i]);
+        unzip(connected_components[i], connected_component_ids[i], connected_component_overlaps[i]);
 
         string filename_prefix = "component_" + to_string(i) + "_unzipped";
         ofstream file(filename_prefix + ".gfa");

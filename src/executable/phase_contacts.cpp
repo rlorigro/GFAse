@@ -273,7 +273,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     bubble_graph.write_bandage_csv(phases_output_path, id_map);
 
     if (not gfa_path.empty()){
-        chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
+        chain_phased_gfa(graph, id_map, overlaps, bubble_graph, output_dir);
     }
 
     cerr << t << "Done" << '\n';
