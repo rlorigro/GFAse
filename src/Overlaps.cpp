@@ -191,6 +191,11 @@ bool Overlaps::has_overlap(const HandleGraph& graph, handle_t a, handle_t b) con
     return overlaps.count(graph.edge_handle(a, b));
 }
 
+bool Overlaps::is_blunt() const {
+    return overlaps.empty();
+}
+
+
 Cigar Overlaps::get_overlap(const HandleGraph& graph, handle_t a, handle_t b) const {
     Cigar cigar;
     auto it = overlaps.find(graph.edge_handle(a, b));

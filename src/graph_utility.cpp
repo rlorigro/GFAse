@@ -898,6 +898,8 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         paths.emplace_back(p);
 //        cerr << graph.get_path_name(p) << '\n';
     });
+    
+    vector<path_handle_t> haplotype_paths;
 
     for (auto& p: paths){
         
@@ -981,11 +983,11 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
         // Replace the old path with the new node
         bool is_circular = graph.get_is_circular(p);
         graph.destroy_path(p);
-        if (keep_paths) {
-            auto haplotype_path_handle = graph.create_path_handle(name);
-            graph.append_step(haplotype_path_handle, haplotype_handle);
-            graph.set_circularity(haplotype_path_handle, is_circular);
-        }
+        auto haplotype_path_handle = graph.create_path_handle(name);
+        graph.append_step(haplotype_path_handle, haplotype_handle);
+        graph.set_circularity(haplotype_path_handle, is_circular);
+        
+        haplotype_paths.push_back(haplotype_path_handle);
     }
 
     // Destroy the nodes that have had their sequences duplicated into haplotypes
@@ -1030,6 +1032,14 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
                 }
             }
         });
+    }
+    
+    // we no longer need the haplotype paths for island identification, so we could
+    // get rid of them now
+    if (!keep_paths) {
+        for (auto path : haplotype_paths) {
+            graph.destroy_path(path);
+        }
     }
 }
 

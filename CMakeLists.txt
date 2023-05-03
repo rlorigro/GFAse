@@ -451,6 +451,7 @@ set(TESTS
         test_htslib_bam_reader
         test_incremental_id_io
         test_kmer_unordered_set
+	test_overlaps
         test_phase_haplotype_paths
         test_minimap2
         test_minimap2_no_io
