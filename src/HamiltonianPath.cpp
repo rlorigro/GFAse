@@ -152,7 +152,7 @@ HamiltonianProblemResult find_hamiltonian_path(const HandleGraph& graph,
     
     // stop if we've hit the longest possible hamiltonian (because we don't allow
     // traversing both strands of a node) or when there are no hamiltonian paths of
-    // lenght n - 1
+    // length n - 1
     size_t iter_num = 0;
     while (dp_table.size() < handle_number.size() / 2 && !dp_table.back().empty()
            && iter_num < max_iters) {
