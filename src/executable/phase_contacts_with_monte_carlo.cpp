@@ -315,12 +315,17 @@ void find_unlabeled_alts(
         const IncrementalIdMap<string>& id_map,
         Timer& t,
         path output_dir,
-        size_t n_threads){
+        size_t n_threads,
+        double sample_rate = 0.04,
+        size_t n_iterations = 6,
+        size_t k = 22,
+        double min_hash_similarity = 0.7
+){
 
     // Hashing params
-    double sample_rate = 0.04;
-    size_t n_iterations = 6;
-    size_t k = 22;
+//    double sample_rate = 0.04;
+//    size_t n_iterations = 6;
+//    size_t k = 22;
 
     // Only align the top n hits
     size_t max_hits = 5;
@@ -333,7 +338,7 @@ void find_unlabeled_alts(
     double min_ab_over_a = 0;
 
     // Hash results must have at least this percent similarity (A & B)/B, where A is larger.
-    double min_ab_over_b = 0.7;
+    double min_ab_over_b = min_hash_similarity;
 
     vector <HashResult> to_be_aligned;
 
@@ -350,6 +355,11 @@ void find_unlabeled_alts(
             min_ab_over_a,
             min_ab_over_b
     );
+
+    if (to_be_aligned.empty()){
+        throw runtime_error("ERROR: no passing candidates in homology detection step. Check overlaps.csv and consider "
+                            "rerunning with different homology args.");
+    }
 
     remove_adjacencies_from_candidates(graph, id_map, to_be_aligned);
 
@@ -423,9 +433,12 @@ void phase(
         bool use_homology,
         bool skip_unzip,
         bool use_hamiltonian_chainer,
-        size_t n_threads
-        ){
-
+        size_t n_threads,
+        double sample_rate = 0.04,
+        size_t n_iterations = 6,
+        size_t k = 22,
+        double min_hash_similarity = 0.7
+){
     Timer t;
 
     if (exists(output_dir)){
@@ -486,7 +499,18 @@ void phase(
     if (use_homology){
         cerr << t << "Finding alts with sequence homology..." << '\n';
 
-        find_unlabeled_alts(graph, contact_graph, id_map, t, output_dir, n_threads);
+        find_unlabeled_alts(
+                graph,
+                contact_graph,
+                id_map,
+                t,
+                output_dir,
+                n_threads,
+                sample_rate,
+                n_iterations,
+                k,
+                min_hash_similarity
+        );
     }
     else{
         contact_graph.get_alts_from_shasta_names(id_map);
@@ -514,6 +538,10 @@ void phase(
     contact_graph.for_each_node([&](int32_t id) {
         contact_graph.remove_edge(id,id);
     });
+
+    if (contact_graph.edge_count() == 0){
+        throw runtime_error("ERROR: no inter-contig contacts detected in alignments, no usable phasing information");
+    }
 
     cerr << t << "Optimizing phases..." << '\n';
 
@@ -567,6 +595,10 @@ int main (int argc, char* argv[]){
     bool use_homology = false;
     bool skip_unzip = false;
     bool use_simple_chainer = false;
+    double sample_rate = 0.04;
+    size_t n_iterations = 6;
+    size_t k = 22;
+    double min_hash_similarity = 0.7;
 
     CLI::App app{"App description"};
 
@@ -591,6 +623,26 @@ int main (int argc, char* argv[]){
             "-m,--min_mapq",
             min_mapq,
             "(Default = " + to_string(min_mapq) + ")\tMinimum required mapq value for mapping to be counted.");
+
+    app.add_option(
+            "--homology_sample_rate",
+            sample_rate,
+            "(Default = " + to_string(sample_rate) + ")\tWhat proportion (from 0-1) of k-mers to use for finding homology.");
+
+    app.add_option(
+            "--homology_n_iterations",
+            n_iterations,
+            "(Default = " + to_string(n_iterations) + ")\tHow many hash functions to use for comparing homolog k-mers.");
+
+    app.add_option(
+            "--homology_k",
+            k,
+            "(Default = " + to_string(k) + ")\tK-mer size for finding homologs.");
+
+    app.add_option(
+            "--homology_min_hash_similarity",
+            min_hash_similarity,
+            "(Default = " + to_string(min_hash_similarity) + ")\tMinimum required hash similarity. This is computed as (A & B)/A, where A is the larger set.");
 
     app.add_option(
             "-c,--core_iterations",
@@ -619,8 +671,9 @@ int main (int argc, char* argv[]){
 
     app.add_flag(
             "--use_simple_chainer",
-                 use_simple_chainer,
+             use_simple_chainer,
             "(Default = " + to_string(use_simple_chainer) + ")\tBuild chains using only simple bubbles.");
+
     app.add_flag(
             "--skip_unzip",
             skip_unzip,
@@ -640,7 +693,11 @@ int main (int argc, char* argv[]){
             use_homology,
             skip_unzip,
             !use_simple_chainer,
-            n_threads
+            n_threads,
+            sample_rate,
+            n_iterations,
+            k,
+            min_hash_similarity
     );
 
     return 0;
