@@ -60,11 +60,12 @@ void chain(path output_dir, path gfa_path){
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
     HashGraph graph;
+    Overlaps overlaps;
     MultiContactGraph contact_graph;
     Chainer chainer;
 
     // Construct graph from GFA
-    gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false, true);
 
     chainer.find_chainable_nodes(graph, id_map);
     chainer.harmonize_chain_orientations(graph);
@@ -93,9 +94,9 @@ void chain(path output_dir, path gfa_path){
         throw runtime_error("ERROR: could not write to file: " + chained_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, chained_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, chained_gfa);
 
-    unzip(graph, id_map, false, false);
+    unzip(graph, id_map, overlaps, false, false);
 
     chainer.write_chaining_results_to_bandage_csv(output_dir, id_map, contact_graph);
 
@@ -106,7 +107,7 @@ void chain(path output_dir, path gfa_path){
         throw runtime_error("ERROR: could not write to file: " + unzipped_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, unzipped_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, unzipped_gfa);
 }
 
 

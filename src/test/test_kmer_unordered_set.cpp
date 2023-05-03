@@ -12,7 +12,7 @@ using bdsg::HashGraph;
 int main() {
     // Set up this file path for getting the file from the data folder
     path script_path = __FILE__;
-    path project_directory = script_path.parent_path().parent_path(); // this path is different than the one ryan uses in GfaReader and I'm not sure why
+    path project_directory = script_path.parent_path().parent_path().parent_path(); // this path is different than the one ryan uses in GfaReader and I'm not sure why
 
     // Get test parent1 kmers
     path relative_hap1_kmer_list_path = "data/hg03.all.homo.unique.kmer.1000.fa";
@@ -55,8 +55,9 @@ int main() {
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
 
 }

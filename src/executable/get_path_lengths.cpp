@@ -33,8 +33,9 @@ using std::cerr;
 int get_path_lengths(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     graph.for_each_path_handle([&](const path_handle_t& p) {
         cerr << graph.get_path_name(p) << ": ";

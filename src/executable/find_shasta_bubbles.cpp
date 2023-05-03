@@ -43,15 +43,16 @@ void find_bubbles_in_gfa(path output_dir, path gfa_path){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    Overlaps overlaps;
+    
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     BubbleGraph bubble_graph(id_map);
 
     path output_path = output_dir / "bubbles.csv";
     bubble_graph.write_bandage_csv(output_path, id_map);
 
-    chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
+    chain_phased_gfa(graph, id_map, overlaps, bubble_graph, output_dir);
 }
 
 
