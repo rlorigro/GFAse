@@ -36,8 +36,9 @@ void run_test(string& data_file,
     
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
     
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
     
     vector<handle_t> bridges;
     set<string> bridge_names;

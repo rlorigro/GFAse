@@ -36,16 +36,17 @@ using std::cerr;
 void split_gfa_components(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
     cerr << "Loading GFA..." << '\n';
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
     path output_directory = gfa_path.parent_path() / gfa_path.stem();
 
     cerr << "Writing subgraph GFAs to: " << output_directory << '\n';
     create_directories(output_directory);
 
-    write_connected_components_to_gfas(graph, id_map, output_directory);
+    write_connected_components_to_gfas(graph, id_map, overlaps, output_directory);
 }
 
 

@@ -18,7 +18,7 @@ Inputs are (1) assembly GFA, (2) read FASTA, (3) parameters (see below for `min_
 
 If you cannot run a WDL or you prefer to perform the alignment step manually, use these directions. You will also need whichever aligner is most appropriate for your data type. We have used BWA-mem for Hi-C (illumina) or Minimap2 for Pore-C (ONT)
 
-Tested on Ubuntu20.04 
+Tested on Ubuntu 20.04 and 22.04
 
 ```
 git clone https://github.com/rlorigro/GFAse.git

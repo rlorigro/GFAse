@@ -37,13 +37,16 @@ int main(){
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
 
-    unordered_set<string> cc1 = {"a", "b", "c"};
-    unordered_set<string> cc2 = {"d", "e"};
+    unordered_set<string> cc1 = {"a", "b", "c", "d"};
+    unordered_set<string> cc2 = {"e", "f"};
+    unordered_set<string> cc3 = {"g", "h"};
     bool found_cc1 = false;
     bool found_cc2 = false;
+    bool found_cc3 = false;
 
     for_each_connected_component(graph, [&](unordered_set<nid_t>& connected_component){
         unordered_set<string> cc;
@@ -59,6 +62,9 @@ int main(){
         else if (cc == cc2){
             found_cc2 = true;
         }
+        else if (cc == cc3){
+            found_cc3 = true;
+        }
         else{
             cerr << "BAD COMPONENT:" << '\n';
             for (auto& item: cc){
@@ -71,15 +77,20 @@ int main(){
     if (not found_cc1){
         throw runtime_error("FAIL: cc1 not found");
     }
-
+    
     if (not found_cc2){
         throw runtime_error("FAIL: cc2 not found");
+    }
+    
+    if (not found_cc3){
+        throw runtime_error("FAIL: cc3 not found");
     }
 
     vector<HashGraph> connected_component_graphs;
     vector <IncrementalIdMap<string> > connected_component_ids;
+    vector<Overlaps> connected_component_overlaps;
 
-    split_connected_components(graph, id_map, connected_component_graphs, connected_component_ids);
+    split_connected_components(graph, id_map, overlaps, connected_component_graphs, connected_component_ids, connected_component_overlaps);
 
     for (size_t i=0; i<connected_component_graphs.size(); i++) {
         plot_graph(connected_component_graphs[i], "component_" + to_string(i));

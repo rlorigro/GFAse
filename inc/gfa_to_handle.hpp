@@ -10,6 +10,7 @@
 #include "bdsg/hash_graph.hpp"
 #include "handlegraph/handle_graph.hpp"
 #include "IncrementalIdMap.hpp"
+#include "Overlaps.hpp"
 #include "GfaReader.hpp"
 
 #include <cctype>
@@ -31,6 +32,7 @@ nid_t parse_gfa_sequence_id(const string& s, IncrementalIdMap<string>& id_map);
 void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         path gfa_file_path,
         bool ignore_singleton_paths=true,
         bool ignore_paths=false

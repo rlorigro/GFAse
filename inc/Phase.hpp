@@ -164,6 +164,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
     KmerSets <FixedBinarySequence <T, T2> > ks(paternal_kmers, maternal_kmers);
 
     if (ks.get_k() != k){
@@ -172,7 +173,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     cerr << "Loading GFA..." << '\n';
 
-    gfa_to_handle_graph(graph, id_map, gfa_path, false);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
     cerr << "\tNumber of components in graph: " << graph.get_path_count() << '\n';
 
@@ -216,10 +217,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
     vector<HashGraph> connected_components;
     vector <IncrementalIdMap<string> > connected_component_ids;
+    vector<Overlaps> connected_component_overlaps;
 
     cerr << "Finding connected components..." << '\n';
 
-    split_connected_components(graph, id_map, connected_components, connected_component_ids, true);
+    split_connected_components(graph, id_map, overlaps, connected_components, connected_component_ids, connected_component_overlaps, true);
 
     cerr << "Unzipping..." << '\n';
 
@@ -240,10 +242,12 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
     vector <vector <handle_t> > unphased_handles_per_component(connected_components.size());
 
     for (size_t c=0; c<connected_components.size(); c++){
-        unzip(connected_components[c], connected_component_ids[c], false);
-
+        
         auto& cc_graph = connected_components[c];
         auto& cc_id_map = connected_component_ids[c];
+        auto& cc_overlaps = connected_component_overlaps[c];
+        
+        unzip(cc_graph, cc_id_map, cc_overlaps, false);
 
         // Generate criteria for diploid node BFS
         unordered_set<nid_t> diploid_nodes;
@@ -261,7 +265,7 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
 
         string filename_prefix = output_directory / "components" / ("component_" + to_string(c) + "_");
         ofstream file(filename_prefix + ".gfa");
-        handle_graph_to_gfa(connected_components[c], connected_component_ids[c], file);
+        handle_graph_to_gfa(cc_graph, cc_id_map, cc_overlaps, file);
 
         ofstream test_gfa_meta(filename_prefix + "ploidy_metagraph.gfa");
         handle_graph_to_gfa(ploidy_bipartition.metagraph, test_gfa_meta);
@@ -353,11 +357,11 @@ void phase(path gfa_path, size_t k, path paternal_kmers, path maternal_kmers, pa
             prev_subgraph_index = subgraph_index;
         });
 
-        unzip(cc_graph, cc_id_map, false);
+        unzip(cc_graph, cc_id_map, cc_overlaps, false);
         write_paths_to_csv(cc_graph, cc_id_map, provenance_csv_file);
 
         ofstream test_gfa_phased(output_directory / (filename_prefix + "phased.gfa"));
-        handle_graph_to_gfa(cc_graph, cc_id_map, test_gfa_phased);
+        handle_graph_to_gfa(cc_graph, cc_id_map, cc_overlaps, test_gfa_phased);
 
         cc_graph.for_each_handle([&](const handle_t& h){
             auto id = cc_graph.get_id(h);

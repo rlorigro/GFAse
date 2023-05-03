@@ -100,6 +100,7 @@ void write_chaining_info_to_file(
 void chain_phased_gfa(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         const BubbleGraph& bubble_graph,
         path output_dir,
         bool write_gfa = true,

@@ -235,6 +235,8 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     }
 
     HashGraph graph;
+    // The overlaps between sequences in the GFA
+    Overlaps overlaps;
 
     // To keep track of pairs of segments which exist in diploid bubbles
     BubbleGraph bubble_graph;
@@ -249,7 +251,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
         cerr << t << "GFA provided - Loading graph..." << '\n';
 
         // Construct graph from GFA
-        gfa_to_handle_graph(graph, id_map, gfa_path, false);
+        gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false);
 
         cerr << t << "Constructing bubble graph..." << '\n';
 
@@ -271,7 +273,7 @@ void phase_hic(path output_dir, path sam_path, path gfa_path, string required_pr
     bubble_graph.write_bandage_csv(phases_output_path, id_map);
 
     if (not gfa_path.empty()){
-        chain_phased_gfa(graph, id_map, bubble_graph, output_dir);
+        chain_phased_gfa(graph, id_map, overlaps, bubble_graph, output_dir);
     }
 
     cerr << t << "Done" << '\n';

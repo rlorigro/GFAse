@@ -109,9 +109,10 @@ void splice_out_empty_nodes(MutablePathDeletableHandleGraph& graph){
 void clean_gfa(path gfa_path){
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
     cerr << "Loading GFA..." << '\n';
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
     splice_out_empty_nodes(graph);
 
@@ -120,7 +121,7 @@ void clean_gfa(path gfa_path){
 
     cerr << "Writing to GFA: " << output_path << '\n';
     ofstream file(output_path);
-    handle_graph_to_gfa(graph, id_map, file);
+    handle_graph_to_gfa(graph, id_map, overlaps, file);
 }
 
 

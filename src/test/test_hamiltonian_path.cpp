@@ -62,8 +62,9 @@ void run_test(string& data_file,
     
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
     
-    gfa_to_handle_graph(graph, id_map, absolute_gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, absolute_gfa_path);
     
     
     unordered_set<nid_t> target_nodes, prohibited_nodes;

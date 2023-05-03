@@ -2,12 +2,13 @@
 #define GFASE_GRAPH_UTILITY_HPP
 
 #include "IncrementalIdMap.hpp"
+#include "SubgraphOverlay.hpp"
 #include "gfa_to_handle.hpp"
 #include "handle_to_gfa.hpp"
 #include "Filesystem.hpp"
 #include "GfaReader.hpp"
+#include "Overlaps.hpp"
 #include "CLI11.hpp"
-#include "SubgraphOverlay.hpp"
 
 #include "bdsg/hash_graph.hpp"
 
@@ -83,15 +84,19 @@ void for_each_connected_component_subgraph(HandleGraph& graph, const function<vo
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
+        vector<Overlaps>& comp_overlaps,
         bool delete_visited_components = false);
 
 void split_connected_components(
         MutablePathDeletableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         vector<HashGraph>& graphs,
         vector<IncrementalIdMap<string> >& id_maps,
+        vector<Overlaps>& comp_overlaps,
         vector <vector <pair <string, string> > >& in_edges,
         vector <vector <pair <string, string> > >& out_edges,
         const unordered_set<nid_t>& do_not_visit,
@@ -106,6 +111,7 @@ void split_connected_components(
 void write_connected_components_to_gfas(
         const MutablePathDeletableHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
+        const Overlaps& overlaps,
         path output_directory);
 
 void run_command(string& argument_string);
@@ -140,7 +146,7 @@ void un_extend_paths(
         const vector <pair<path_handle_t, handle_t> >& to_be_prepended,
         const vector <pair<path_handle_t, handle_t> >& to_be_appended);
 
-void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, bool keep_paths=false, bool delete_islands=true);
+void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_map, Overlaps& overlaps, bool keep_paths=false, bool delete_islands=true);
 
 void for_each_tip(const HandleGraph& graph, const function<void(const handle_t& h, bool is_left, bool is_right)>& f);
 

@@ -49,11 +49,12 @@ void locate_kmer_matches(
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
+    Overlaps overlaps;
 
     cerr << "Loading kmers into sets..." << '\n';
     KmerSets<FixedBinarySequence<uint64_t, 2> > ks(paternal_kmers, maternal_kmers);
 
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path);
 
 //    plot_graph(graph, "start_graph");
 

@@ -65,6 +65,7 @@ void write_chaining_info_to_file(
         const Bipartition& chain_bipartition,
         const PathHandleGraph& graph,
         const IncrementalIdMap<string>& id_map,
+        const Overlaps& overlaps,
         const string& filename_prefix,
         size_t component_index,
         bool write_gfa
@@ -75,7 +76,7 @@ void write_chaining_info_to_file(
     if (write_gfa) {
         path file_path = output_dir / "components" / to_string(c) / (filename_prefix + ".gfa");
         ofstream file(file_path);
-        handle_graph_to_gfa(graph, id_map, file);
+        handle_graph_to_gfa(graph, id_map, overlaps, file);
     }
 
     path test_gfa_chain_path = output_dir / "components" / to_string(c) / (filename_prefix + "chain_metagraph.gfa");
@@ -106,15 +107,15 @@ void write_chaining_info_to_file(
 
 void chain_phased_gfa(
         MutablePathDeletableHandleGraph& graph,
-        IncrementalIdMap<string>& id_map, const
-        BubbleGraph& bubble_graph,
+        IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
+        const BubbleGraph& bubble_graph,
         path output_dir,
         bool write_gfa,
         bool write_fasta
         ){
 
     vector<HashGraph> connected_components;
-    vector <IncrementalIdMap<string> > connected_component_ids;
 
     cerr << "Finding connected components..." << '\n';
 
@@ -123,7 +124,7 @@ void chain_phased_gfa(
     cerr << "Chaining phased bubbles..." << '\n';
 
     for (size_t c=0; c<connected_components.size(); c++){
-        unzip(connected_components[c], connected_component_ids[c], false);
+        unzip(connected_components[c], id_map, overlaps, false);
 
         auto& cc_graph = connected_components[c];
 
@@ -169,7 +170,7 @@ void chain_phased_gfa(
         }
         ploidy_bipartition.write_parent_graph_csv(test_csv_parent_ploidy);
 
-        write_chaining_info_to_file(output_dir, ploidy_bipartition, chain_bipartition, cc_graph, id_map, filename_prefix, c, write_gfa);
+        write_chaining_info_to_file(output_dir, ploidy_bipartition, chain_bipartition, cc_graph, id_map, overlaps, filename_prefix, c, write_gfa);
 
         merge_diploid_singletons(bubble_graph, chain_bipartition);
 
@@ -275,7 +276,7 @@ void chain_phased_gfa(
 
         write_paths_to_csv(cc_graph, id_map, provenance_csv_file);
 
-        unzip(cc_graph, id_map, false);
+        unzip(cc_graph, id_map, overlaps, false);
 
         if (write_gfa){
             // Write phased + unzipped gfa to file
@@ -285,7 +286,7 @@ void chain_phased_gfa(
                 throw runtime_error("ERROR: could not write to file: " + test_gfa_phased_path.string());
             }
 
-            handle_graph_to_gfa(cc_graph, id_map, test_gfa_phased);
+            handle_graph_to_gfa(cc_graph, id_map, overlaps, test_gfa_phased);
         }
 
 

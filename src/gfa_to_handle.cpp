@@ -27,6 +27,7 @@ nid_t parse_gfa_sequence_id(const string& s, IncrementalIdMap<string>& id_map) {
 void gfa_to_handle_graph(
         MutablePathMutableHandleGraph& graph,
         IncrementalIdMap<string>& id_map,
+        Overlaps& overlaps,
         path gfa_file_path,
         bool ignore_singleton_paths,
         bool ignore_paths
@@ -62,14 +63,7 @@ void gfa_to_handle_graph(
         handle_t a = graph.get_handle(source_id, reversal_a);
         handle_t b = graph.get_handle(sink_id, reversal_b);
         graph.create_edge(a, b);
-
-        if (cigar == "0M" or cigar == "*") {
-            graph.create_edge(a, b);
-        }
-//        else{
-//            throw runtime_error("ERROR: gfa link (" + node_a + "->" + node_b + ") "
-//                                "contains non-empty overlap: " + cigar);
-//        }
+        overlaps.record_overlap(graph, a, b, cigar);
     });
 
     if (ignore_paths){

@@ -130,7 +130,8 @@ int main(int argc, char** argv){
     
     IncrementalIdMap<string> id_map;
     HashGraph graph;
-    gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
+    Overlaps overlaps;
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false, true);
     
     MultiContactGraph contact_graph;
     

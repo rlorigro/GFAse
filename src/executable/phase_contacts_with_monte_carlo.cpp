@@ -202,14 +202,14 @@ void write_config(
 }
 
 
-void write_gfa_to_file(PathHandleGraph& graph, IncrementalIdMap<string>& id_map, path output_gfa_path){
+void write_gfa_to_file(PathHandleGraph& graph, IncrementalIdMap<string>& id_map, Overlaps& overlaps, path output_gfa_path){
     ofstream chained_gfa(output_gfa_path);
 
     if (not (chained_gfa.is_open() and chained_gfa.good())){
         throw runtime_error("ERROR: could not write to file: " + output_gfa_path.string());
     }
 
-    handle_graph_to_gfa(graph, id_map, chained_gfa);
+    handle_graph_to_gfa(graph, id_map, overlaps, chained_gfa);
 
 }
 
@@ -462,6 +462,9 @@ void phase(
 
     // How GFA is stored in memory
     HashGraph graph;
+    
+    // Overlaps between the sequences
+    Overlaps overlaps;
 
     // To keep track of pairs of segments which exist in diploid bubbles
     MultiContactGraph contact_graph;
@@ -478,7 +481,7 @@ void phase(
     cerr << t << "Loading GFA..." << '\n';
 
     // Construct graph from GFA
-    gfa_to_handle_graph(graph, id_map, gfa_path, false, true);
+    gfa_to_handle_graph(graph, id_map, overlaps, gfa_path, false, true);
 
     cerr << t << "Writing IDs to file..." << '\n';
 
@@ -532,7 +535,7 @@ void phase(
     contact_graph.write_contact_map(contacts_output_path, id_map);
 
     // Remove self edges in contact graph (now that they have been written to disk)
-    contact_graph.for_each_node([&](int32_t id){
+    contact_graph.for_each_node([&](int32_t id) {
         contact_graph.remove_edge(id,id);
     });
 
@@ -563,13 +566,13 @@ void phase(
 
     cerr << t << "Writing GFA... " << '\n';
 
-    write_gfa_to_file(graph, id_map, chained_gfa_path);
+    write_gfa_to_file(graph, id_map, overlaps, chained_gfa_path);
 
     if (not skip_unzip) {
         cerr << t << "Unzipping chains... " << '\n';
 
-        unzip(graph, id_map, false, false);
-        write_gfa_to_file(graph, id_map, unzipped_gfa_path);
+        unzip(graph, id_map, overlaps, false, false);
+        write_gfa_to_file(graph, id_map, overlaps, unzipped_gfa_path);
     }
 
     cerr << t << "Writing FASTA... " << '\n';

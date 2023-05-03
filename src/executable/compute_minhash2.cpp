@@ -17,7 +17,8 @@ int compute_minhash(path gfa_path, path output_directory, double sample_rate, si
 
     HashGraph graph;
     IncrementalIdMap<string> id_map;
-    gfa_to_handle_graph(graph, id_map, gfa_path);
+    Overlaps gfa_overlaps;
+    gfa_to_handle_graph(graph, id_map, gfa_overlaps, gfa_path);
 
     Hasher2 hasher(k, sample_rate, n_iterations, n_threads);
 
