@@ -493,7 +493,7 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     
     // move the unipath boundaries from the bubbles to the same list as the bridges (even though
     // they're technically not bridges)
-    // note: we don't need to worry about re-identifuying a bridge because if a bridge satisfied
+    // note: we don't need to worry about re-identifying a bridge because if a bridge satisfied
     // the rigid topological bubble criterion, then it would have been solved by the hamiltonian
     for (auto& unipath_bridge : bubble_unipath_boundaries) {
         boundary_to_bridge[graph.flip(unipath_bridge.front())] = unipath_bridges.size();
@@ -811,18 +811,16 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                     }
                 }
             }
+            
+            // TODO: should i make the phase path circular?
         }
-        else if (init_link.has_right_side) {
+        else {
             // now we extend to the right
             
             if (debug) {
                 cerr << "extending to the right" << endl;
             }
             
-            // re-initialize the rightward traversal
-            keep_going = true;
-            left_to_right = true;
-            link_index = i;
             for (int hap : {0, 1}) {
                 if (init_link.allele_from_right[hap].empty()) {
                     // we can continue the initial allele
@@ -841,6 +839,16 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
                 }
             }
             
+            if (!init_link.has_right_side) {
+                // we might have picked up a unique tail to the hamiltonian path, but we don't
+                // actually want to extend because there is no right bridge
+                continue;
+            }
+            
+            // re-initialize the rightward traversal
+            keep_going = true;
+            left_to_right = true;
+            link_index = i;
             // add links to the right
             while (true) {
                 add_next_bridge(false, left_to_right, curr_paths, link_index,
@@ -940,7 +948,7 @@ HamiltonianChainer::generate_allelic_semiwalks(const HandleGraph& graph,
         bool fully_unique = (hamiltonian.unique_prefix.size() == hamiltonian.hamiltonian_path.size());
         return_val.first = move(hamiltonian.unique_prefix);
         
-        if (!fully_unique && !ends.empty()) {
+        if (!fully_unique) {
             // we'll also try to get the unique parts of the other end
             auto rev_hamiltonian = find_hamiltonian_path(graph,
                                                          in_phase_nodes,
