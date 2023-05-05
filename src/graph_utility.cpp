@@ -923,7 +923,7 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
             else if (overlaps.has_overlap(graph, previous, h)) {
                 // we only add the part that wasn't overlapped
                 size_t length_overlapped = overlaps.get_overlap(graph, previous, h).aligned_length().second;
-                path_sequence += sequence.substr(length_overlapped, sequence.size());
+                path_sequence += sequence.substr(min(length_overlapped, sequence.size()), sequence.size());
             }
             else {
                 // we can add the whole thing

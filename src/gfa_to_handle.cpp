@@ -32,6 +32,9 @@ void gfa_to_handle_graph(
         bool ignore_singleton_paths,
         bool ignore_paths
         ){
+    
+    static const int malformed_cigar_warn_limit = 10;
+    int malformed_cigar_warnings = 0;
 
     GfaReader gfa_reader(gfa_file_path);
 
@@ -64,6 +67,21 @@ void gfa_to_handle_graph(
         handle_t b = graph.get_handle(sink_id, reversal_b);
         graph.create_edge(a, b);
         overlaps.record_overlap(graph, a, b, cigar);
+        
+        if (overlaps.has_overlap(graph, a, b)) {
+            // check CIGAR validity
+            auto lens = overlaps.get_overlap(graph, a, b).aligned_length();
+            if (malformed_cigar_warnings < malformed_cigar_warn_limit &&
+                (lens.first > graph.get_length(a) || lens.second > graph.get_length(b))) {
+                
+                cerr << "warning: CIGAR string " << cigar << " has impossible aligned lengths " << lens.first << " and " << lens.second << " between sequences " << id_map.get_name(graph.get_id(a)) << " and " << id_map.get_name(graph.get_id(b)) << " with lengths " << graph.get_length(a) << " and " << graph.get_length(b) << ", GFA is probably invalid\n";
+                
+                ++malformed_cigar_warnings;
+                if (malformed_cigar_warnings == malformed_cigar_warn_limit) {
+                    cerr << "suppressing further warnings...\n";
+                }
+            }
+        }
     });
 
     if (ignore_paths){
