@@ -39,6 +39,8 @@ make -j [n_threads]
 - libbz2-dev
 - libcurl4-openssl-dev
 - libjansson-dev
+- autoconf
+- autoheader
 
 
 ## Usage
