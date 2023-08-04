@@ -165,7 +165,7 @@ Shasta R10 assembly:  3       1
 You may consider lowering your cutoff if you have low coverage in your mappings. This can be checked in the `contacts.csv` output file. There is also an executable in GFAse to measure the total distribution of mapQ for any BAM or SAM.
 
 ### Phase Shasta with parental k-mers
-A list of unique parental (separated into maternal/paternal fastas) kmers is required as input.
+A list of unique parental (separated into maternal/paternal fastas) kmers is required as input. The [KMC3](https://github.com/refresh-bio/KMC "KMC") tool is recommended to create and isolate unique parental kmers, a WDL with the commands to do so is here: https://github.com/meredith705/gfase_wdl/blob/main/tasks/kmc.wdl 
 ```
 /home/ubuntu/software/GFAse/build/phase_haplotype_paths \
 -i /home/ubuntu/data/human/hg002/assembly/Assembly-Detailed.gfa \
