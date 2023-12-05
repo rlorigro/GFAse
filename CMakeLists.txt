@@ -379,27 +379,31 @@ ExternalProject_Get_Property(project_bdsg INSTALL_DIR)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(LIB_SUFFIX "dylib")
+    set(LIB_DIRNAME "lib")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(LIB_SUFFIX "so")
+    include(GNUInstallDirs)
+    set(LIB_DIRNAME ${CMAKE_INSTALL_LIBDIR})
 endif()
 
+message(STATUS "LIB_DIRNAME: ${LIB_DIRNAME}")
 
 # Create new library for external project (so it can be linked with main library)
 add_library(bdsg SHARED IMPORTED)
 set_property(TARGET bdsg
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libbdsg.${LIB_SUFFIX})
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/${LIB_DIRNAME}/libbdsg.${LIB_SUFFIX})
 
 add_library(divsufsort SHARED IMPORTED)
 set_property(TARGET divsufsort
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libdivsufsort64.${LIB_SUFFIX})
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/${LIB_DIRNAME}/libdivsufsort64.${LIB_SUFFIX})
 
 add_library(libhandlegraph SHARED IMPORTED)
 set_property(TARGET libhandlegraph
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libhandlegraph.${LIB_SUFFIX})
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/${LIB_DIRNAME}/libhandlegraph.${LIB_SUFFIX})
 
 add_library(libsdsl SHARED IMPORTED)
 set_property(TARGET libsdsl
-        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/libsdsl.${LIB_SUFFIX})
+        PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/${LIB_DIRNAME}/libsdsl.${LIB_SUFFIX})
 
 # Define library as dependent on the downloaded project
 add_dependencies(bdsg
