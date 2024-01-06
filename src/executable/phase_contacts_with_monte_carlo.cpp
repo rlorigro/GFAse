@@ -608,8 +608,8 @@ int main (int argc, char* argv[]){
     app.add_option(
             "-i,--input",
             contacts_path,
-            "Path to file which contains contact/link information. This can be either a BAM or a CSV."
-            "BAM: contains proximity linked reads (or any long/linked read type). MUST be grouped by read name. Does not need index or regional sorting."
+            "Path to file which contains contact/link information. This can be either a BAM or a CSV. "
+            "BAM: contains proximity linked reads (or any long/linked read type). MUST be grouped by read name. Does not need index or regional sorting. "
             "CSV: a simple CSV with format: name_a,name_b,weight with types [string],[string],[int32] first line or header is skipped")
             ->required();
 
