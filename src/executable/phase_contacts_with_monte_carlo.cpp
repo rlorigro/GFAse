@@ -178,7 +178,7 @@ void write_contact_map(
 void write_config(
         path output_dir,
         path gfa_path,
-        path sam_path,
+        path contacts_path,
         int8_t min_mapq,
         size_t core_iterations,
         size_t sample_size,
@@ -193,7 +193,7 @@ void write_config(
     }
 
     file << "gfa_path" << ',' << gfa_path << '\n';
-    file << "sam_path" << ',' << sam_path << '\n';
+    file << "sam_path" << ',' << contacts_path << '\n';
     file << "min_mapq" << ',' << int(min_mapq) << '\n';
     file << "core_iterations" << ',' << int(min_mapq) << '\n';
     file << "sample_size" << ',' << int(min_mapq) << '\n';
@@ -424,7 +424,7 @@ void find_unlabeled_alts(
 
 void phase(
         path output_dir,
-        path sam_path,
+        path contacts_path,
         path gfa_path,
         int8_t min_mapq,
         size_t core_iterations,
@@ -455,7 +455,7 @@ void phase(
     path chained_gfa_path = output_dir / "chained.gfa";
     path unzipped_gfa_path = output_dir / "unzipped.gfa";
 
-    write_config(output_dir, gfa_path, sam_path, min_mapq, core_iterations, sample_size, n_rounds, n_threads);
+    write_config(output_dir, gfa_path, contacts_path, min_mapq, core_iterations, sample_size, n_rounds, n_threads);
 
     // Id-to-name bimap for reference contigs
     IncrementalIdMap<string> id_map(false);
@@ -489,11 +489,14 @@ void phase(
 
     cerr << t << "Loading alignments as contact map..." << '\n';
 
-    if (sam_path.extension() == ".bam"){
-        parse_unpaired_bam_file(sam_path, contact_graph, id_map, min_mapq);
+    if (contacts_path.extension() == ".bam"){
+        parse_unpaired_bam_file(contacts_path, contact_graph, id_map, min_mapq);
+    }
+    else if (contacts_path.extension() == ".csv"){
+        contact_graph = MultiContactGraph(contacts_path, id_map);
     }
     else{
-        throw runtime_error("ERROR: unrecognized extension for BAM input file: " + sam_path.extension().string());
+        throw runtime_error("ERROR: unrecognized extension for contacts input file (must be BAM or CSV): " + contacts_path.extension().string());
     }
 
     if (use_homology){
@@ -584,7 +587,7 @@ void phase(
 
 
 int main (int argc, char* argv[]){
-    path sam_path;
+    path contacts_path;
     path gfa_path;
     path output_dir;
     int8_t min_mapq = 1;
@@ -604,8 +607,10 @@ int main (int argc, char* argv[]){
 
     app.add_option(
             "-i,--input",
-            sam_path,
-            "Path to BAM containing proximity linked reads. MUST be grouped by read name. Does not need index or regional sorting.")
+            contacts_path,
+            "Path to file which contains contact/link information. This can be either a BAM or a CSV. "
+            "BAM: contains proximity linked reads (or any long/linked read type). MUST be grouped by read name. Does not need index or regional sorting. "
+            "CSV: a simple CSV with format: name_a,name_b,weight with types [string],[string],[int32] first line or header is skipped")
             ->required();
 
     app.add_option(
@@ -684,7 +689,7 @@ int main (int argc, char* argv[]){
 
     phase(
             output_dir,
-            sam_path,
+            contacts_path,
             gfa_path,
             min_mapq,
             core_iterations,
