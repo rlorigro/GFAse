@@ -6,7 +6,7 @@ Tool for phasing genomic graph data using parental or proximity ligation data.
   - Proximity linkage phasing working consistently on Shasta and Verkko graphs with low and high bubble N50s
   - PoreC tested and working
   - WDL is online and can be used to automate the alignment + phasing steps! See below
-  - Custom contact maps (as a CSV) are now accepted as input instead of BAM
+  - Custom contact maps (as a CSV) are now accepted as input as an optional alternative to BAM
 
 ## Automated workflow
 
