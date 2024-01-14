@@ -6,6 +6,7 @@ Tool for phasing genomic graph data using parental or proximity ligation data.
   - Proximity linkage phasing working consistently on Shasta and Verkko graphs with low and high bubble N50s
   - PoreC tested and working
   - WDL is online and can be used to automate the alignment + phasing steps! See below
+  - Custom contact maps (as a CSV) are now accepted as input instead of BAM
 
 ## Automated workflow
 
@@ -53,7 +54,7 @@ Usage: ./phase_contacts_with_monte_carlo [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
-  -i,--input TEXT REQUIRED    Path to BAM containing proximity linked reads. MUST be grouped by read name. Does not need index or regional sorting.
+  -i,--input TEXT REQUIRED    Path to file which contains contact/link information. This can be either a BAM or a CSV. BAM: contains proximity linked reads (or any long/linked read type). MUST be grouped by read name. Does not need index or regional sorting. CSV: a simple CSV with format: name_a,name_b,weight with types [string],[string],[int32], first line or header is skipped
   -g,--gfa TEXT               Path to GFA containing assembly graph to be phased
   -o,--output_dir TEXT REQUIRED
                               Path to (nonexistent) directory where output will be stored
