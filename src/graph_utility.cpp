@@ -930,7 +930,7 @@ void unzip(MutablePathDeletableHandleGraph& graph, IncrementalIdMap<string>& id_
                 path_sequence += sequence;
             }
 
-            nodes_to_be_destroyed.emplace(h);
+            nodes_to_be_destroyed.emplace(graph.forward(h));
             previous = h;
         });
 
