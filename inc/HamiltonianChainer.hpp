@@ -55,6 +55,10 @@ private:
     
     // keep track of which of the paths are the phase paths we added
     array<unordered_set<path_handle_t>, 2> phase_paths;
+    // the names of the phase paths so that we still have a way of accessing them after the
+    // unzip algorithm destroys the path handles
+    // TODO: ugly
+    array<unordered_set<string>, 2> phase_path_names;
     // we remember the graph so that we can use some of its in-built indexes in the public inferface
     // TODO: ugly solution
     const PathHandleGraph* path_graph = nullptr;
