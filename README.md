@@ -7,7 +7,6 @@ Tool for phasing genomic graph data using parental or proximity ligation data.
   - PoreC tested and working
   - WDL is online and can be used to automate the alignment + phasing steps! See below
   - Custom contact maps (as a CSV) are now accepted as input as an optional alternative to BAM
-  - :construction: WARNING: we have encountered [a bug](https://github.com/rlorigro/GFAse/issues/23) in the main branch involving the default chainer, if you are running GFAse please consider invoking `--use_simple_chainer` until we resolve this, simple_chainer is the method used in our publication
 
 ## Automated workflow
 

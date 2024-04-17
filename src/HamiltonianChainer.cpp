@@ -68,22 +68,14 @@ struct ChainableComponent {
 };
 
 bool HamiltonianChainer::has_phase_chain(const string& name) const {
-    if (!path_graph || !path_graph->has_path(name)) {
-        return false;
-    }
-    path_handle_t path_handle = path_graph->get_path_handle(name);
-    return (phase_paths[0].count(path_handle) || phase_paths[1].count(path_handle));
+    return (phase_path_names[0].count(name) || phase_path_names[1].count(name));
 }
 
 int8_t HamiltonianChainer::get_partition(const string& name) const {
-    if (!path_graph || !path_graph->has_path(name)) {
-        return 0;
-    }
-    path_handle_t path_handle = path_graph->get_path_handle(name);
-    if (phase_paths[0].count(path_handle)) {
+    if (phase_path_names[0].count(name)) {
         return -1;
     }
-    else if (phase_paths[1].count(path_handle)) {
+    else if (phase_path_names[1].count(name)) {
         return 1;
     }
     else {
@@ -876,6 +868,15 @@ void HamiltonianChainer::generate_chain_paths(MutablePathDeletableHandleGraph& g
     
     // self loops are ambiguous, so we don't allow them in phased paths
     break_self_looping_phase_paths(graph, next_path_ids);
+    
+    // record the names so that we can maintain the public interface TODO: super ugly
+    for (int hap : {0, 1}) {
+        auto& handles = phase_paths[hap];
+        auto& names = phase_path_names[hap];
+        for (auto p : handles) {
+            names.insert(graph.get_path_name(p));
+        }
+    }
     
     if (debug) {
         cerr << "final phase paths:" << endl;
