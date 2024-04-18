@@ -7,6 +7,7 @@ Tool for phasing genomic graph data using parental or proximity ligation data.
   - PoreC tested and working
   - WDL is online and can be used to automate the alignment + phasing steps! See below
   - Custom contact maps (as a CSV) are now accepted as input as an optional alternative to BAM
+  - The hamiltonian chainer is now the default chainer and the behavior used in our publication may be reproduced with `--use_simple_chainer`
 
 ## Automated workflow
 
