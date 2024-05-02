@@ -195,9 +195,9 @@ void write_config(
     file << "gfa_path" << ',' << gfa_path << '\n';
     file << "sam_path" << ',' << contacts_path << '\n';
     file << "min_mapq" << ',' << int(min_mapq) << '\n';
-    file << "core_iterations" << ',' << int(min_mapq) << '\n';
-    file << "sample_size" << ',' << int(min_mapq) << '\n';
-    file << "n_rounds" << ',' << int(min_mapq) << '\n';
+    file << "core_iterations" << ',' << int(core_iterations) << '\n';
+    file << "sample_size" << ',' << int(sample_size) << '\n';
+    file << "n_rounds" << ',' << int(n_rounds) << '\n';
     file << "n_threads" << ',' << n_threads << '\n';
 }
 
@@ -559,7 +559,6 @@ void phase(
 
     cerr << t << "Writing phasing results to file... " << '\n';
 
-    contact_graph.write_contact_map(contacts_output_path, id_map);
     contact_graph.write_bandage_csv(phases_output_path, id_map);
     
     cerr << t << "Chaining homologous sequences... " << '\n';
