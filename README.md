@@ -72,6 +72,8 @@ Options:
 
 ### Prepare alignments (HiC)
 
+GFAse expects usable paired alignments to have at least 2 lines in the BAM and for the BAM to be sorted by read name
+
 ```
 bwa index Assembly-Phased.fasta \
 && \
@@ -90,6 +92,8 @@ x = Time (min)
 This plot shows the alignment of 3 pairs of HiC sequencing libraries.
 
 ### Prepare alignments (PoreC)
+
+GFAse expects usable multi-contact alignments to have at least 2 lines in the BAM and for the BAM to be sorted by read name
 
 ```
 minimap2 \
