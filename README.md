@@ -197,4 +197,5 @@ Three examples of shifts in NGx in Shasta assemblies after applying GFAse with k
 ![image](https://user-images.githubusercontent.com/28764332/169709283-db012bc4-5fc7-4eee-9901-59fe83293fd6.png)
 
 ### Citation
-Lorig-Roach, Ryan, Melissa Meredith, Jean Monlong, Miten Jain, Hugh Olsen, Brandy McNulty, David Porubsky, et al. 2023. “Phased Nanopore Assembly with Shasta and Modular Graph Phasing with GFAse.” bioRxiv. https://doi.org/10.1101/2023.02.21.529152.
+Lorig-Roach, R., Meredith, M., Monlong, J., Jain, M., Olsen, H., McNulty, B., Porubsky, D., Montague, T., Lucas, J., Condon, C., Eizenga, J. M., Juul, S., McKenzie, S., Simmonds, S. E., Park, J., Asri, M., Koren, S., Eichler, E., Axel, R., … Paten, B. (2024). Phased nanopore assembly with Shasta and modular graph phasing with GFAse. Genome Research. https://doi.org/10.1101/gr.278268.123 
+
